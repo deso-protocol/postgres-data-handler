@@ -4,19 +4,14 @@ go 1.18
 
 replace github.com/deso-protocol/core => ../core/
 
-replace github.com/deso-protocol/backend => ../backend/
-
-replace github.com/deso-protocol/state-syncer-consumer => ../state-syncer-consumer/
-
 require (
 	github.com/deso-protocol/core v1.2.9
-	github.com/deso-protocol/state-syncer-consumer v0.0.0-00010101000000-000000000000
+	github.com/deso-protocol/state-consumer v1.0.2
 	github.com/golang/glog v1.0.0
 	github.com/spf13/viper v1.7.1
 	github.com/uptrace/bun v1.1.12
 	github.com/uptrace/bun/dialect/pgdialect v1.1.12
 	github.com/uptrace/bun/driver/pgdriver v1.1.12
-	github.com/uptrace/bun/extra/bundebug v1.1.12
 )
 
 require (

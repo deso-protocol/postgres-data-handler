@@ -4,7 +4,7 @@ import (
 	"PostgresDataHandler/handler"
 	"database/sql"
 	"flag"
-	"github.com/deso-protocol/state-syncer-consumer/consumer"
+	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
 	"github.com/spf13/viper"
 	"github.com/uptrace/bun"

@@ -4,7 +4,7 @@ import (
 	"PostgresDataHandler/entries"
 	"fmt"
 	"github.com/deso-protocol/core/lib"
-	"github.com/deso-protocol/state-syncer-consumer/consumer"
+	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/uptrace/bun"
 )
 
