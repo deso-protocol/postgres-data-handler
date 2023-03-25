@@ -9,10 +9,11 @@ WORKDIR /postgres-data-handler/src
 COPY postgres-data-handler/go.mod postgres-data-handler/
 COPY postgres-data-handler/go.sum postgres-data-handler/
 COPY backend/go.mod backend/
-COPY backend/go.mod backend/
 COPY backend/go.sum backend/
 COPY core/go.mod core/
 COPY core/go.sum core/
+COPY state-syncer-consumer/go.mod state-syncer-consumer/
+COPY state-syncer-consumer/go.sum state-syncer-consumer/
 
 WORKDIR /postgres-data-handler/src/postgres-data-handler
 
@@ -26,7 +27,7 @@ COPY backend/miner     ../backend/miner
 COPY backend/routes    ../backend/routes
 COPY backend/countries ../backend/countries
 
-# include daodao src
+# include postgres data handler src
 COPY postgres-data-handler/entries        entries
 COPY postgres-data-handler/migrations    migrations
 COPY postgres-data-handler/handler    handler
@@ -37,6 +38,9 @@ COPY core/desohash ../core/desohash
 COPY core/cmd       ../core/cmd
 COPY core/lib       ../core/lib
 COPY core/migrate   ../core/migrate
+
+## include state syncer consumer src
+COPY state-syncer-consumer/consumer ../state-syncer-consumer/consumer
 
 RUN go mod tidy
 
