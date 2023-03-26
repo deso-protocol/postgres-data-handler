@@ -48,6 +48,7 @@ func init() {
 			-- be able to handle the case where a post is deleted, which is not currently done. 
 			CREATE INDEX reposted_post_hash_idx ON post_entry (reposted_post_hash);
 			CREATE INDEX parent_post_hash_idx ON post_entry (parent_post_hash);
+			CREATE INDEX poster_public_key_timestamp_idx ON post_entry (poster_public_key, timestamp DESC);
 		`)
 		if err != nil {
 			return err
