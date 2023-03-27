@@ -12,7 +12,7 @@ type PGPostEntry struct {
 	bun.BaseModel                               `bun:"table:post_entry"`
 	PostHash                                    string            `pg:",pk,use_zero" decode_function:"blockhash" decode_src_field_name:"PostHash"`
 	PosterPublicKey                             string            `pg:",use_zero" decode_function:"base_58_check" decode_src_field_name:"PosterPublicKey"`
-	ParentPostHash                              string            `bun:",nullzero" decode_function:"blockhash" decode_src_field_name:"ParentStakeID"`
+	ParentPostHash                              string            `bun:",nullzero" decode_function:"bytehash" decode_src_field_name:"ParentStakeID"`
 	Body                                        string            `bun:",nullzero" decode_function:"deso_body_schema" decode_src_field_name:"Body" decode_body_field_name:"Body" decode_image_urls_field_name:"ImageUrls" decode_video_urls_field_name:"VideoUrls"`
 	ImageUrls                                   []string          `pg:",nullzero" bun:"type:varchar(255)[]"`
 	VideoUrls                                   []string          `pg:",nullzero" bun:"type:varchar(255)[]"`

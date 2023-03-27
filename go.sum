@@ -113,8 +113,8 @@ github.com/deso-protocol/go-deadlock v1.0.0 h1:mw0pHy/19zgC+JFBStuQt1+1Ehv5OKA5N
 github.com/deso-protocol/go-deadlock v1.0.0/go.mod h1:K0Wd2OV2x7ck7SMYDraWerpKjFKUeBqaFcwz21tmkb8=
 github.com/deso-protocol/go-merkle-tree v1.0.0 h1:9zkI5dQsITYy77s4kbTGPQmZnhQ+LsH/kRdL5l/Yzvg=
 github.com/deso-protocol/go-merkle-tree v1.0.0/go.mod h1:V/vbg/maaNv6G7zf9VVs645nLFx/jsO2L/awFB/S/ZU=
-github.com/deso-protocol/state-consumer v1.0.4-0.20230326231624-884c386b08b5 h1:KVS+1IB2jxYnsmZaao9/g8jziFHiWxVZ/HowydFza7M=
-github.com/deso-protocol/state-consumer v1.0.4-0.20230326231624-884c386b08b5/go.mod h1:qw+DTOfLoMdkKKgb2BIET34gNREVv6Gx6JNe419SM4g=
+github.com/deso-protocol/state-consumer v1.0.4-0.20230327001803-57525da2c79d h1:USqxwcb4x055VlyPZH+Yx40EDsm3ds06aHZJmMsXWI4=
+github.com/deso-protocol/state-consumer v1.0.4-0.20230327001803-57525da2c79d/go.mod h1:qw+DTOfLoMdkKKgb2BIET34gNREVv6Gx6JNe419SM4g=
 github.com/dgraph-io/badger/v3 v3.2103.0 h1:abkD2EnP3+6Tj8h5LI1y00dJ9ICKTIAzvG9WmZ8S2c4=
 github.com/dgraph-io/badger/v3 v3.2103.0/go.mod h1:GHMCYxuDWyzbHkh4k3yyg4PM61tJPFfEGSMbE3Vd5QE=
 github.com/dgraph-io/ristretto v0.0.4-0.20210309073149-3836124cdc5a/go.mod h1:MIonLggsKgZLUSt414ExgwNtlOL5MuEoAJP514mwGe8=

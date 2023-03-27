@@ -31,12 +31,12 @@ func main() {
 
 	stateChangeFileName := viper.GetString("STATE_CHANGE_FILE_NAME")
 	if stateChangeFileName == "" {
-		stateChangeFileName = "/tmp/db-state-changes"
+		stateChangeFileName = "/tmp/state-changes"
 	}
 
 	stateChangeIndexFileName := viper.GetString("STATE_CHANGE_INDEX_FILE_NAME")
 	if stateChangeIndexFileName == "" {
-		stateChangeIndexFileName = "/tmp/db-state-changes-index"
+		stateChangeIndexFileName = "/tmp/state-changes-index"
 	}
 
 	consumerProgressFileName := viper.GetString("CONSUMER_PROGRESS_FILE_NAME")
