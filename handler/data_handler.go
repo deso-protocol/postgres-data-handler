@@ -23,6 +23,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntry(key []byte, encoder 
 
 // HandleEntryBatch performs a bulk operation for a batch of entries, based on the encoder type.
 func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries *consumer.BatchedEntries) error {
+	fmt.Println("Handling batched entries")
 	if batchedEntries == nil || len(batchedEntries.Entries) == 0 {
 		return fmt.Errorf("No entries currently batched.")
 	}

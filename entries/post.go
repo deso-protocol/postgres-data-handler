@@ -67,9 +67,10 @@ func BulkInsertPostEntry(entries []*consumer.BatchedEntry, db *bun.DB, operation
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)
-	if operationType == lib.DbOperationTypeUpsert {
-		query = query.On("CONFLICT (post_hash) DO UPDATE")
-	}
+	query = query.On("CONFLICT (post_hash) DO UPDATE")
+	//if operationType == lib.DbOperationTypeUpsert {
+	//	query = query.On("CONFLICT (post_hash) DO UPDATE")
+	//}
 
 	_, err := query.Returning("").Exec(context.Background())
 	return err
