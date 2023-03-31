@@ -10,6 +10,7 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
+	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 )
 
 func main() {
@@ -42,6 +43,21 @@ func main() {
 	consumerProgressFileName := viper.GetString("CONSUMER_PROGRESS_FILE_NAME")
 	if consumerProgressFileName == "" {
 		consumerProgressFileName = "/tmp/consumer-progress"
+	}
+
+	dataDogServiceName := viper.GetString("DD_SERVICE")
+	dataDogEnvironment := viper.GetString("DD_ENV")
+	if dataDogServiceName != "" && dataDogEnvironment != "" {
+		// Initialize Datadog profiler.
+		profiler.Start(
+			profiler.WithService(dataDogServiceName),
+			profiler.WithEnv(dataDogEnvironment),
+			profiler.WithProfileTypes(
+				profiler.CPUProfile,
+				profiler.HeapProfile,
+				profiler.GoroutineProfile,
+			))
+		defer profiler.Stop()
 	}
 
 	batchSize := viper.GetInt("BATCH_SIZE")

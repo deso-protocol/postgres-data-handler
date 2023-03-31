@@ -113,8 +113,8 @@ github.com/deso-protocol/go-deadlock v1.0.0 h1:mw0pHy/19zgC+JFBStuQt1+1Ehv5OKA5N
 github.com/deso-protocol/go-deadlock v1.0.0/go.mod h1:K0Wd2OV2x7ck7SMYDraWerpKjFKUeBqaFcwz21tmkb8=
 github.com/deso-protocol/go-merkle-tree v1.0.0 h1:9zkI5dQsITYy77s4kbTGPQmZnhQ+LsH/kRdL5l/Yzvg=
 github.com/deso-protocol/go-merkle-tree v1.0.0/go.mod h1:V/vbg/maaNv6G7zf9VVs645nLFx/jsO2L/awFB/S/ZU=
-github.com/deso-protocol/state-consumer v1.0.4-0.20230327051641-cfb67917f24c h1:3qnqCW5hxjPa9NacrFp3EPU7pERWqCx6NLloYzST5Q0=
-github.com/deso-protocol/state-consumer v1.0.4-0.20230327051641-cfb67917f24c/go.mod h1:qw+DTOfLoMdkKKgb2BIET34gNREVv6Gx6JNe419SM4g=
+github.com/deso-protocol/state-consumer v1.0.4-0.20230331191421-0ba48ac89d9d h1:HPAfyDVL+y1QcI+pR3sBaC0w1nV93fpVUp100dUE/MA=
+github.com/deso-protocol/state-consumer v1.0.4-0.20230331191421-0ba48ac89d9d/go.mod h1:qw+DTOfLoMdkKKgb2BIET34gNREVv6Gx6JNe419SM4g=
 github.com/dgraph-io/badger/v3 v3.2103.0 h1:abkD2EnP3+6Tj8h5LI1y00dJ9ICKTIAzvG9WmZ8S2c4=
 github.com/dgraph-io/badger/v3 v3.2103.0/go.mod h1:GHMCYxuDWyzbHkh4k3yyg4PM61tJPFfEGSMbE3Vd5QE=
 github.com/dgraph-io/ristretto v0.0.4-0.20210309073149-3836124cdc5a/go.mod h1:MIonLggsKgZLUSt414ExgwNtlOL5MuEoAJP514mwGe8=
@@ -440,6 +440,8 @@ github.com/uptrace/bun/dialect/pgdialect v1.1.12 h1:m/CM1UfOkoBTglGO5CUTKnIKKOAp
 github.com/uptrace/bun/dialect/pgdialect v1.1.12/go.mod h1:Ij6WIxQILxLlL2frUBxUBOZJtLElD2QQNDcu/PWDHTc=
 github.com/uptrace/bun/driver/pgdriver v1.1.12 h1:3rRWB1GK0psTJrHwxzNfEij2MLibggiLdTqjTtfHc1w=
 github.com/uptrace/bun/driver/pgdriver v1.1.12/go.mod h1:ssYUP+qwSEgeDDS1xm2XBip9el1y9Mi5mTAvLoiADLM=
+github.com/uptrace/bun/extra/bundebug v1.1.12 h1:y8nrHvo7TUCR91kXngWuF7Bk0E1nCTsWzYL1CDEriTo=
+github.com/uptrace/bun/extra/bundebug v1.1.12/go.mod h1:psjCrCMf5JaAyivW/A8MDBW5MwIy/jZFBCkIaBgabtM=
 github.com/urfave/cli v1.22.1 h1:+mkCCcOFKPnCmVYVcURKps1Xe+3zP90gSYGNfRkjoIY=
 github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/urfave/negroni v1.0.0 h1:kIimOitoypq34K7TG7DUaJ9kq/N4Ofuwi1sjz0KipXc=

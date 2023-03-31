@@ -28,11 +28,11 @@ func init() {
 				diamond_count BIGINT,
 				comment_count BIGINT,
 				pinned BOOLEAN,
-				nft BOOLEAN,
+				is_nft BOOLEAN,
 				num_nft_copies BIGINT,
 				num_nft_copies_for_sale BIGINT,
 				num_nft_copies_burned BIGINT,
-				unlockable BOOLEAN,
+				has_unlockable BOOLEAN,
 				creator_royalty_basis_points BIGINT,
 				coin_royalty_basis_points BIGINT,
 				additional_nft_royalties_to_coins_basis_points JSONB,
@@ -43,12 +43,14 @@ func init() {
 			);
 			CREATE INDEX badger_key_idx ON post_entry (badger_key);
 			CREATE INDEX timestamp_idx ON post_entry (timestamp desc);
-			CREATE INDEX nft_idx ON post_entry (nft);
+			CREATE INDEX nft_idx ON post_entry (is_nft);
 			-- NOTE: It would be nice for these to be foreign keys, but that would require consensus to
 			-- be able to handle the case where a post is deleted, which is not currently done. 
 			CREATE INDEX reposted_post_hash_idx ON post_entry (reposted_post_hash);
 			CREATE INDEX parent_post_hash_idx ON post_entry (parent_post_hash);
 			CREATE INDEX poster_public_key_timestamp_idx ON post_entry (poster_public_key, timestamp DESC);
+			CREATE INDEX poster_public_key_nft_timestamp_idx ON post_entry (poster_public_key, timestamp, is_nft DESC);
+			CREATE INDEX nft_timestamp_idx ON post_entry (timestamp, is_nft DESC);
 		`)
 		if err != nil {
 			return err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
+	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
 	"time"
 )
@@ -26,11 +27,11 @@ type PGPostEntry struct {
 	DiamondCount                                uint64            `pg:",use_zero"`
 	CommentCount                                uint64            `pg:",use_zero"`
 	Pinned                                      bool              `pg:",use_zero"`
-	NFT                                         bool              `pg:",use_zero"`
+	IsNFT                                       bool              `pg:",use_zero"`
 	NumNFTCopies                                uint64            `pg:",use_zero"`
 	NumNFTCopiesForSale                         uint64            `pg:",use_zero"`
 	NumNFTCopiesBurned                          uint64            `pg:",use_zero"`
-	Unlockable                                  bool              `pg:",use_zero"`
+	HasUnlockable                               bool              `pg:",use_zero"`
 	CreatorRoyaltyBasisPoints                   uint64            `pg:",use_zero"`
 	CoinRoyaltyBasisPoints                      uint64            `pg:",use_zero"`
 	AdditionalNFTRoyaltiesToCoinsBasisPoints    map[string]uint64 `pg:"additional_nft_royalties_to_coins_basis_points,use_zero" bun:"type:jsonb"`
@@ -40,16 +41,24 @@ type PGPostEntry struct {
 	BadgerKey                                   []byte            `pg:",use_zero"`
 }
 
-func PostBatchOperation(entries []*consumer.BatchedEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+	// We check before we call this function that there is at least one operation type.
+	// We also ensure that all entries have the same operation type.
+	operationType := entries[0].OperationType
+	var err error
 	if operationType == lib.DbOperationTypeDelete {
-		return BulkDeletePostEntry(entries, db, operationType)
+		err = BulkDeletePostEntry(entries, db, operationType)
 	} else {
-		return BulkInsertPostEntry(entries, db, operationType)
+		err = BulkInsertPostEntry(entries, db, operationType)
 	}
+	if err != nil {
+		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
+	}
+	return nil
 }
 
 // TODO: For inserts, have this one run in a non-blocking thread, allow parallelism.
-func BulkInsertPostEntry(entries []*consumer.BatchedEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func BulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -60,9 +69,9 @@ func BulkInsertPostEntry(entries []*consumer.BatchedEntry, db *bun.DB, operation
 		encoder := uniqueEntries[i].Encoder
 		pgPostEntry := &PGPostEntry{}
 		// Copy all encoder fields to the bun struct.
-		consumer.CopyStruct(*encoder, pgPostEntry)
+		consumer.CopyStruct(encoder, pgPostEntry)
 		// Add the badger key to the struct.
-		pgPostEntry.BadgerKey = entries[i].Key
+		pgPostEntry.BadgerKey = entries[i].KeyBytes
 		pgEntrySlice[i] = pgPostEntry
 	}
 
@@ -72,21 +81,25 @@ func BulkInsertPostEntry(entries []*consumer.BatchedEntry, db *bun.DB, operation
 	//	query = query.On("CONFLICT (post_hash) DO UPDATE")
 	//}
 
-	_, err := query.Returning("").Exec(context.Background())
-	return err
+	if _, err := query.Returning("").Exec(context.Background()); err != nil {
+		return errors.Wrapf(err, "entries.BulkInsertPostEntry: Error inserting entries")
+	}
+	return nil
 }
 
-func BulkDeletePostEntry(entries []*consumer.BatchedEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func BulkDeletePostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
 	keysToDelete := consumer.KeysToDelete(uniqueEntries)
 
-	_, err := db.NewDelete().
+	if _, err := db.NewDelete().
 		Model(&PGPostEntry{}).
 		Where("badger_key IN (?)", bun.In(keysToDelete)).
 		Returning("").
-		Exec(context.Background())
+		Exec(context.Background()); err != nil {
+		return errors.Wrapf(err, "entries.BulkDeletePostEntry: Error deleting entries")
+	}
 
-	return err
+	return nil
 }

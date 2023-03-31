@@ -6,12 +6,12 @@ replace github.com/deso-protocol/core => ../core/
 
 require (
 	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
-	github.com/deso-protocol/state-consumer v1.0.4-0.20230327051641-cfb67917f24c
 	github.com/golang/glog v1.0.0
 	github.com/spf13/viper v1.7.1
 	github.com/uptrace/bun v1.1.12
 	github.com/uptrace/bun/dialect/pgdialect v1.1.12
 	github.com/uptrace/bun/driver/pgdriver v1.1.12
+	github.com/uptrace/bun/extra/bundebug v1.1.12
 )
 
 require (
@@ -30,6 +30,7 @@ require (
 	github.com/decred/dcrd/lru v1.1.1 // indirect
 	github.com/deso-protocol/go-deadlock v1.0.0 // indirect
 	github.com/deso-protocol/go-merkle-tree v1.0.0 // indirect
+	github.com/deso-protocol/state-consumer v1.0.4-0.20230331191421-0ba48ac89d9d // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
+	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
 )
 
@@ -17,22 +18,27 @@ type PostgresDataHandler struct {
 
 // HandleEntry handles a single entry by inserting it into the database.
 // PostgresDataHandler uses HandleEntryBatch to handle entries in bulk instead.
-func (postgresDataHandler *PostgresDataHandler) HandleEntry(key []byte, encoder lib.DeSoEncoder, encoderType lib.EncoderType, operationType lib.StateSyncerOperationType) error {
+func (postgresDataHandler *PostgresDataHandler) HandleEntry(stateChangeEntry *lib.StateChangeEntry) error {
 	return nil
 }
 
 // HandleEntryBatch performs a bulk operation for a batch of entries, based on the encoder type.
-func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries *consumer.BatchedEntries) error {
-	fmt.Println("Handling batched entries")
-	if batchedEntries == nil || len(batchedEntries.Entries) == 0 {
-		return fmt.Errorf("No entries currently batched.")
+func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries []*lib.StateChangeEntry) error {
+	if len(batchedEntries) == 0 {
+		return fmt.Errorf("PostgresDataHandler.HandleEntryBatch: No entries currently batched.")
 	}
 
-	encoderType := batchedEntries.EncoderType
+	encoderType := batchedEntries[0].EncoderType
+
+	var err error
 
 	switch encoderType {
 	case lib.EncoderTypePostEntry:
-		return entries.PostBatchOperation(batchedEntries.Entries, postgresDataHandler.DB, batchedEntries.OperationType)
+		err = entries.PostBatchOperation(batchedEntries, postgresDataHandler.DB)
+		if err != nil {
+			return errors.Wrapf(err, "PostgresDataHandler.HandleEntryBatch")
+		}
+		return nil
 	default:
 		return nil
 	}
