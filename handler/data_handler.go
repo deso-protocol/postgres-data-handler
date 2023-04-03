@@ -35,21 +35,40 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	switch encoderType {
 	case lib.EncoderTypePostEntry:
 		err = entries.PostBatchOperation(batchedEntries, postgresDataHandler.DB)
-		if err != nil {
-			return errors.Wrapf(err, "PostgresDataHandler.HandleEntryBatch")
-		}
-		return nil
-	default:
-		return nil
 	}
+
+	if err != nil {
+		return errors.Wrapf(err, "PostgresDataHandler.CallBatchOperationForEncoderType")
+	}
+	return nil
+}
+
+func (postgresDataHandler *PostgresDataHandler) CallBatchOperationForEncoderType(batchedEntries []*lib.StateChangeEntry, encoderType lib.EncoderType) error {
+	var err error
+
+	switch encoderType {
+	case lib.EncoderTypePostEntry:
+		err = entries.PostBatchOperation(batchedEntries, postgresDataHandler.DB)
+	}
+
+	if err != nil {
+		return errors.Wrapf(err, "PostgresDataHandler.CallBatchOperationForEncoderType")
+	}
+	return nil
 }
 
 func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consumer.SyncEvent) error {
 	switch syncEvent {
 	case consumer.SyncEventStart:
 		RunMigrations(postgresDataHandler.DB, true, MigrationTypeInitial)
+	case consumer.SyncEventHypersyncStart:
+		fmt.Println("Starting hypersync")
 	case consumer.SyncEventHypersyncComplete:
-		//TODO: Run FK migrations?
+		fmt.Println("Hypersync complete")
+		// After hypersync, we don't need to maintain so many idle open connections.
+		postgresDataHandler.DB.SetMaxIdleConns(4)
+		//postgresDataHandler.DB.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+		//RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync)
 	case consumer.SyncEventComplete:
 		fmt.Printf("\n***** Sync complete *****\n\n")
 	}

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"PostgresDataHandler/migrations/initial_migrations"
+	"PostgresDataHandler/migrations/post_sync_migrations"
 	"context"
 	"github.com/golang/glog"
 	"github.com/uptrace/bun"
@@ -16,21 +17,30 @@ const (
 	MigrationTypePostHypersync MigrationType = 1
 )
 
+// TODO: Make this a method on the PostgresDataHandler struct.
 func RunMigrations(db *bun.DB, reset bool, migrationType MigrationType) error {
 	ctx := context.Background()
 	var migrator *migrate.Migrator
 
+	initialMigrator := migrate.NewMigrator(db, initial_migrations.Migrations)
+	postSyncMigrator := migrate.NewMigrator(db, post_sync_migrations.Migrations)
+
 	if migrationType == MigrationTypeInitial {
-		migrator = migrate.NewMigrator(db, initial_migrations.Migrations)
-	} else {
-		// TODO: Determine whether we need to add migrations for post-hypersync.
+		migrator = initialMigrator
+	} else if migrationType == MigrationTypePostHypersync {
+		migrator = postSyncMigrator
 	}
 	if err := migrator.Init(ctx); err != nil {
 		glog.Fatal(err)
 	}
 
+	// If resetting, revert all migrations, starting with the most recently applied.
 	if reset {
-		if err := RollbackAllMigrations(migrator, ctx); err != nil {
+		if err := RollbackAllMigrations(postSyncMigrator, ctx); err != nil {
+			return err
+		}
+
+		if err := RollbackAllMigrations(initialMigrator, ctx); err != nil {
 			return err
 		}
 	}

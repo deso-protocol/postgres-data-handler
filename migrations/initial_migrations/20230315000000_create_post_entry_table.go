@@ -11,6 +11,12 @@ func init() {
 
 		// Create a new table to handle web push notification subscriptions.
 		_, err := db.Exec(`
+			SET work_mem = '32MB';
+		`)
+		if err != nil {
+			return err
+		}
+		_, err = db.Exec(`
 			CREATE TABLE post_entry (
 				post_hash VARCHAR PRIMARY KEY,
 				poster_public_key VARCHAR,
@@ -44,8 +50,8 @@ func init() {
 			CREATE INDEX badger_key_idx ON post_entry (badger_key);
 			CREATE INDEX timestamp_idx ON post_entry (timestamp desc);
 			CREATE INDEX nft_idx ON post_entry (is_nft);
-			-- NOTE: It would be nice for these to be foreign keys, but that would require consensus to
-			-- be able to handle the case where a post is deleted, which is not currently done. 
+-- 			NOTE: It would be nice for these to be foreign keys, but that would require consensus to
+-- 			be able to handle the case where a post is deleted, which is not currently done. 
 			CREATE INDEX reposted_post_hash_idx ON post_entry (reposted_post_hash);
 			CREATE INDEX parent_post_hash_idx ON post_entry (parent_post_hash);
 			CREATE INDEX poster_public_key_timestamp_idx ON post_entry (poster_public_key, timestamp DESC);

@@ -6,12 +6,14 @@ replace github.com/deso-protocol/core => ../core/
 
 require (
 	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
+	github.com/deso-protocol/state-consumer v1.0.4-0.20230403214734-31bb562ef858
 	github.com/golang/glog v1.0.0
+	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.7.1
 	github.com/uptrace/bun v1.1.12
 	github.com/uptrace/bun/dialect/pgdialect v1.1.12
 	github.com/uptrace/bun/driver/pgdriver v1.1.12
-	github.com/uptrace/bun/extra/bundebug v1.1.12
+	gopkg.in/DataDog/dd-trace-go.v1 v1.29.0
 )
 
 require (
@@ -30,7 +32,6 @@ require (
 	github.com/decred/dcrd/lru v1.1.1 // indirect
 	github.com/deso-protocol/go-deadlock v1.0.0 // indirect
 	github.com/deso-protocol/go-merkle-tree v1.0.0 // indirect
-	github.com/deso-protocol/state-consumer v1.0.4-0.20230331191421-0ba48ac89d9d // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
@@ -45,6 +46,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/flatbuffers v2.0.0+incompatible // indirect
+	github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/uint256 v1.1.1 // indirect
@@ -56,14 +58,16 @@ require (
 	github.com/oleiade/lane v1.0.1 // indirect
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/shibukawa/configdir v0.0.0-20170330084843-e180dbdc8da0 // indirect
 	github.com/spf13/afero v1.1.2 // indirect
 	github.com/spf13/cast v1.3.0 // indirect
 	github.com/spf13/jwalterweatherman v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
+	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/unrolled/secure v1.0.8 // indirect
@@ -74,9 +78,11 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/net v0.6.0 // indirect
-	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
+	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/ini.v1 v1.51.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

@@ -10,6 +10,8 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
+	//"github.com/uptrace/bun/extra/bundebug"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 )
 
@@ -27,7 +29,7 @@ func main() {
 
 	pgURI := viper.GetString("PG_URI")
 	if pgURI == "" {
-		pgURI = "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+		pgURI = "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable&timeout=240&connect_timeout=240&write_timeout=240&read_timeout=240&dial_timeout=240"
 	}
 
 	stateChangeFileName := viper.GetString("STATE_CHANGE_FILE_NAME")
@@ -49,20 +51,25 @@ func main() {
 	dataDogEnvironment := viper.GetString("DD_ENV")
 	if dataDogServiceName != "" && dataDogEnvironment != "" {
 		// Initialize Datadog profiler.
-		profiler.Start(
-			profiler.WithService(dataDogServiceName),
-			profiler.WithEnv(dataDogEnvironment),
-			profiler.WithProfileTypes(
-				profiler.CPUProfile,
-				profiler.HeapProfile,
-				profiler.GoroutineProfile,
-			))
+		tracer.Start()
+		err := profiler.Start(profiler.WithProfileTypes(profiler.CPUProfile, profiler.BlockProfile, profiler.MutexProfile, profiler.GoroutineProfile, profiler.HeapProfile))
+		if err != nil {
+			glog.Fatal(err)
+		}
+		if err != nil {
+			glog.Fatalf("Error starting Datadog: %v", err)
+		}
 		defer profiler.Stop()
 	}
 
 	batchSize := viper.GetInt("BATCH_SIZE")
 	if batchSize == 0 {
-		batchSize = 10000
+		batchSize = 5000
+	}
+
+	threadLimit := viper.GetInt("THREAD_LIMIT")
+	if threadLimit == 0 {
+		threadLimit = 30
 	}
 
 	// Open a PostgreSQL database.
@@ -73,6 +80,10 @@ func main() {
 
 	// Create a Bun db on top of postgres for querying.
 	db := bun.NewDB(pgdb, pgdialect.New())
+
+	db.SetConnMaxLifetime(0)
+
+	db.SetMaxIdleConns(threadLimit * 2)
 
 	// Print all queries to stdout for debugging.
 	//db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
@@ -91,6 +102,7 @@ func main() {
 		consumerProgressFileName,
 		true,
 		batchSize,
+		threadLimit,
 		&handler.PostgresDataHandler{
 			DB: db,
 		},
