@@ -16,34 +16,15 @@ type PostgresDataHandler struct {
 	DB *bun.DB
 }
 
-// HandleEntry handles a single entry by inserting it into the database.
-// PostgresDataHandler uses HandleEntryBatch to handle entries in bulk instead.
-func (postgresDataHandler *PostgresDataHandler) HandleEntry(stateChangeEntry *lib.StateChangeEntry) error {
-	return nil
-}
-
 // HandleEntryBatch performs a bulk operation for a batch of entries, based on the encoder type.
 func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries []*lib.StateChangeEntry) error {
 	if len(batchedEntries) == 0 {
 		return fmt.Errorf("PostgresDataHandler.HandleEntryBatch: No entries currently batched.")
 	}
 
+	// All entries in a batch should have the same encoder type.
 	encoderType := batchedEntries[0].EncoderType
 
-	var err error
-
-	switch encoderType {
-	case lib.EncoderTypePostEntry:
-		err = entries.PostBatchOperation(batchedEntries, postgresDataHandler.DB)
-	}
-
-	if err != nil {
-		return errors.Wrapf(err, "PostgresDataHandler.CallBatchOperationForEncoderType")
-	}
-	return nil
-}
-
-func (postgresDataHandler *PostgresDataHandler) CallBatchOperationForEncoderType(batchedEntries []*lib.StateChangeEntry, encoderType lib.EncoderType) error {
 	var err error
 
 	switch encoderType {
@@ -67,6 +48,8 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 		fmt.Println("Hypersync complete")
 		// After hypersync, we don't need to maintain so many idle open connections.
 		postgresDataHandler.DB.SetMaxIdleConns(4)
+		// TODO: Once more encoder types are written out, do a comprehensive comparison between creating indexes
+		// immediately and applying indexes after the chain has been hypersynced.
 		//postgresDataHandler.DB.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 		//RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync)
 	case consumer.SyncEventComplete:
