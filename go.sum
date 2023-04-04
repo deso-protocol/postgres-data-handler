@@ -119,6 +119,8 @@ github.com/deso-protocol/go-merkle-tree v1.0.0 h1:9zkI5dQsITYy77s4kbTGPQmZnhQ+Ls
 github.com/deso-protocol/go-merkle-tree v1.0.0/go.mod h1:V/vbg/maaNv6G7zf9VVs645nLFx/jsO2L/awFB/S/ZU=
 github.com/deso-protocol/state-consumer v1.0.4-0.20230403214734-31bb562ef858 h1:GmbKmwBsNOnfwCctCj4axCn0n80Dvk/oinj4uK4NL9o=
 github.com/deso-protocol/state-consumer v1.0.4-0.20230403214734-31bb562ef858/go.mod h1:SUh/330MeByb9CWayhFYt421t3DVrKdsCLvIc1zAQng=
+github.com/deso-protocol/state-consumer v1.0.4-0.20230404024806-211e941c36ef h1:HPh36192LZD8SITAgYiQgoInITR0g+Q5/gqUitPzGb0=
+github.com/deso-protocol/state-consumer v1.0.4-0.20230404024806-211e941c36ef/go.mod h1:SUh/330MeByb9CWayhFYt421t3DVrKdsCLvIc1zAQng=
 github.com/dgraph-io/badger/v3 v3.2103.0 h1:abkD2EnP3+6Tj8h5LI1y00dJ9ICKTIAzvG9WmZ8S2c4=
 github.com/dgraph-io/badger/v3 v3.2103.0/go.mod h1:GHMCYxuDWyzbHkh4k3yyg4PM61tJPFfEGSMbE3Vd5QE=
 github.com/dgraph-io/ristretto v0.0.4-0.20210309073149-3836124cdc5a/go.mod h1:MIonLggsKgZLUSt414ExgwNtlOL5MuEoAJP514mwGe8=

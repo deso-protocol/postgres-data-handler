@@ -6,7 +6,7 @@ replace github.com/deso-protocol/core => ../core/
 
 require (
 	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
-	github.com/deso-protocol/state-consumer v1.0.4-0.20230403214734-31bb562ef858
+	github.com/deso-protocol/state-consumer v1.0.4-0.20230404024806-211e941c36ef
 	github.com/golang/glog v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.7.1
