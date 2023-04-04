@@ -4,6 +4,7 @@ import (
 	"PostgresDataHandler/handler"
 	"database/sql"
 	"flag"
+	"fmt"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
 	"github.com/spf13/viper"
@@ -37,10 +38,7 @@ func main() {
 		stateChangeFileName = "/tmp/state-changes"
 	}
 
-	stateChangeIndexFileName := viper.GetString("STATE_CHANGE_INDEX_FILE_NAME")
-	if stateChangeIndexFileName == "" {
-		stateChangeIndexFileName = "/tmp/state-changes-index"
-	}
+	stateChangeIndexFileName := fmt.Sprintf("%s-index", stateChangeFileName)
 
 	consumerProgressFileName := viper.GetString("CONSUMER_PROGRESS_FILE_NAME")
 	if consumerProgressFileName == "" {
