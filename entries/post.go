@@ -41,9 +41,11 @@ type PGPostEntry struct {
 	BadgerKey                                   []byte            `pg:",use_zero"`
 }
 
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// based on the operation type and executes it.
 func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	// We check before we call this function that there is at least one operation type.
-	// We also ensure that all entries have the same operation type.
+	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
 	var err error
 	if operationType == lib.DbOperationTypeDelete {
@@ -57,7 +59,7 @@ func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	return nil
 }
 
-// TODO: For inserts, have this one run in a non-blocking thread, allow parallelism.
+// BulkInsertPostEntry inserts a batch of post entries into the database.
 func BulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
@@ -87,12 +89,15 @@ func BulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 	return nil
 }
 
+// BulkDeletePostEntry deletes a batch of post entries from the database.
 func BulkDeletePostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
+	// Transform the entries into a list of keys to delete.
 	keysToDelete := consumer.KeysToDelete(uniqueEntries)
 
+	// Execute the delete query.
 	if _, err := db.NewDelete().
 		Model(&PGPostEntry{}).
 		Where("badger_key IN (?)", bun.In(keysToDelete)).
