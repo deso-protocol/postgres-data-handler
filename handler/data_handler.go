@@ -30,6 +30,14 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	switch encoderType {
 	case lib.EncoderTypePostEntry:
 		err = entries.PostBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeProfileEntry:
+		err = entries.ProfileBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeLikeEntry:
+		err = entries.LikeBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeDiamondEntry:
+		err = entries.DiamondBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeFollowEntry:
+		err = entries.FollowBatchOperation(batchedEntries, postgresDataHandler.DB)
 	}
 
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
-	"github.com/uptrace/bun/extra/bundebug"
+	//"github.com/uptrace/bun/extra/bundebug"
 )
 
 func main() {
@@ -100,7 +100,7 @@ func setupDb(pgURI string, threadLimit int) (*bun.DB, error) {
 	db.SetMaxIdleConns(threadLimit * 2)
 
 	// Print all queries to stdout for debugging.
-	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+	//db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 
 	// Apply db migrations.
 	err := handler.RunMigrations(db, false, handler.MigrationTypeInitial)

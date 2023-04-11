@@ -57,6 +57,8 @@ func init() {
 			CREATE INDEX poster_public_key_timestamp_idx ON post_entry (poster_public_key, timestamp DESC);
 			CREATE INDEX poster_public_key_nft_timestamp_idx ON post_entry (poster_public_key, timestamp, is_nft DESC);
 			CREATE INDEX nft_timestamp_idx ON post_entry (timestamp, is_nft DESC);
+			CREATE INDEX post_extra_data_node_id_idx
+			ON post_entry ((extra_data ->> 'Node'));
 		`)
 		if err != nil {
 			return err

@@ -49,9 +49,9 @@ func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	operationType := entries[0].OperationType
 	var err error
 	if operationType == lib.DbOperationTypeDelete {
-		err = BulkDeletePostEntry(entries, db, operationType)
+		err = bulkDeletePostEntry(entries, db, operationType)
 	} else {
-		err = BulkInsertPostEntry(entries, db, operationType)
+		err = bulkInsertPostEntry(entries, db, operationType)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -59,8 +59,8 @@ func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	return nil
 }
 
-// BulkInsertPostEntry inserts a batch of post entries into the database.
-func BulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+// bulkInsertPostEntry inserts a batch of post entries into the database.
+func bulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -84,13 +84,13 @@ func BulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 	}
 
 	if _, err := query.Returning("").Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.BulkInsertPostEntry: Error inserting entries")
+		return errors.Wrapf(err, "entries.bulkInsertPostEntry: Error inserting entries")
 	}
 	return nil
 }
 
-// BulkDeletePostEntry deletes a batch of post entries from the database.
-func BulkDeletePostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+// bulkDeletePostEntry deletes a batch of post entries from the database.
+func bulkDeletePostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
@@ -103,7 +103,7 @@ func BulkDeletePostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 		Where("badger_key IN (?)", bun.In(keysToDelete)).
 		Returning("").
 		Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.BulkDeletePostEntry: Error deleting entries")
+		return errors.Wrapf(err, "entries.bulkDeletePostEntry: Error deleting entries")
 	}
 
 	return nil
