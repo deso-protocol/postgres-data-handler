@@ -2,6 +2,7 @@ package entries
 
 import (
 	"context"
+	"encoding/hex"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
@@ -18,27 +19,62 @@ type PGPostEntry struct {
 	ImageUrls                                   []string          `pg:",nullzero" bun:"type:varchar(255)[]"`
 	VideoUrls                                   []string          `pg:",nullzero" bun:"type:varchar(255)[]"`
 	RepostedPostHash                            string            `bun:",nullzero" decode_function:"blockhash" decode_src_field_name:"RepostedPostHash"`
-	QuotedRepost                                bool              `pg:",use_zero"`
+	IsQuotedRepost                              bool              `pg:",use_zero"`
 	Timestamp                                   time.Time         `pg:",use_zero" decode_function:"timestamp" decode_src_field_name:"TimestampNanos"`
-	Hidden                                      bool              `pg:",use_zero"`
-	LikeCount                                   uint64            `pg:",use_zero"`
-	RepostCount                                 uint64            `pg:",use_zero"`
-	QuoteRepostCount                            uint64            `pg:",use_zero"`
-	DiamondCount                                uint64            `pg:",use_zero"`
-	CommentCount                                uint64            `pg:",use_zero"`
-	Pinned                                      bool              `pg:",use_zero"`
+	IsHidden                                    bool              `pg:",use_zero"`
+	IsPinned                                    bool              `pg:",use_zero"`
 	IsNFT                                       bool              `pg:",use_zero"`
 	NumNFTCopies                                uint64            `pg:",use_zero"`
 	NumNFTCopiesForSale                         uint64            `pg:",use_zero"`
 	NumNFTCopiesBurned                          uint64            `pg:",use_zero"`
 	HasUnlockable                               bool              `pg:",use_zero"`
-	CreatorRoyaltyBasisPoints                   uint64            `pg:",use_zero"`
-	CoinRoyaltyBasisPoints                      uint64            `pg:",use_zero"`
-	AdditionalNFTRoyaltiesToCoinsBasisPoints    map[string]uint64 `pg:"additional_nft_royalties_to_coins_basis_points,use_zero" bun:"type:jsonb"`
+	NFTRoyaltyToCreatorBasisPoints              uint64            `pg:",use_zero"`
+	NFTRoyaltyToCoinBasisPoints                 uint64            `pg:",use_zero"`
 	AdditionalNFTRoyaltiesToCreatorsBasisPoints map[string]uint64 `pg:"additional_nft_royalties_to_creators_basis_points,use_zero" bun:"type:jsonb"`
+	AdditionalNFTRoyaltiesToCoinsBasisPoints    map[string]uint64 `pg:"additional_nft_royalties_to_coins_basis_points,use_zero" bun:"type:jsonb"`
 	ExtraData                                   map[string]string `bun:"type:jsonb" decode_function:"extra_data" decode_src_field_name:"PostExtraData"`
 	IsFrozen                                    bool              `pg:",use_zero"`
 	BadgerKey                                   []byte            `pg:",use_zero"`
+}
+
+func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte) (*PGPostEntry, error) {
+
+	pgPostEntry := &PGPostEntry{
+		PostHash:                                 hex.EncodeToString(postEntry.PostHash[:]),
+		PosterPublicKey:                          consumer.PublicKeyBytesToBase58Check(postEntry.PosterPublicKey),
+		ParentPostHash:                           hex.EncodeToString(postEntry.ParentStakeID),
+		IsQuotedRepost:                           postEntry.IsQuotedRepost,
+		Timestamp:                                consumer.UnixNanoToTime(postEntry.TimestampNanos),
+		IsHidden:                                 postEntry.IsHidden,
+		IsPinned:                                 postEntry.IsPinned,
+		IsNFT:                                    postEntry.IsNFT,
+		NumNFTCopies:                             postEntry.NumNFTCopies,
+		NumNFTCopiesForSale:                      postEntry.NumNFTCopiesForSale,
+		HasUnlockable:                            postEntry.HasUnlockable,
+		NFTRoyaltyToCreatorBasisPoints:           postEntry.NFTRoyaltyToCreatorBasisPoints,
+		NFTRoyaltyToCoinBasisPoints:              postEntry.NFTRoyaltyToCoinBasisPoints,
+		AdditionalNFTRoyaltiesToCoinsBasisPoints: consumer.ConvertRoyaltyMapToByteStrings(postEntry.AdditionalNFTRoyaltiesToCoinsBasisPoints),
+		AdditionalNFTRoyaltiesToCreatorsBasisPoints: consumer.ConvertRoyaltyMapToByteStrings(postEntry.AdditionalNFTRoyaltiesToCreatorsBasisPoints),
+		ExtraData: consumer.ExtraDataBytesToString(postEntry.PostExtraData),
+		IsFrozen:  postEntry.IsFrozen,
+		BadgerKey: keyBytes,
+	}
+
+	if postEntry.RepostedPostHash != nil {
+		pgPostEntry.RepostedPostHash = hex.EncodeToString(postEntry.RepostedPostHash[:])
+	}
+
+	if postEntry.Body != nil {
+		// Decode body and image/video urls.
+		postBody, err := consumer.DecodeDesoBodySchema(postEntry.Body)
+		if err == nil {
+			pgPostEntry.Body = postBody.Body
+			pgPostEntry.ImageUrls = postBody.ImageURLs
+			pgPostEntry.VideoUrls = postBody.VideoURLs
+		}
+	}
+
+	return pgPostEntry, nil
 }
 
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
@@ -67,14 +103,12 @@ func bulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 	pgEntrySlice := make([]*PGPostEntry, len(uniqueEntries))
 
 	// Loop through the entries and convert them to PGPostEntry.
-	for i := len(uniqueEntries) - 1; i >= 0; i-- {
-		encoder := uniqueEntries[i].Encoder
-		pgPostEntry := &PGPostEntry{}
-		// Copy all encoder fields to the bun struct.
-		consumer.CopyStruct(encoder, pgPostEntry)
-		// Add the badger key to the struct.
-		pgPostEntry.BadgerKey = entries[i].KeyBytes
-		pgEntrySlice[i] = pgPostEntry
+	for ii, entry := range entries {
+		if pgEntry, err := PostEntryEncoderToPGStruct(entry.Encoder.(*lib.PostEntry), entry.KeyBytes); err != nil {
+			return errors.Wrapf(err, "entries.bulkInsertPostEntry: Problem converting post entry to PG struct")
+		} else {
+			pgEntrySlice[ii] = pgEntry
+		}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

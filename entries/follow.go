@@ -15,6 +15,15 @@ type PGFollowEntry struct {
 	BadgerKey     []byte `pg:",pk,use_zero"`
 }
 
+// Convert the follow DeSo encoder to the PG struct used by bun.
+func FollowEncoderToPGStruct(followEntry *lib.FollowEntry, keyBytes []byte) *PGFollowEntry {
+	return &PGFollowEntry{
+		FollowerPkid: followEntry.FollowerPKID[:],
+		FollowedPkid: followEntry.FollowedPKID[:],
+		BadgerKey:    keyBytes,
+	}
+}
+
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
 // based on the operation type and executes it.
 func FollowBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
@@ -41,16 +50,11 @@ func bulkInsertFollowEntry(entries []*lib.StateChangeEntry, db *bun.DB, operatio
 	pgEntrySlice := make([]*PGFollowEntry, len(uniqueEntries))
 
 	// Loop through the entries and convert them to PGPostEntry.
-	for i := len(uniqueEntries) - 1; i >= 0; i-- {
-		encoder := uniqueEntries[i].Encoder
-		pgEntry := &PGFollowEntry{}
-		// Copy all encoder fields to the bun struct.
-		consumer.CopyStruct(encoder, pgEntry)
-		// Add the badger key to the struct.
-		pgEntry.BadgerKey = entries[i].KeyBytes
-		pgEntrySlice[i] = pgEntry
+	for ii, entry := range uniqueEntries {
+		pgEntrySlice[ii] = FollowEncoderToPGStruct(entry.Encoder.(*lib.FollowEntry), entry.KeyBytes)
 	}
 
+	// Execute the insert query.
 	query := db.NewInsert().Model(&pgEntrySlice)
 
 	if operationType == lib.DbOperationTypeUpsert {

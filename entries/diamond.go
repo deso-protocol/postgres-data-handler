@@ -2,6 +2,7 @@ package entries
 
 import (
 	"context"
+	"encoding/hex"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
@@ -15,6 +16,17 @@ type PGDiamondEntry struct {
 	DiamondLevel  int64  `pg:",use_zero"`
 	PostHash      string `pg:",use_zero" decode_function:"blockhash" decode_src_field_name:"DiamondPostHash"`
 	BadgerKey     []byte `pg:",pk,use_zero"`
+}
+
+// Convert the Diamond DeSo encoder to the PG struct used by bun.
+func DiamondEncoderToPGStruct(diamondEntry *lib.DiamondEntry, keyBytes []byte) *PGDiamondEntry {
+	return &PGDiamondEntry{
+		SenderPkid:   diamondEntry.SenderPKID[:],
+		ReceiverPkid: diamondEntry.ReceiverPKID[:],
+		DiamondLevel: diamondEntry.DiamondLevel,
+		PostHash:     hex.EncodeToString(diamondEntry.DiamondPostHash[:]),
+		BadgerKey:    keyBytes,
+	}
 }
 
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
@@ -43,14 +55,8 @@ func bulkInsertDiamondEntry(entries []*lib.StateChangeEntry, db *bun.DB, operati
 	pgEntrySlice := make([]*PGDiamondEntry, len(uniqueEntries))
 
 	// Loop through the entries and convert them to PGPostEntry.
-	for i := len(uniqueEntries) - 1; i >= 0; i-- {
-		encoder := uniqueEntries[i].Encoder
-		pgEntry := &PGDiamondEntry{}
-		// Copy all encoder fields to the bun struct.
-		consumer.CopyStruct(encoder, pgEntry)
-		// Add the badger key to the struct.
-		pgEntry.BadgerKey = entries[i].KeyBytes
-		pgEntrySlice[i] = pgEntry
+	for ii, entry := range uniqueEntries {
+		pgEntrySlice[ii] = DiamondEncoderToPGStruct(entry.Encoder.(*lib.DiamondEntry), entry.KeyBytes)
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

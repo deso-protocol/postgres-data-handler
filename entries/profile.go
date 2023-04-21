@@ -9,13 +9,12 @@ import (
 )
 
 type PGProfileEntry struct {
-	bun.BaseModel `bun:"table:profile_entry"`
-	PublicKey     string `pg:",pk,use_zero" decode_function:"base_58_check" decode_src_field_name:"PublicKey"`
-	Pkid          []byte `pg:",use_zero"`
-	Username      string `bun:",nullzero" decode_function:"string_bytes" decode_src_field_name:"Username"`
-	Description   string `bun:",nullzero" decode_function:"string_bytes" decode_src_field_name:"Description"`
-	ProfilePic    []byte `bun:",nullzero"`
-	// TODO: Determine if these fields are even necessary, or if the coin entry will be captured elsewhere and can just be joined to this table.
+	bun.BaseModel                    `bun:"table:profile_entry"`
+	PublicKey                        string                        `pg:",pk,use_zero" decode_function:"base_58_check" decode_src_field_name:"PublicKey"`
+	Pkid                             []byte                        `pg:",use_zero"`
+	Username                         string                        `bun:",nullzero" decode_function:"string_bytes" decode_src_field_name:"Username"`
+	Description                      string                        `bun:",nullzero" decode_function:"string_bytes" decode_src_field_name:"Description"`
+	ProfilePic                       []byte                        `bun:",nullzero"`
 	CreatorBasisPoints               uint64                        `decode_function:"nested_value" decode_src_field_name:"CreatorCoinEntry" nested_field_name:"CreatorBasisPoints"`
 	CoinWatermarkNanos               uint64                        `decode_function:"nested_value" decode_src_field_name:"CreatorCoinEntry" nested_field_name:"CoinWatermarkNanos"`
 	MintingDisabled                  bool                          `decode_function:"nested_value" decode_src_field_name:"CreatorCoinEntry" nested_field_name:"MintingDisabled"`
@@ -23,6 +22,24 @@ type PGProfileEntry struct {
 	DaoCoinTransferRestrictionStatus lib.TransferRestrictionStatus `decode_function:"nested_value" decode_src_field_name:"DAOCoinEntry" nested_field_name:"TransferRestrictionStatus"`
 	ExtraData                        map[string]string             `bun:"type:jsonb" decode_function:"extra_data" decode_src_field_name:"ExtraData"`
 	BadgerKey                        []byte                        `pg:",use_zero"`
+}
+
+func ProfileEntryEncoderToPGStruct(profileEntry *lib.ProfileEntry, keyBytes []byte) *PGProfileEntry {
+	return &PGProfileEntry{
+		PublicKey:                        consumer.PublicKeyBytesToBase58Check(profileEntry.PublicKey),
+		Pkid:                             consumer.GetPKIDBytesFromKey(keyBytes),
+		Username:                         string(profileEntry.Username),
+		Description:                      string(profileEntry.Description),
+		ProfilePic:                       profileEntry.ProfilePic,
+		CreatorBasisPoints:               profileEntry.CreatorCoinEntry.CreatorBasisPoints,
+		CoinWatermarkNanos:               profileEntry.CreatorCoinEntry.CoinWatermarkNanos,
+		MintingDisabled:                  profileEntry.CreatorCoinEntry.MintingDisabled,
+		DaoCoinMintingDisabled:           profileEntry.DAOCoinEntry.MintingDisabled,
+		DaoCoinTransferRestrictionStatus: profileEntry.DAOCoinEntry.TransferRestrictionStatus,
+		ExtraData:                        consumer.ExtraDataBytesToString(profileEntry.ExtraData),
+		BadgerKey:                        keyBytes,
+	}
+
 }
 
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
@@ -50,21 +67,8 @@ func bulkInsertProfileEntry(entries []*lib.StateChangeEntry, db *bun.DB, operati
 	// Create a new array to hold the bun struct.
 	pgEntrySlice := make([]*PGProfileEntry, len(uniqueEntries))
 
-	// Loop through the entries and convert them to PGPostEntry.
-	for i := len(uniqueEntries) - 1; i >= 0; i-- {
-		encoder := uniqueEntries[i].Encoder
-
-		pgProfileEntry := &PGProfileEntry{}
-		// Copy all encoder fields to the bun struct.
-		consumer.CopyStruct(encoder, pgProfileEntry)
-
-		// Add the pkid to the profile entry.
-		pkid := consumer.GetPKIDBytesFromKey(uniqueEntries[i].KeyBytes)
-		pgProfileEntry.Pkid = pkid
-
-		// Add the badger key to the struct.
-		pgProfileEntry.BadgerKey = entries[i].KeyBytes
-		pgEntrySlice[i] = pgProfileEntry
+	for ii, entry := range uniqueEntries {
+		pgEntrySlice[ii] = ProfileEntryEncoderToPGStruct(entry.Encoder.(*lib.ProfileEntry), entry.KeyBytes)
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

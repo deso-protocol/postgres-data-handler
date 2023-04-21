@@ -2,6 +2,7 @@ package entries
 
 import (
 	"context"
+	"encoding/hex"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
@@ -12,8 +13,16 @@ type PGLikeEntry struct {
 	bun.BaseModel `bun:"table:like_entry"`
 	PublicKey     string `pg:",use_zero" decode_function:"base_58_check" decode_src_field_name:"LikerPubKey"`
 	PostHash      string `pg:",use_zero" decode_function:"blockhash" decode_src_field_name:"LikedPostHash"`
-	// This is the PKID
-	BadgerKey []byte `pg:",pk,use_zero"`
+	BadgerKey     []byte `pg:",pk,use_zero"`
+}
+
+// Convert the like DeSo encoder to the PG struct used by bun.
+func LikeEncoderToPGStruct(likeEntry *lib.LikeEntry, keyBytes []byte) *PGLikeEntry {
+	return &PGLikeEntry{
+		PublicKey: consumer.PublicKeyBytesToBase58Check(likeEntry.LikerPubKey[:]),
+		PostHash:  hex.EncodeToString(likeEntry.LikedPostHash[:]),
+		BadgerKey: keyBytes,
+	}
 }
 
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
@@ -42,16 +51,11 @@ func bulkInsertLikeEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 	pgEntrySlice := make([]*PGLikeEntry, len(uniqueEntries))
 
 	// Loop through the entries and convert them to PGPostEntry.
-	for i := len(uniqueEntries) - 1; i >= 0; i-- {
-		encoder := uniqueEntries[i].Encoder
-		pgProfileEntry := &PGLikeEntry{}
-		// Copy all encoder fields to the bun struct.
-		consumer.CopyStruct(encoder, pgProfileEntry)
-		// Add the badger key to the struct.
-		pgProfileEntry.BadgerKey = entries[i].KeyBytes
-		pgEntrySlice[i] = pgProfileEntry
+	for ii, entry := range uniqueEntries {
+		pgEntrySlice[ii] = LikeEncoderToPGStruct(entry.Encoder.(*lib.LikeEntry), entry.KeyBytes)
 	}
 
+	// Execute the insert query.
 	query := db.NewInsert().Model(&pgEntrySlice)
 
 	if operationType == lib.DbOperationTypeUpsert {

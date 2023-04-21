@@ -38,6 +38,26 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 		err = entries.DiamondBatchOperation(batchedEntries, postgresDataHandler.DB)
 	case lib.EncoderTypeFollowEntry:
 		err = entries.FollowBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeMessageEntry:
+		err = entries.MessageBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeBalanceEntry:
+		err = entries.BalanceBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeNFTEntry:
+		err = entries.NftBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeNFTBidEntry:
+		err = entries.NftBidBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeDerivedKeyEntry:
+		err = entries.DerivedKeyBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeAccessGroupEntry:
+		err = entries.AccessGroupBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeAccessGroupMemberEntry:
+		err = entries.AccessGroupMemberBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeNewMessageEntry:
+		err = entries.NewMessageBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeUserAssociationEntry:
+		err = entries.UserAssociationBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypePostAssociationEntry:
+		err = entries.PostAssociationBatchOperation(batchedEntries, postgresDataHandler.DB)
 	}
 
 	if err != nil {

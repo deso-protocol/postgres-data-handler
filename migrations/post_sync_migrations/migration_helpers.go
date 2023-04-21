@@ -13,12 +13,12 @@ const (
 )
 
 func RunMigrationWithRetries(db *bun.DB, migrationQuery string) error {
-	for i := 0; i < retryLimit; i++ {
+	for ii := 0; ii < retryLimit; ii++ {
 		_, err := db.Exec(migrationQuery)
 		if err == nil {
 			return nil
 		}
-		waitTime := 5 * time.Duration(math.Pow(2, float64(i))) * time.Second
+		waitTime := 5 * time.Duration(math.Pow(2, float64(ii))) * time.Second
 		fmt.Printf("Failed to migrate, retrying in %v: %v\n", waitTime, err)
 		time.Sleep(waitTime)
 	}
