@@ -16,7 +16,7 @@ import (
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
-	pgURI, stateChangeFileName, stateChangeIndexFileName, consumerProgressFileName, batchSize, threadLimit := getConfigValues()
+	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchSize, threadLimit := getConfigValues()
 
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit)
@@ -29,6 +29,7 @@ func main() {
 	err = stateSyncerConsumer.InitializeAndRun(
 		stateChangeFileName,
 		stateChangeIndexFileName,
+		stateChangeMempoolFileName,
 		consumerProgressFileName,
 		batchSize,
 		threadLimit,
@@ -54,7 +55,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, consumerProgressFileName string, batchSize int, threadLimit int) {
+func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchSize int, threadLimit int) {
 	pgURI = viper.GetString("PG_URI")
 	if pgURI == "" {
 		pgURI = "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable&timeout=240&connect_timeout=240&write_timeout=240&read_timeout=240&dial_timeout=240"
@@ -66,6 +67,7 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 	}
 
 	stateChangeIndexFileName = fmt.Sprintf("%s-index", stateChangeFileName)
+	stateChangeMempoolFileName = fmt.Sprintf("%s-mempool", stateChangeFileName)
 
 	consumerProgressFileName = viper.GetString("CONSUMER_PROGRESS_FILE_NAME")
 	if consumerProgressFileName == "" {
@@ -79,9 +81,9 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 
 	threadLimit = viper.GetInt("THREAD_LIMIT")
 	if threadLimit == 0 {
-		threadLimit = 30
+		threadLimit = 20
 	}
-	return pgURI, stateChangeFileName, stateChangeIndexFileName, consumerProgressFileName, batchSize, threadLimit
+	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchSize, threadLimit
 }
 
 func setupDb(pgURI string, threadLimit int) (*bun.DB, error) {

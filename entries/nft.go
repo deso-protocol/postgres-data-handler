@@ -30,7 +30,6 @@ type PGNftEntry struct {
 // Convert the NFT DeSo entry into a bun struct.
 func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte) *PGNftEntry {
 	pgNFTEntry := &PGNftEntry{
-		LastOwnerPkid:              nftEntry.LastOwnerPKID[:],
 		OwnerPkid:                  nftEntry.OwnerPKID[:],
 		NftPostHash:                hex.EncodeToString(nftEntry.NFTPostHash[:]),
 		SerialNumber:               nftEntry.SerialNumber,
@@ -42,6 +41,9 @@ func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte) *PGNftEntry {
 		BuyNowPriceNanos:           nftEntry.BuyNowPriceNanos,
 		ExtraData:                  consumer.ExtraDataBytesToString(nftEntry.ExtraData),
 		BadgerKey:                  keyBytes,
+	}
+	if nftEntry.LastOwnerPKID != nil {
+		pgNFTEntry.LastOwnerPkid = nftEntry.LastOwnerPKID[:]
 	}
 	if nftEntry.UnlockableText != nil {
 		pgNFTEntry.UnlockableText = string(nftEntry.UnlockableText)
