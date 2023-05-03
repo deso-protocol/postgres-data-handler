@@ -12,10 +12,10 @@ import (
 
 type PGBalanceEntry struct {
 	bun.BaseModel `bun:"table:balance_entry"`
-	HodlerPkid    []byte `pg:",use_zero" decode_function:"pkid" decode_src_field_name:"HODLerPKID"`
-	CreatorPkid   []byte `pg:",use_zero" decode_function:"pkid" decode_src_field_name:"CreatorPKID"`
+	HodlerPkid    string `pg:",use_zero"`
+	CreatorPkid   string `pg:",use_zero"`
 	// Use bunbig.Int to store the balance as a numeric in the pg database.
-	BalanceNanos *bunbig.Int `pg:",use_zero" decode_function:"uint256" decode_src_field_name:"BalanceNanos"`
+	BalanceNanos *bunbig.Int `pg:",use_zero"`
 	HasPurchased bool        `pg:",use_zero"`
 	IsDaoCoin    bool        `pg:",use_zero"`
 	BadgerKey    []byte      `pg:",pk,use_zero"`
@@ -24,8 +24,8 @@ type PGBalanceEntry struct {
 // Convert the DeSo encoder to the postgres struct used by bun.
 func BalanceEntryEncoderToPGStruct(balanceEntry *lib.BalanceEntry, keyBytes []byte) *PGBalanceEntry {
 	return &PGBalanceEntry{
-		HodlerPkid:   balanceEntry.HODLerPKID[:],
-		CreatorPkid:  balanceEntry.CreatorPKID[:],
+		HodlerPkid:   consumer.PublicKeyBytesToBase58Check(balanceEntry.HODLerPKID[:]),
+		CreatorPkid:  consumer.PublicKeyBytesToBase58Check(balanceEntry.CreatorPKID[:]),
 		BalanceNanos: bunbig.FromMathBig(balanceEntry.BalanceNanos.ToBig()),
 		HasPurchased: balanceEntry.HasPurchased,
 		// Check to see if the key has the prefix for a DAO coin.

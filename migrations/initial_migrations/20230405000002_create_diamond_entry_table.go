@@ -11,8 +11,8 @@ func init() {
 
 		_, err := db.Exec(`
 			CREATE TABLE diamond_entry (
-				sender_pkid            BYTEA NOT NULL,
-				receiver_pkid          BYTEA NOT NULL,
+				sender_pkid            VARCHAR NOT NULL,
+				receiver_pkid          VARCHAR NOT NULL,
 				post_hash              VARCHAR NOT NULL,
 				diamond_level          SMALLINT NOT NULL,
 				badger_key             BYTEA PRIMARY KEY NOT NULL

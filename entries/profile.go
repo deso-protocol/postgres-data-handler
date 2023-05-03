@@ -10,24 +10,24 @@ import (
 
 type PGProfileEntry struct {
 	bun.BaseModel                    `bun:"table:profile_entry"`
-	PublicKey                        string                        `pg:",pk,use_zero" decode_function:"base_58_check" decode_src_field_name:"PublicKey"`
-	Pkid                             []byte                        `pg:",use_zero"`
-	Username                         string                        `bun:",nullzero" decode_function:"string_bytes" decode_src_field_name:"Username"`
-	Description                      string                        `bun:",nullzero" decode_function:"string_bytes" decode_src_field_name:"Description"`
-	ProfilePic                       []byte                        `bun:",nullzero"`
-	CreatorBasisPoints               uint64                        `decode_function:"nested_value" decode_src_field_name:"CreatorCoinEntry" nested_field_name:"CreatorBasisPoints"`
-	CoinWatermarkNanos               uint64                        `decode_function:"nested_value" decode_src_field_name:"CreatorCoinEntry" nested_field_name:"CoinWatermarkNanos"`
-	MintingDisabled                  bool                          `decode_function:"nested_value" decode_src_field_name:"CreatorCoinEntry" nested_field_name:"MintingDisabled"`
-	DaoCoinMintingDisabled           bool                          `decode_function:"nested_value" decode_src_field_name:"DAOCoinEntry" nested_field_name:"MintingDisabled"`
-	DaoCoinTransferRestrictionStatus lib.TransferRestrictionStatus `decode_function:"nested_value" decode_src_field_name:"DAOCoinEntry" nested_field_name:"TransferRestrictionStatus"`
-	ExtraData                        map[string]string             `bun:"type:jsonb" decode_function:"extra_data" decode_src_field_name:"ExtraData"`
-	BadgerKey                        []byte                        `pg:",use_zero"`
+	PublicKey                        string `pg:",pk,use_zero"`
+	Pkid                             string `pg:",use_zero"`
+	Username                         string `bun:",nullzero"`
+	Description                      string `bun:",nullzero"`
+	ProfilePic                       []byte `bun:",nullzero"`
+	CreatorBasisPoints               uint64
+	CoinWatermarkNanos               uint64
+	MintingDisabled                  bool
+	DaoCoinMintingDisabled           bool
+	DaoCoinTransferRestrictionStatus lib.TransferRestrictionStatus
+	ExtraData                        map[string]string `bun:"type:jsonb"`
+	BadgerKey                        []byte            `pg:",use_zero"`
 }
 
 func ProfileEntryEncoderToPGStruct(profileEntry *lib.ProfileEntry, keyBytes []byte) *PGProfileEntry {
 	return &PGProfileEntry{
 		PublicKey:                        consumer.PublicKeyBytesToBase58Check(profileEntry.PublicKey),
-		Pkid:                             consumer.GetPKIDBytesFromKey(keyBytes),
+		Pkid:                             consumer.PublicKeyBytesToBase58Check(consumer.GetPKIDBytesFromKey(keyBytes)),
 		Username:                         string(profileEntry.Username),
 		Description:                      string(profileEntry.Description),
 		ProfilePic:                       profileEntry.ProfilePic,

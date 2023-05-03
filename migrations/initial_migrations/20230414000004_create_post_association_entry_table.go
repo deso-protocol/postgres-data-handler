@@ -12,9 +12,9 @@ func init() {
 		_, err := db.Exec(`
 			CREATE TABLE post_association_entry (
 				association_id VARCHAR,
-				transactor_pkid BYTEA,
+				transactor_pkid VARCHAR,
 				post_hash VARCHAR,
-				app_pkid BYTEA,
+				app_pkid VARCHAR,
 				association_type VARCHAR NOT NULL,
 				association_value VARCHAR NOT NULL,
 				block_height INTEGER,

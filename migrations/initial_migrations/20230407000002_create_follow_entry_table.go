@@ -11,8 +11,8 @@ func init() {
 
 		_, err := db.Exec(`
 			CREATE TABLE follow_entry (
-				follower_pkid          BYTEA NOT NULL,
-				followed_pkid          BYTEA NOT NULL,
+				follower_pkid          VARCHAR NOT NULL,
+				followed_pkid          VARCHAR NOT NULL,
 				badger_key             BYTEA PRIMARY KEY NOT NULL
 			);
 			CREATE INDEX follow_follower_idx ON follow_entry (follower_pkid);

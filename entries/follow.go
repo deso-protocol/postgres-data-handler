@@ -10,16 +10,16 @@ import (
 
 type PGFollowEntry struct {
 	bun.BaseModel `bun:"table:follow_entry"`
-	FollowerPkid  []byte `pg:",use_zero" decode_function:"pkid" decode_src_field_name:"FollowerPKID"`
-	FollowedPkid  []byte `pg:",use_zero" decode_function:"pkid" decode_src_field_name:"FollowedPKID"`
+	FollowerPkid  string `pg:",use_zero"`
+	FollowedPkid  string `pg:",use_zero"`
 	BadgerKey     []byte `pg:",pk,use_zero"`
 }
 
 // Convert the follow DeSo encoder to the PG struct used by bun.
 func FollowEncoderToPGStruct(followEntry *lib.FollowEntry, keyBytes []byte) *PGFollowEntry {
 	return &PGFollowEntry{
-		FollowerPkid: followEntry.FollowerPKID[:],
-		FollowedPkid: followEntry.FollowedPKID[:],
+		FollowerPkid: consumer.PublicKeyBytesToBase58Check(followEntry.FollowerPKID[:]),
+		FollowedPkid: consumer.PublicKeyBytesToBase58Check(followEntry.FollowedPKID[:]),
 		BadgerKey:    keyBytes,
 	}
 }

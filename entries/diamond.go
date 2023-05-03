@@ -11,18 +11,18 @@ import (
 
 type PGDiamondEntry struct {
 	bun.BaseModel `bun:"table:diamond_entry"`
-	SenderPkid    []byte `pg:",use_zero" decode_function:"pkid" decode_src_field_name:"SenderPKID"`
-	ReceiverPkid  []byte `pg:",use_zero" decode_function:"pkid" decode_src_field_name:"ReceiverPKID"`
+	SenderPkid    string `pg:",use_zero"`
+	ReceiverPkid  string `pg:",use_zero"`
 	DiamondLevel  int64  `pg:",use_zero"`
-	PostHash      string `pg:",use_zero" decode_function:"blockhash" decode_src_field_name:"DiamondPostHash"`
+	PostHash      string `pg:",use_zero"`
 	BadgerKey     []byte `pg:",pk,use_zero"`
 }
 
 // Convert the Diamond DeSo encoder to the PG struct used by bun.
 func DiamondEncoderToPGStruct(diamondEntry *lib.DiamondEntry, keyBytes []byte) *PGDiamondEntry {
 	return &PGDiamondEntry{
-		SenderPkid:   diamondEntry.SenderPKID[:],
-		ReceiverPkid: diamondEntry.ReceiverPKID[:],
+		SenderPkid:   consumer.PublicKeyBytesToBase58Check(diamondEntry.SenderPKID[:]),
+		ReceiverPkid: consumer.PublicKeyBytesToBase58Check(diamondEntry.ReceiverPKID[:]),
 		DiamondLevel: diamondEntry.DiamondLevel,
 		PostHash:     hex.EncodeToString(diamondEntry.DiamondPostHash[:]),
 		BadgerKey:    keyBytes,

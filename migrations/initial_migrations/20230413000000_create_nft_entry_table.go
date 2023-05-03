@@ -11,8 +11,8 @@ func init() {
 
 		_, err := db.Exec(`
 			CREATE TABLE nft_entry (
-				last_owner_pkid BYTEA,
-				owner_pkid BYTEA NOT NULL,
+				last_owner_pkid VARCHAR,
+				owner_pkid VARCHAR NOT NULL,
 				nft_post_hash VARCHAR NOT NULL,
 				serial_number BIGINT NOT NULL,
 				is_for_sale BOOLEAN NOT NULL,

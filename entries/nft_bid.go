@@ -11,8 +11,8 @@ import (
 
 type PGNftBidEntry struct {
 	bun.BaseModel       `bun:"table:nft_bid_entry"`
-	BidderPkid          []byte `pg:",use_zero" decode_function:"pkid" decode_src_field_name:"BidderPKID"`
-	NftPostHash         string `pg:",use_zero" decode_function:"blockhash" decode_src_field_name:"NFTPostHash"`
+	BidderPkid          string `pg:",use_zero"`
+	NftPostHash         string `pg:",use_zero"`
 	SerialNumber        uint64 `pg:",use_zero"`
 	BidAmountNanos      uint64 `pg:",use_zero"`
 	AcceptedBlockHeight uint64 `bun:",nullzero"`
@@ -22,7 +22,7 @@ type PGNftBidEntry struct {
 // Convert the NFT DeSo entry into a bun struct.
 func NftBidEncoderToPGStruct(nftBidEntry *lib.NFTBidEntry, keyBytes []byte) *PGNftBidEntry {
 	pgNftEntry := &PGNftBidEntry{
-		BidderPkid:     nftBidEntry.BidderPKID[:],
+		BidderPkid:     consumer.PublicKeyBytesToBase58Check(nftBidEntry.BidderPKID[:]),
 		NftPostHash:    hex.EncodeToString(nftBidEntry.NFTPostHash[:]),
 		SerialNumber:   nftBidEntry.SerialNumber,
 		BidAmountNanos: nftBidEntry.BidAmountNanos,

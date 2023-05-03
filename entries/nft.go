@@ -11,26 +11,26 @@ import (
 
 type PGNftEntry struct {
 	bun.BaseModel              `bun:"table:nft_entry"`
-	LastOwnerPkid              []byte `pg:",use_zero" decode_function:"pkid" decode_src_field_name:"LastOwnerPKID"`
-	OwnerPkid                  []byte `pg:",use_zero" decode_function:"pkid" decode_src_field_name:"OwnerPKID"`
-	NftPostHash                string `pg:",use_zero" decode_function:"blockhash" decode_src_field_name:"NFTPostHash"`
+	LastOwnerPkid              string `pg:",use_zero"`
+	OwnerPkid                  string `pg:",use_zero"`
+	NftPostHash                string `pg:",use_zero"`
 	SerialNumber               uint64 `pg:",use_zero"`
 	IsForSale                  bool   `pg:",use_zero"`
 	MinBidAmountNanos          uint64 `bun:",nullzero"`
-	UnlockableText             string `bun:",nullzero" decode_function:"string_bytes" decode_src_field_name:"UnlockableText"`
+	UnlockableText             string `bun:",nullzero"`
 	LastAcceptedBidAmountNanos uint64 `bun:",nullzero"`
 	IsPending                  bool   `pg:",use_zero"`
 	IsBuyNow                   bool   `pg:",use_zero"`
 	BuyNowPriceNanos           uint64 `bun:",nullzero"`
 
-	ExtraData map[string]string `bun:"type:jsonb" decode_function:"extra_data" decode_src_field_name:"ExtraData"`
+	ExtraData map[string]string `bun:"type:jsonb"`
 	BadgerKey []byte            `pg:",pk,use_zero"`
 }
 
 // Convert the NFT DeSo entry into a bun struct.
 func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte) *PGNftEntry {
 	pgNFTEntry := &PGNftEntry{
-		OwnerPkid:                  nftEntry.OwnerPKID[:],
+		OwnerPkid:                  consumer.PublicKeyBytesToBase58Check(nftEntry.OwnerPKID[:]),
 		NftPostHash:                hex.EncodeToString(nftEntry.NFTPostHash[:]),
 		SerialNumber:               nftEntry.SerialNumber,
 		IsForSale:                  nftEntry.IsForSale,
@@ -43,7 +43,7 @@ func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte) *PGNftEntry {
 		BadgerKey:                  keyBytes,
 	}
 	if nftEntry.LastOwnerPKID != nil {
-		pgNFTEntry.LastOwnerPkid = nftEntry.LastOwnerPKID[:]
+		pgNFTEntry.LastOwnerPkid = consumer.PublicKeyBytesToBase58Check(nftEntry.LastOwnerPKID[:])
 	}
 	if nftEntry.UnlockableText != nil {
 		pgNFTEntry.UnlockableText = string(nftEntry.UnlockableText)

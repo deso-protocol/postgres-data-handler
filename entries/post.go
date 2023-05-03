@@ -12,15 +12,15 @@ import (
 
 type PGPostEntry struct {
 	bun.BaseModel                               `bun:"table:post_entry"`
-	PostHash                                    string            `pg:",pk,use_zero" decode_function:"blockhash" decode_src_field_name:"PostHash"`
-	PosterPublicKey                             string            `pg:",use_zero" decode_function:"base_58_check" decode_src_field_name:"PosterPublicKey"`
-	ParentPostHash                              string            `bun:",nullzero" decode_function:"bytehash" decode_src_field_name:"ParentStakeID"`
-	Body                                        string            `bun:",nullzero" decode_function:"deso_body_schema" decode_src_field_name:"Body" decode_body_field_name:"Body" decode_image_urls_field_name:"ImageUrls" decode_video_urls_field_name:"VideoUrls"`
+	PostHash                                    string            `pg:",pk,use_zero"`
+	PosterPublicKey                             string            `pg:",use_zero"`
+	ParentPostHash                              string            `bun:",nullzero"`
+	Body                                        string            `bun:",nullzero"`
 	ImageUrls                                   []string          `pg:",nullzero" bun:"type:varchar(255)[]"`
 	VideoUrls                                   []string          `pg:",nullzero" bun:"type:varchar(255)[]"`
-	RepostedPostHash                            string            `bun:",nullzero" decode_function:"blockhash" decode_src_field_name:"RepostedPostHash"`
+	RepostedPostHash                            string            `bun:",nullzero"`
 	IsQuotedRepost                              bool              `pg:",use_zero"`
-	Timestamp                                   time.Time         `pg:",use_zero" decode_function:"timestamp" decode_src_field_name:"TimestampNanos"`
+	Timestamp                                   time.Time         `pg:",use_zero"`
 	IsHidden                                    bool              `pg:",use_zero"`
 	IsPinned                                    bool              `pg:",use_zero"`
 	IsNFT                                       bool              `pg:",use_zero"`
@@ -32,7 +32,7 @@ type PGPostEntry struct {
 	NFTRoyaltyToCoinBasisPoints                 uint64            `pg:",use_zero"`
 	AdditionalNFTRoyaltiesToCreatorsBasisPoints map[string]uint64 `pg:"additional_nft_royalties_to_creators_basis_points,use_zero" bun:"type:jsonb"`
 	AdditionalNFTRoyaltiesToCoinsBasisPoints    map[string]uint64 `pg:"additional_nft_royalties_to_coins_basis_points,use_zero" bun:"type:jsonb"`
-	ExtraData                                   map[string]string `bun:"type:jsonb" decode_function:"extra_data" decode_src_field_name:"PostExtraData"`
+	ExtraData                                   map[string]string `bun:"type:jsonb"`
 	IsFrozen                                    bool              `pg:",use_zero"`
 	BadgerKey                                   []byte            `pg:",use_zero"`
 }

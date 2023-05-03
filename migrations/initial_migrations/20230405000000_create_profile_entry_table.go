@@ -12,7 +12,7 @@ func init() {
 		_, err := db.Exec(`
 			CREATE TABLE profile_entry (
 				public_key                   VARCHAR PRIMARY KEY NOT NULL,
-			    pkid						 BYTEA NOT NULL,
+			    pkid						 VARCHAR NOT NULL,
 				username                     VARCHAR,
 				description                  VARCHAR,
 				profile_pic                  BYTEA,

@@ -11,8 +11,8 @@ import (
 
 type PGLikeEntry struct {
 	bun.BaseModel `bun:"table:like_entry"`
-	PublicKey     string `pg:",use_zero" decode_function:"base_58_check" decode_src_field_name:"LikerPubKey"`
-	PostHash      string `pg:",use_zero" decode_function:"blockhash" decode_src_field_name:"LikedPostHash"`
+	PublicKey     string `pg:",use_zero"`
+	PostHash      string `pg:",use_zero"`
 	BadgerKey     []byte `pg:",pk,use_zero"`
 }
 

@@ -12,7 +12,7 @@ require (
 	github.com/uptrace/bun v1.1.12
 	github.com/uptrace/bun/dialect/pgdialect v1.1.12
 	github.com/uptrace/bun/driver/pgdriver v1.1.12
-	github.com/uptrace/bun/extra/bundebug v1.1.12
+	github.com/uptrace/bun/extra/bunbig v1.1.12
 )
 
 require (
@@ -68,7 +68,6 @@ require (
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/unrolled/secure v1.0.8 // indirect
-	github.com/uptrace/bun/extra/bunbig v1.1.12 // indirect
 	github.com/vmihailenco/bufpool v0.1.11 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser v0.1.2 // indirect

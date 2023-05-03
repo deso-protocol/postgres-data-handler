@@ -11,16 +11,16 @@ import (
 
 type PGMessageEntry struct {
 	bun.BaseModel               `bun:"table:message_entry"`
-	SenderPublicKey             string    `pg:",use_zero" decode_function:"base_58_check" decode_src_field_name:"SenderPublicKey"`
-	RecipientPublicKey          string    `pg:",use_zero" decode_function:"base_58_check" decode_src_field_name:"RecipientPublicKey"`
-	EncryptedText               string    `pg:",use_zero" decode_function:"string_bytes" decode_src_field_name:"EncryptedText"`
-	Timestamp                   time.Time `pg:",use_zero" decode_function:"timestamp" decode_src_field_name:"TstampNanos"`
+	SenderPublicKey             string    `pg:",use_zero"`
+	RecipientPublicKey          string    `pg:",use_zero"`
+	EncryptedText               string    `pg:",use_zero"`
+	Timestamp                   time.Time `pg:",use_zero"`
 	Version                     uint8     `pg:",use_zero"`
-	SenderMessagingPublicKey    string    `pg:",use_zero" decode_function:"base_58_check" decode_src_field_name:"SenderMessagingPublicKey"`
-	RecipientMessagingPublicKey string    `pg:",use_zero" decode_function:"base_58_check" decode_src_field_name:"RecipientMessagingPublicKey"`
+	SenderMessagingPublicKey    string    `pg:",use_zero"`
+	RecipientMessagingPublicKey string    `pg:",use_zero"`
 
-	SenderMessagingGroupKeyName    string `pg:",use_zero" decode_function:"group_key_name" decode_src_field_name:"SenderMessagingGroupKeyName"`
-	RecipientMessagingGroupKeyName string `pg:",use_zero" decode_function:"group_key_name" decode_src_field_name:"RecipientMessagingGroupKeyName"`
+	SenderMessagingGroupKeyName    string `pg:",use_zero"`
+	RecipientMessagingGroupKeyName string `pg:",use_zero"`
 
 	ExtraData map[string]string `bun:"type:jsonb" decode_function:"extra_data" decode_src_field_name:"ExtraData"`
 	BadgerKey []byte            `pg:",pk,use_zero"`

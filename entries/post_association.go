@@ -12,9 +12,9 @@ import (
 type PGPostAssociationEntry struct {
 	bun.BaseModel    `bun:"table:post_association_entry"`
 	AssociationID    string `bun:",nullzero"`
-	TransactorPKID   []byte `bun:",nullzero"`
+	TransactorPKID   string `bun:",nullzero"`
 	PostHash         string `bun:",nullzero"`
-	AppPKID          []byte `bun:",nullzero"`
+	AppPKID          string `bun:",nullzero"`
 	AssociationType  string `pg:",use_zero"`
 	AssociationValue string `pg:",use_zero"`
 	BlockHeight      uint32 `bun:",nullzero"`
@@ -35,7 +35,7 @@ func PostAssociationEncoderToPGStruct(postAssociationEntry *lib.PostAssociationE
 		pgEntry.AssociationID = hex.EncodeToString(postAssociationEntry.AssociationID[:])
 	}
 	if postAssociationEntry.TransactorPKID != nil {
-		pgEntry.TransactorPKID = postAssociationEntry.TransactorPKID[:]
+		pgEntry.TransactorPKID = consumer.PublicKeyBytesToBase58Check(postAssociationEntry.TransactorPKID[:])
 	}
 
 	if postAssociationEntry.PostHash != nil {
@@ -43,7 +43,7 @@ func PostAssociationEncoderToPGStruct(postAssociationEntry *lib.PostAssociationE
 	}
 
 	if postAssociationEntry.AppPKID != nil {
-		pgEntry.AppPKID = postAssociationEntry.AppPKID[:]
+		pgEntry.AppPKID = consumer.PublicKeyBytesToBase58Check(postAssociationEntry.AppPKID[:])
 	}
 	return pgEntry
 }

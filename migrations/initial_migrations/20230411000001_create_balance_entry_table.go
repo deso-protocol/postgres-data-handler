@@ -11,8 +11,8 @@ func init() {
 
 		_, err := db.Exec(`
 			CREATE TABLE balance_entry (
-			    hodler_pkid					 BYTEA NOT NULL,
-			    creator_pkid				 BYTEA NOT NULL,
+			    hodler_pkid					 VARCHAR NOT NULL,
+			    creator_pkid				 VARCHAR NOT NULL,
 				balance_nanos	             NUMERIC(78, 0) NOT NULL,
 				has_purchased	             BOOLEAN NOT NULL,
 				is_dao_coin		             BOOLEAN NOT NULL,
