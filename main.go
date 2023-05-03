@@ -81,7 +81,7 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 
 	threadLimit = viper.GetInt("THREAD_LIMIT")
 	if threadLimit == 0 {
-		threadLimit = 20
+		threadLimit = 25
 	}
 	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchSize, threadLimit
 }
