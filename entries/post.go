@@ -103,7 +103,7 @@ func bulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 	pgEntrySlice := make([]*PGPostEntry, len(uniqueEntries))
 
 	// Loop through the entries and convert them to PGPostEntry.
-	for ii, entry := range entries {
+	for ii, entry := range uniqueEntries {
 		if pgEntry, err := PostEntryEncoderToPGStruct(entry.Encoder.(*lib.PostEntry), entry.KeyBytes); err != nil {
 			return errors.Wrapf(err, "entries.bulkInsertPostEntry: Problem converting post entry to PG struct")
 		} else {
