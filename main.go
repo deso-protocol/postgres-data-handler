@@ -16,7 +16,7 @@ import (
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
-	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchSize, threadLimit := getConfigValues()
+	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit := getConfigValues()
 
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit)
@@ -31,7 +31,7 @@ func main() {
 		stateChangeIndexFileName,
 		stateChangeMempoolFileName,
 		consumerProgressFileName,
-		batchSize,
+		batchBytes,
 		threadLimit,
 		&handler.PostgresDataHandler{
 			DB: db,
@@ -55,7 +55,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchSize int, threadLimit int) {
+func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int) {
 	pgURI = viper.GetString("PG_URI")
 	if pgURI == "" {
 		pgURI = "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable&timeout=240&connect_timeout=240&write_timeout=240&read_timeout=240&dial_timeout=240"
@@ -74,16 +74,16 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 		consumerProgressFileName = "/tmp/consumer-progress"
 	}
 
-	batchSize = viper.GetInt("BATCH_SIZE")
-	if batchSize == 0 {
-		batchSize = 5000
+	batchBytes = viper.GetUint64("BATCH_BYTES")
+	if batchBytes == 0 {
+		batchBytes = 5000000
 	}
 
 	threadLimit = viper.GetInt("THREAD_LIMIT")
 	if threadLimit == 0 {
 		threadLimit = 25
 	}
-	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchSize, threadLimit
+	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit
 }
 
 func setupDb(pgURI string, threadLimit int) (*bun.DB, error) {
