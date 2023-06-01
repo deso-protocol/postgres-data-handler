@@ -2,15 +2,14 @@ package initial_migrations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
 
-func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-
-		_, err := db.Exec(`
-			CREATE TABLE nft_entry (
+func createNftEntryTable(db *bun.DB, tableName string) error {
+	_, err := db.Exec(strings.Replace(`
+			CREATE TABLE {tableName} (
 				last_owner_pkid VARCHAR,
 				owner_pkid VARCHAR NOT NULL,
 				nft_post_hash VARCHAR NOT NULL,
@@ -25,25 +24,33 @@ func init() {
 				extra_data JSONB,
 				badger_key BYTEA PRIMARY KEY 
 			);
-			CREATE INDEX nft_owner_pkid_idx ON nft_entry (owner_pkid);
-			-- TODO: Make this index a FK.
-			CREATE INDEX nft_nft_post_hash_idx ON nft_entry (nft_post_hash);
-			CREATE INDEX nft_serial_number_idx ON nft_entry (serial_number);
-			CREATE INDEX nft_is_for_sale_idx ON nft_entry (is_for_sale);
-			CREATE INDEX nft_is_buy_now_idx ON nft_entry (is_buy_now);
-			CREATE INDEX nft_min_bid_amount_nanos_idx ON nft_entry (min_bid_amount_nanos desc);
-			CREATE INDEX nft_is_for_sale_min_bid_amount_nanos_idx ON nft_entry (is_for_sale, min_bid_amount_nanos desc);
-			CREATE INDEX nft_is_buy_now_buy_now_price_nanos_idx ON nft_entry (is_for_sale, buy_now_price_nanos desc);
-			CREATE INDEX nft_buy_now_price_nanos_idx ON nft_entry (buy_now_price_nanos desc);
-			CREATE INDEX nft_is_pending_idx ON nft_entry (is_pending);
-		`)
-		if err != nil {
+			CREATE INDEX {tableName}_owner_pkid_idx ON {tableName} (owner_pkid);
+			CREATE INDEX {tableName}_nft_post_hash_idx ON {tableName} (nft_post_hash);
+			CREATE INDEX {tableName}_serial_number_idx ON {tableName} (serial_number);
+			CREATE INDEX {tableName}_is_for_sale_idx ON {tableName} (is_for_sale);
+			CREATE INDEX {tableName}_is_buy_now_idx ON {tableName} (is_buy_now);
+			CREATE INDEX {tableName}_min_bid_amount_nanos_idx ON {tableName} (min_bid_amount_nanos desc);
+			CREATE INDEX {tableName}_is_for_sale_min_bid_amount_nanos_idx ON {tableName} (is_for_sale, min_bid_amount_nanos desc);
+			CREATE INDEX {tableName}_is_buy_now_buy_now_price_nanos_idx ON {tableName} (is_for_sale, buy_now_price_nanos desc);
+			CREATE INDEX {tableName}_buy_now_price_nanos_idx ON {tableName} (buy_now_price_nanos desc);
+			CREATE INDEX {tableName}_is_pending_idx ON {tableName} (is_pending);
+		`, "{tableName}", tableName, -1))
+	return err
+}
+
+func init() {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+		if err := createNftEntryTable(db, "nft_entry"); err != nil {
 			return err
 		}
-		return nil
+		if err := createNftEntryTable(db, "nft_entry_utxo_ops"); err != nil {
+			return err
+		}
+		return AddUtxoOpColumnsToTable(db, "nft_entry_utxo_ops")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE nft_entry;
+			DROP TABLE nft_entry_utxo_ops;
 		`)
 		if err != nil {
 			return err

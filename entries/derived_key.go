@@ -8,8 +8,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type PGDerivedKeyEntry struct {
-	bun.BaseModel    `bun:"table:derived_key_entry"`
+type DerivedKeyEntry struct {
 	OwnerPublicKey   string `pg:",use_zero"`
 	DerivedPublicKey string `pg:",use_zero"`
 	ExpirationBlock  uint64 `pg:",use_zero"`
@@ -22,9 +21,20 @@ type PGDerivedKeyEntry struct {
 	BadgerKey                     []byte            `pg:",pk,use_zero"`
 }
 
+type PGDerivedKeyEntry struct {
+	bun.BaseModel `bun:"table:derived_key_entry"`
+	DerivedKeyEntry
+}
+
+type PGDerivedKeyEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:derived_key_entry_utxo_ops"`
+	DerivedKeyEntry
+	UtxoOperation
+}
+
 // Convert the derived key DeSo encoder to the PG struct used by bun.
-func DerivedKeyEncoderToPGStruct(derivedKeyEntry *lib.DerivedKeyEntry, keyBytes []byte) (*PGDerivedKeyEntry, error) {
-	pgDerivedKeyEntry := &PGDerivedKeyEntry{
+func DerivedKeyEncoderToPGStruct(derivedKeyEntry *lib.DerivedKeyEntry, keyBytes []byte) (DerivedKeyEntry, error) {
+	pgDerivedKeyEntry := DerivedKeyEntry{
 		OwnerPublicKey:   consumer.PublicKeyBytesToBase58Check(derivedKeyEntry.OwnerPublicKey[:]),
 		DerivedPublicKey: consumer.PublicKeyBytesToBase58Check(derivedKeyEntry.DerivedPublicKey[:]),
 		ExpirationBlock:  derivedKeyEntry.ExpirationBlock,
@@ -39,7 +49,7 @@ func DerivedKeyEncoderToPGStruct(derivedKeyEntry *lib.DerivedKeyEntry, keyBytes 
 		pgDerivedKeyEntry.IsUnlimited = derivedKeyEntry.TransactionSpendingLimitTracker.IsUnlimited
 		// TODO: Figure out how to get block height in here.
 		if tslBytes, err := derivedKeyEntry.TransactionSpendingLimitTracker.ToBytes(0); err != nil {
-			return nil, err
+			return DerivedKeyEntry{}, err
 		} else {
 			pgDerivedKeyEntry.TransactionSpendingLimitBytes = tslBytes
 		}
@@ -78,7 +88,7 @@ func bulkInsertDerivedKeyEntry(entries []*lib.StateChangeEntry, db *bun.DB, oper
 		if pgEntry, err := DerivedKeyEncoderToPGStruct(entry.Encoder.(*lib.DerivedKeyEntry), entry.KeyBytes); err != nil {
 			return errors.Wrapf(err, "entries.bulkInsertDerivedKeyEntry: Problem converting entry to PGEntry")
 		} else {
-			pgEntrySlice[ii] = pgEntry
+			pgEntrySlice[ii] = &PGDerivedKeyEntry{DerivedKeyEntry: pgEntry}
 		}
 	}
 

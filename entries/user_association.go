@@ -9,8 +9,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type PGUserAssociationEntry struct {
-	bun.BaseModel    `bun:"table:user_association_entry"`
+type UserAssociationEntry struct {
 	AssociationID    string `bun:",nullzero"`
 	TransactorPKID   string `bun:",nullzero"`
 	TargetUserPKID   string `bun:",nullzero"`
@@ -23,9 +22,20 @@ type PGUserAssociationEntry struct {
 	BadgerKey []byte            `pg:",pk,use_zero"`
 }
 
+type PGUserAssociationEntry struct {
+	bun.BaseModel `bun:"table:user_association_entry"`
+	UserAssociationEntry
+}
+
+type PGUserAssociationEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:user_association_entry_utxo_ops"`
+	UserAssociationEntry
+	UtxoOperation
+}
+
 // Convert the UserAssociation DeSo encoder to the PG struct used by bun.
-func UserAssociationEncoderToPGStruct(userAssociationEntry *lib.UserAssociationEntry, keyBytes []byte) *PGUserAssociationEntry {
-	pgEntry := &PGUserAssociationEntry{
+func UserAssociationEncoderToPGStruct(userAssociationEntry *lib.UserAssociationEntry, keyBytes []byte) UserAssociationEntry {
+	pgEntry := UserAssociationEntry{
 		AssociationType:  string(userAssociationEntry.AssociationType[:]),
 		AssociationValue: string(userAssociationEntry.AssociationValue[:]),
 		ExtraData:        consumer.ExtraDataBytesToString(userAssociationEntry.ExtraData),
@@ -75,7 +85,7 @@ func bulkInsertUserAssociationEntry(entries []*lib.StateChangeEntry, db *bun.DB,
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = UserAssociationEncoderToPGStruct(entry.Encoder.(*lib.UserAssociationEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGUserAssociationEntry{UserAssociationEntry: UserAssociationEncoderToPGStruct(entry.Encoder.(*lib.UserAssociationEntry), entry.KeyBytes)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

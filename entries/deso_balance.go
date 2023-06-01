@@ -8,16 +8,26 @@ import (
 	"github.com/uptrace/bun"
 )
 
+type DesoBalanceEntry struct {
+	Pkid         string `pg:",use_zero"`
+	BalanceNanos uint64 `pg:",use_zero"`
+	BadgerKey    []byte `pg:",pk,use_zero"`
+}
+
 type PGDesoBalanceEntry struct {
 	bun.BaseModel `bun:"table:deso_balance_entry"`
-	Pkid          string `pg:",use_zero"`
-	BalanceNanos  uint64 `pg:",use_zero"`
-	BadgerKey     []byte `pg:",pk,use_zero"`
+	DesoBalanceEntry
+}
+
+type PGDesoBalanceEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:deso_balance_entry_utxo_ops"`
+	DesoBalanceEntry
+	UtxoOperation
 }
 
 // Convert the Diamond DeSo encoder to the PG struct used by bun.
-func DesoBalanceEncoderToPGStruct(desoBalanceEntry *lib.DeSoBalanceEntry, keyBytes []byte) *PGDesoBalanceEntry {
-	return &PGDesoBalanceEntry{
+func DesoBalanceEncoderToPGStruct(desoBalanceEntry *lib.DeSoBalanceEntry, keyBytes []byte) DesoBalanceEntry {
+	return DesoBalanceEntry{
 		Pkid:         consumer.PublicKeyBytesToBase58Check(desoBalanceEntry.PKID[:]),
 		BalanceNanos: desoBalanceEntry.BalanceNanos,
 		BadgerKey:    keyBytes,
@@ -51,7 +61,7 @@ func bulkInsertDesoBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, ope
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = DesoBalanceEncoderToPGStruct(entry.Encoder.(*lib.DeSoBalanceEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGDesoBalanceEntry{DesoBalanceEntry: DesoBalanceEncoderToPGStruct(entry.Encoder.(*lib.DeSoBalanceEntry), entry.KeyBytes)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

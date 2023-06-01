@@ -2,31 +2,39 @@ package initial_migrations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
 
-func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-
-		_, err := db.Exec(`
-			CREATE TABLE follow_entry (
+func createFollowEntryTable(db *bun.DB, tableName string) error {
+	_, err := db.Exec(strings.Replace(`
+			CREATE TABLE {tableName} (
 				follower_pkid          VARCHAR NOT NULL,
 				followed_pkid          VARCHAR NOT NULL,
 				badger_key             BYTEA PRIMARY KEY NOT NULL
 			);
-			CREATE INDEX follow_follower_idx ON follow_entry (follower_pkid);
-			CREATE INDEX follow_followed_idx ON follow_entry (followed_pkid);
-			CREATE UNIQUE INDEX follow_badger_key_idx ON follow_entry (badger_key);
+			CREATE INDEX {tableName}_follower_idx ON {tableName} (follower_pkid);
+			CREATE INDEX {tableName}_followed_idx ON {tableName} (followed_pkid);
+			CREATE UNIQUE INDEX {tableName}_badger_key_idx ON {tableName} (badger_key);
 			-- TODO: Define FK relations
-		`)
-		if err != nil {
+		`, "{tableName}", tableName, -1))
+	return err
+}
+
+func init() {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+		if err := createFollowEntryTable(db, "follow_entry"); err != nil {
 			return err
 		}
-		return nil
+		if err := createFollowEntryTable(db, "follow_entry_utxo_ops"); err != nil {
+			return err
+		}
+		return AddUtxoOpColumnsToTable(db, "follow_entry_utxo_ops")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE follow_entry;
+			DROP TABLE follow_entry_utxo_ops;
 		`)
 		if err != nil {
 			return err

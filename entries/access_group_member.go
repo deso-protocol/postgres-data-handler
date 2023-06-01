@@ -8,8 +8,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type PGAccessGroupMemberEntry struct {
-	bun.BaseModel              `bun:"table:access_group_member_entry"`
+type AccessGroupMemberEntry struct {
 	AccessGroupMemberPublicKey string `pg:",use_zero"`
 	AccessGroupMemberKeyName   string `pg:",use_zero"`
 	EncryptedKey               []byte `pg:",use_zero"`
@@ -18,9 +17,20 @@ type PGAccessGroupMemberEntry struct {
 	BadgerKey []byte            `pg:",pk,use_zero"`
 }
 
+type PGAccessGroupMemberEntry struct {
+	bun.BaseModel `bun:"table:access_group_member_entry"`
+	AccessGroupMemberEntry
+}
+
+type PGAccessGroupMemberEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:access_group_member_entry_utxo_ops"`
+	AccessGroupMemberEntry
+	UtxoOperation
+}
+
 // Convert the AccessGroupMember DeSo encoder to the PGAccessGroupMemberEntry struct used by bun.
-func AccessGroupMemberEncoderToPGStruct(accessGroupMemberEntry *lib.AccessGroupMemberEntry, keyBytes []byte) *PGAccessGroupMemberEntry {
-	pgAccessGroupMemberEntry := &PGAccessGroupMemberEntry{
+func AccessGroupMemberEncoderToPGStruct(accessGroupMemberEntry *lib.AccessGroupMemberEntry, keyBytes []byte) AccessGroupMemberEntry {
+	pgAccessGroupMemberEntry := AccessGroupMemberEntry{
 		EncryptedKey: accessGroupMemberEntry.EncryptedKey,
 		ExtraData:    consumer.ExtraDataBytesToString(accessGroupMemberEntry.ExtraData),
 		BadgerKey:    keyBytes,
@@ -64,7 +74,7 @@ func bulkInsertAccessGroupMemberEntry(entries []*lib.StateChangeEntry, db *bun.D
 
 	// Loop through the entries and convert them to PGEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = AccessGroupMemberEncoderToPGStruct(entry.Encoder.(*lib.AccessGroupMemberEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGAccessGroupMemberEntry{AccessGroupMemberEntry: AccessGroupMemberEncoderToPGStruct(entry.Encoder.(*lib.AccessGroupMemberEntry), entry.KeyBytes)}
 	}
 
 	// Execute the insert query.

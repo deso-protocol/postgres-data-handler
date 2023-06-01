@@ -8,16 +8,26 @@ import (
 	"github.com/uptrace/bun"
 )
 
+type FollowEntry struct {
+	FollowerPkid string `pg:",use_zero"`
+	FollowedPkid string `pg:",use_zero"`
+	BadgerKey    []byte `pg:",pk,use_zero"`
+}
+
 type PGFollowEntry struct {
 	bun.BaseModel `bun:"table:follow_entry"`
-	FollowerPkid  string `pg:",use_zero"`
-	FollowedPkid  string `pg:",use_zero"`
-	BadgerKey     []byte `pg:",pk,use_zero"`
+	FollowEntry
+}
+
+type PGFollowEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:follow_entry_utxo_ops"`
+	FollowEntry
+	UtxoOperation
 }
 
 // Convert the follow DeSo encoder to the PG struct used by bun.
-func FollowEncoderToPGStruct(followEntry *lib.FollowEntry, keyBytes []byte) *PGFollowEntry {
-	return &PGFollowEntry{
+func FollowEncoderToPGStruct(followEntry *lib.FollowEntry, keyBytes []byte) FollowEntry {
+	return FollowEntry{
 		FollowerPkid: consumer.PublicKeyBytesToBase58Check(followEntry.FollowerPKID[:]),
 		FollowedPkid: consumer.PublicKeyBytesToBase58Check(followEntry.FollowedPKID[:]),
 		BadgerKey:    keyBytes,
@@ -51,7 +61,7 @@ func bulkInsertFollowEntry(entries []*lib.StateChangeEntry, db *bun.DB, operatio
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = FollowEncoderToPGStruct(entry.Encoder.(*lib.FollowEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGFollowEntry{FollowEntry: FollowEncoderToPGStruct(entry.Encoder.(*lib.FollowEntry), entry.KeyBytes)}
 	}
 
 	// Execute the insert query.

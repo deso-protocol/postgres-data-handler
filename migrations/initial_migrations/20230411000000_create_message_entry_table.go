@@ -2,15 +2,14 @@ package initial_migrations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
 
-func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-
-		_, err := db.Exec(`
-			CREATE TABLE message_entry (
+func createMessageEntryTable(db *bun.DB, tableName string) error {
+	_, err := db.Exec(strings.Replace(`
+			CREATE TABLE {tableName} (
 				sender_public_key VARCHAR NOT NULL,
 				recipient_public_key VARCHAR NOT NULL,
 				encrypted_text TEXT NOT NULL,
@@ -23,23 +22,32 @@ func init() {
 				extra_data JSONB,
 				badger_key BYTEA PRIMARY KEY
 			);
-			CREATE INDEX message_sender_public_key_idx ON message_entry (sender_public_key);
-			CREATE INDEX message_recipient_public_key_idx ON message_entry (recipient_public_key);
-			CREATE INDEX message_recipient_timestamp_public_key_idx ON message_entry (recipient_public_key, timestamp desc);
-			CREATE INDEX message_version_idx ON message_entry (version);
-			CREATE INDEX message_sender_messaging_public_key_idx ON message_entry (sender_messaging_public_key);
-			CREATE INDEX message_recipient_messaging_public_key_idx ON message_entry (recipient_messaging_public_key);
-			CREATE INDEX message_sender_messaging_group_key_name_idx ON message_entry (sender_messaging_group_key_name);
-			CREATE INDEX message_recipient_messaging_group_key_name_idx ON message_entry (recipient_messaging_group_key_name);
-			CREATE INDEX message_recipient_messaging_group_key_name_timestamp_idx ON message_entry (recipient_messaging_group_key_name, timestamp desc);
-		`)
-		if err != nil {
+			CREATE INDEX {tableName}_sender_public_key_idx ON {tableName} (sender_public_key);
+			CREATE INDEX {tableName}_recipient_public_key_idx ON {tableName} (recipient_public_key);
+			CREATE INDEX {tableName}_recipient_timestamp_public_key_idx ON {tableName} (recipient_public_key, timestamp desc);
+			CREATE INDEX {tableName}_version_idx ON {tableName} (version);
+			CREATE INDEX {tableName}_sender_messaging_public_key_idx ON {tableName} (sender_messaging_public_key);
+			CREATE INDEX {tableName}_recipient_messaging_public_key_idx ON {tableName} (recipient_messaging_public_key);
+			CREATE INDEX {tableName}_sender_messaging_group_key_name_idx ON {tableName} (sender_messaging_group_key_name);
+			CREATE INDEX {tableName}_recipient_messaging_group_key_name_idx ON {tableName} (recipient_messaging_group_key_name);
+			CREATE INDEX {tableName}_recipient_messaging_group_key_name_timestamp_idx ON {tableName} (recipient_messaging_group_key_name, timestamp desc);
+		`, "{tableName}", tableName, -1))
+	return err
+}
+
+func init() {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+		if err := createMessageEntryTable(db, "message_entry"); err != nil {
 			return err
 		}
-		return nil
+		if err := createMessageEntryTable(db, "message_entry_utxo_ops"); err != nil {
+			return err
+		}
+		return AddUtxoOpColumnsToTable(db, "message_entry_utxo_ops")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE message_entry;
+			DROP TABLE message_entry_utxo_ops;
 		`)
 		if err != nil {
 			return err

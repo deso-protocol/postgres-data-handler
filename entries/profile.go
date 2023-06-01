@@ -8,8 +8,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type PGProfileEntry struct {
-	bun.BaseModel                    `bun:"table:profile_entry"`
+type ProfileEntry struct {
 	PublicKey                        string `pg:",pk,use_zero"`
 	Pkid                             string `pg:",use_zero"`
 	Username                         string `bun:",nullzero"`
@@ -24,8 +23,19 @@ type PGProfileEntry struct {
 	BadgerKey                        []byte            `pg:",use_zero"`
 }
 
-func ProfileEntryEncoderToPGStruct(profileEntry *lib.ProfileEntry, keyBytes []byte) *PGProfileEntry {
-	return &PGProfileEntry{
+type PGProfileEntry struct {
+	bun.BaseModel `bun:"table:profile_entry"`
+	ProfileEntry
+}
+
+type PGProfileEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:profile_entry_utxo_ops"`
+	ProfileEntry
+	UtxoOperation
+}
+
+func ProfileEntryEncoderToPGStruct(profileEntry *lib.ProfileEntry, keyBytes []byte) ProfileEntry {
+	return ProfileEntry{
 		PublicKey:                        consumer.PublicKeyBytesToBase58Check(profileEntry.PublicKey),
 		Pkid:                             consumer.PublicKeyBytesToBase58Check(consumer.GetPKIDBytesFromKey(keyBytes)),
 		Username:                         string(profileEntry.Username),
@@ -68,7 +78,7 @@ func bulkInsertProfileEntry(entries []*lib.StateChangeEntry, db *bun.DB, operati
 	pgEntrySlice := make([]*PGProfileEntry, len(uniqueEntries))
 
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = ProfileEntryEncoderToPGStruct(entry.Encoder.(*lib.ProfileEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGProfileEntry{ProfileEntry: ProfileEntryEncoderToPGStruct(entry.Encoder.(*lib.ProfileEntry), entry.KeyBytes)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

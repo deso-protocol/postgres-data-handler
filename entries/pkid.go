@@ -8,16 +8,26 @@ import (
 	"github.com/uptrace/bun"
 )
 
+type PkidEntry struct {
+	Pkid      string `pg:",use_zero"`
+	PublicKey string `pg:",use_zero"`
+	BadgerKey []byte `pg:",pk,use_zero"`
+}
+
 type PGPkidEntry struct {
 	bun.BaseModel `bun:"table:pkid_entry"`
-	Pkid          string `pg:",use_zero"`
-	PublicKey     string `pg:",use_zero"`
-	BadgerKey     []byte `pg:",pk,use_zero"`
+	PkidEntry
+}
+
+type PGPkidEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:pkid_entry_utxo_ops"`
+	PkidEntry
+	UtxoOperation
 }
 
 // Convert the Diamond DeSo encoder to the PG struct used by bun.
-func PkidEncoderToPGStruct(pkidEntry *lib.PKIDEntry, keyBytes []byte) *PGPkidEntry {
-	return &PGPkidEntry{
+func PkidEncoderToPGStruct(pkidEntry *lib.PKIDEntry, keyBytes []byte) PkidEntry {
+	return PkidEntry{
 		Pkid:      consumer.PublicKeyBytesToBase58Check(pkidEntry.PKID[:]),
 		PublicKey: consumer.PublicKeyBytesToBase58Check(pkidEntry.PublicKey[:]),
 		BadgerKey: keyBytes,
@@ -51,7 +61,7 @@ func bulkInsertPkidEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = PkidEncoderToPGStruct(entry.Encoder.(*lib.PKIDEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGPkidEntry{PkidEntry: PkidEncoderToPGStruct(entry.Encoder.(*lib.PKIDEntry), entry.KeyBytes)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

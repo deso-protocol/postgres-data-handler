@@ -2,15 +2,14 @@ package initial_migrations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
 
-func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-
-		_, err := db.Exec(`
-			CREATE TABLE balance_entry (
+func createBalanceEntryTable(db *bun.DB, tableName string) error {
+	_, err := db.Exec(strings.Replace(`
+			CREATE TABLE {tableName} (
 			    hodler_pkid					 VARCHAR NOT NULL,
 			    creator_pkid				 VARCHAR NOT NULL,
 				balance_nanos	             NUMERIC(78, 0) NOT NULL,
@@ -18,17 +17,26 @@ func init() {
 				is_dao_coin		             BOOLEAN NOT NULL,
 				badger_key                   BYTEA PRIMARY KEY
 			);
-			CREATE INDEX balance_hodler_pkid_idx ON balance_entry (hodler_pkid);
-			CREATE INDEX balance_creator_pkid_idx ON balance_entry (creator_pkid);
-			CREATE INDEX balance_has_purchased_idx ON balance_entry (has_purchased);
-		`)
-		if err != nil {
+			CREATE INDEX {tableName}_hodler_pkid_idx ON {tableName} (hodler_pkid);
+			CREATE INDEX {tableName}_creator_pkid_idx ON {tableName} (creator_pkid);
+			CREATE INDEX {tableName}_has_purchased_idx ON {tableName} (has_purchased);
+		`, "{tableName}", tableName, -1), nil)
+	return err
+}
+
+func init() {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+		if err := createBalanceEntryTable(db, "balance_entry"); err != nil {
 			return err
 		}
-		return nil
+		if err := createBalanceEntryTable(db, "balance_entry_utxo_ops"); err != nil {
+			return err
+		}
+		return AddUtxoOpColumnsToTable(db, "balance_entry_utxo_ops")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE balance_entry;
+			DROP TABLE balance_entry_utxo_ops;
 		`)
 		if err != nil {
 			return err

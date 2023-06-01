@@ -2,15 +2,14 @@ package initial_migrations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
 
-func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-
-		_, err := db.Exec(`
-			CREATE TABLE post_association_entry (
+func createPostAssociationEntryTable(db *bun.DB, tableName string) error {
+	_, err := db.Exec(strings.Replace(`
+			CREATE TABLE {tableName} (
 				association_id VARCHAR,
 				transactor_pkid VARCHAR,
 				post_hash VARCHAR,
@@ -22,20 +21,29 @@ func init() {
 				badger_key BYTEA PRIMARY KEY
 			);
 		
-		CREATE INDEX post_association_association_id_idx ON post_association_entry (association_id);
-		CREATE INDEX post_association_transactor_pkid_idx ON post_association_entry (transactor_pkid);
-		CREATE INDEX post_association_post_hash_idx ON post_association_entry (post_hash);
-		CREATE INDEX post_association_app_pkid_idx ON post_association_entry (app_pkid);
-		CREATE INDEX post_association_association_type_idx ON post_association_entry (association_type);
-		CREATE INDEX post_association_block_height_idx ON post_association_entry (block_height desc);
-		`)
-		if err != nil {
+		CREATE INDEX {tableName}_association_id_idx ON {tableName} (association_id);
+		CREATE INDEX {tableName}_transactor_pkid_idx ON {tableName} (transactor_pkid);
+		CREATE INDEX {tableName}_post_hash_idx ON {tableName} (post_hash);
+		CREATE INDEX {tableName}_app_pkid_idx ON {tableName} (app_pkid);
+		CREATE INDEX {tableName}_association_type_idx ON {tableName} (association_type);
+		CREATE INDEX {tableName}_block_height_idx ON {tableName} (block_height desc);
+		`, "{tableName}", tableName, -1), nil)
+	return err
+}
+
+func init() {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+		if err := createPostAssociationEntryTable(db, "post_association_entry"); err != nil {
 			return err
 		}
-		return nil
+		if err := createPostAssociationEntryTable(db, "post_association_entry_utxo_ops"); err != nil {
+			return err
+		}
+		return AddUtxoOpColumnsToTable(db, "post_association_entry_utxo_ops")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE post_association_entry
+			DROP TABLE post_association_entry;
+			DROP TABLE post_association_entry_utxo_ops;
 		`)
 		if err != nil {
 			return err

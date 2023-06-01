@@ -9,8 +9,7 @@ import (
 	"time"
 )
 
-type PGNewMessageEntry struct {
-	bun.BaseModel                      `bun:"table:new_message_entry"`
+type NewMessageEntry struct {
 	SenderAccessGroupOwnerPublicKey    string    `bun:",nullzero"`
 	SenderAccessGroupKeyName           string    `bun:",nullzero"`
 	SenderAccessGroupPublicKey         string    `bun:",nullzero"`
@@ -24,9 +23,20 @@ type PGNewMessageEntry struct {
 	BadgerKey []byte            `pg:",pk,use_zero"`
 }
 
+type PGNewMessageEntry struct {
+	bun.BaseModel `bun:"table:new_message_entry"`
+	NewMessageEntry
+}
+
+type PGNewMessageEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:new_message_entry_utxo_ops"`
+	NewMessageEntry
+	UtxoOperation
+}
+
 // Convert the NewMessage DeSo encoder to the PGNewMessageEntry struct used by bun.
-func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes []byte) *PGNewMessageEntry {
-	pgNewMessageEntry := &PGNewMessageEntry{
+func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes []byte) NewMessageEntry {
+	pgNewMessageEntry := NewMessageEntry{
 		EncryptedText: string(newMessageEntry.EncryptedText[:]),
 		Timestamp:     consumer.UnixNanoToTime(newMessageEntry.TimestampNanos),
 		ExtraData:     consumer.ExtraDataBytesToString(newMessageEntry.ExtraData),
@@ -87,7 +97,7 @@ func bulkInsertNewMessageEntry(entries []*lib.StateChangeEntry, db *bun.DB, oper
 
 	// Loop through the entries and convert them to PGEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = NewMessageEncoderToPGStruct(entry.Encoder.(*lib.NewMessageEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGNewMessageEntry{NewMessageEntry: NewMessageEncoderToPGStruct(entry.Encoder.(*lib.NewMessageEntry), entry.KeyBytes)}
 	}
 
 	// Execute the insert query.

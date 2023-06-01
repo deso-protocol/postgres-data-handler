@@ -9,8 +9,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type PGNftEntry struct {
-	bun.BaseModel              `bun:"table:nft_entry"`
+type NftEntry struct {
 	LastOwnerPkid              string `pg:",use_zero"`
 	OwnerPkid                  string `pg:",use_zero"`
 	NftPostHash                string `pg:",use_zero"`
@@ -27,9 +26,19 @@ type PGNftEntry struct {
 	BadgerKey []byte            `pg:",pk,use_zero"`
 }
 
+type PGNftEntry struct {
+	bun.BaseModel `bun:"table:nft_entry"`
+	NftEntry
+}
+type PGNftEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:nft_entry_utxo_ops"`
+	NftEntry
+	UtxoOperation
+}
+
 // Convert the NFT DeSo entry into a bun struct.
-func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte) *PGNftEntry {
-	pgNFTEntry := &PGNftEntry{
+func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte) NftEntry {
+	pgNFTEntry := NftEntry{
 		OwnerPkid:                  consumer.PublicKeyBytesToBase58Check(nftEntry.OwnerPKID[:]),
 		NftPostHash:                hex.EncodeToString(nftEntry.NFTPostHash[:]),
 		SerialNumber:               nftEntry.SerialNumber,
@@ -78,7 +87,7 @@ func bulkInsertNftEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationTy
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = NftEncoderToPGStruct(entry.Encoder.(*lib.NFTEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGNftEntry{NftEntry: NftEncoderToPGStruct(entry.Encoder.(*lib.NFTEntry), entry.KeyBytes)}
 	}
 
 	// Execute the insert query.

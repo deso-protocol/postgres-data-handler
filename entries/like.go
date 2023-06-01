@@ -9,16 +9,26 @@ import (
 	"github.com/uptrace/bun"
 )
 
+type LikeEntry struct {
+	PublicKey string `pg:",use_zero"`
+	PostHash  string `pg:",use_zero"`
+	BadgerKey []byte `pg:",pk,use_zero"`
+}
+
 type PGLikeEntry struct {
 	bun.BaseModel `bun:"table:like_entry"`
-	PublicKey     string `pg:",use_zero"`
-	PostHash      string `pg:",use_zero"`
-	BadgerKey     []byte `pg:",pk,use_zero"`
+	LikeEntry
+}
+
+type PGLikeEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:like_entry_utxo_ops"`
+	LikeEntry
+	UtxoOperation
 }
 
 // Convert the like DeSo encoder to the PG struct used by bun.
-func LikeEncoderToPGStruct(likeEntry *lib.LikeEntry, keyBytes []byte) *PGLikeEntry {
-	return &PGLikeEntry{
+func LikeEncoderToPGStruct(likeEntry *lib.LikeEntry, keyBytes []byte) LikeEntry {
+	return LikeEntry{
 		PublicKey: consumer.PublicKeyBytesToBase58Check(likeEntry.LikerPubKey[:]),
 		PostHash:  hex.EncodeToString(likeEntry.LikedPostHash[:]),
 		BadgerKey: keyBytes,
@@ -52,7 +62,7 @@ func bulkInsertLikeEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = LikeEncoderToPGStruct(entry.Encoder.(*lib.LikeEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGLikeEntry{LikeEntry: LikeEncoderToPGStruct(entry.Encoder.(*lib.LikeEntry), entry.KeyBytes)}
 	}
 
 	// Execute the insert query.

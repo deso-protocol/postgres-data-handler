@@ -2,34 +2,41 @@ package initial_migrations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
 
-func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-
-		_, err := db.Exec(`
-			CREATE TABLE diamond_entry (
+func createDiamondEntryTable(db *bun.DB, tableName string) error {
+	_, err := db.Exec(strings.Replace(`
+			CREATE TABLE {tableName} (
 				sender_pkid            VARCHAR NOT NULL,
 				receiver_pkid          VARCHAR NOT NULL,
 				post_hash              VARCHAR NOT NULL,
 				diamond_level          SMALLINT NOT NULL,
 				badger_key             BYTEA PRIMARY KEY NOT NULL
 			);
-			CREATE INDEX diamond_sender_public_key_idx ON diamond_entry (sender_pkid);
-			CREATE INDEX diamond_receiver_public_key_idx ON diamond_entry (receiver_pkid);
-			CREATE INDEX diamond_post_hash_idx ON diamond_entry (post_hash);
-			CREATE UNIQUE INDEX diamond_badger_key_idx ON diamond_entry (badger_key);
+			CREATE INDEX {tableName}_sender_public_key_idx ON {tableName} (sender_pkid);
+			CREATE INDEX {tableName}_receiver_public_key_idx ON {tableName} (receiver_pkid);
+			CREATE INDEX {tableName}_post_hash_idx ON {tableName} (post_hash);
 			-- TODO: Define FK relations
-		`)
-		if err != nil {
+		`, "{tableName}", tableName, -1))
+	return err
+}
+
+func init() {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+		if err := createDiamondEntryTable(db, "diamond_entry"); err != nil {
 			return err
 		}
-		return nil
+		if err := createDiamondEntryTable(db, "diamond_entry_utxo_ops"); err != nil {
+			return err
+		}
+		return AddUtxoOpColumnsToTable(db, "diamond_entry_utxo_ops")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE diamond_entry;
+			DROP TABLE diamond_entry_utxo_ops;
 		`)
 		if err != nil {
 			return err

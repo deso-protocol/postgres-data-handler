@@ -10,8 +10,7 @@ import (
 	"time"
 )
 
-type PGPostEntry struct {
-	bun.BaseModel                               `bun:"table:post_entry"`
+type PostEntry struct {
 	PostHash                                    string            `pg:",pk,use_zero"`
 	PosterPublicKey                             string            `pg:",use_zero"`
 	ParentPostHash                              string            `bun:",nullzero"`
@@ -37,9 +36,20 @@ type PGPostEntry struct {
 	BadgerKey                                   []byte            `pg:",use_zero"`
 }
 
-func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte) (*PGPostEntry, error) {
+type PGPostEntry struct {
+	bun.BaseModel `bun:"table:post_entry"`
+	PostEntry
+}
 
-	pgPostEntry := &PGPostEntry{
+type PGPostEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:post_entry_utxo_ops"`
+	PostEntry
+	UtxoOperation
+}
+
+func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte) (PostEntry, error) {
+
+	pgPostEntry := PostEntry{
 		PostHash:                                 hex.EncodeToString(postEntry.PostHash[:]),
 		PosterPublicKey:                          consumer.PublicKeyBytesToBase58Check(postEntry.PosterPublicKey),
 		ParentPostHash:                           hex.EncodeToString(postEntry.ParentStakeID),
@@ -107,7 +117,7 @@ func bulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 		if pgEntry, err := PostEntryEncoderToPGStruct(entry.Encoder.(*lib.PostEntry), entry.KeyBytes); err != nil {
 			return errors.Wrapf(err, "entries.bulkInsertPostEntry: Problem converting post entry to PG struct")
 		} else {
-			pgEntrySlice[ii] = pgEntry
+			pgEntrySlice[ii] = &PGPostEntry{PostEntry: pgEntry}
 		}
 	}
 

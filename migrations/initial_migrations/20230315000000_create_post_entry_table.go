@@ -2,22 +2,14 @@ package initial_migrations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
 
-func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-
-		// Create a new table to handle web push notification subscriptions.
-		_, err := db.Exec(`
-			SET work_mem = '32MB';
-		`)
-		if err != nil {
-			return err
-		}
-		_, err = db.Exec(`
-			CREATE TABLE post_entry (
+func createPostEntryTable(db *bun.DB, tableName string) error {
+	_, err := db.Exec(strings.Replace(`
+			CREATE TABLE {tableName} (
 				post_hash VARCHAR PRIMARY KEY,
 				poster_public_key VARCHAR,
 				parent_post_hash VARCHAR,
@@ -42,26 +34,49 @@ func init() {
 				is_frozen BOOLEAN,
 				badger_key bytea
 			);
-			CREATE INDEX badger_key_idx ON post_entry (badger_key);
-			CREATE INDEX timestamp_idx ON post_entry (timestamp desc);
-			CREATE INDEX nft_idx ON post_entry (is_nft);
+			CREATE INDEX {tableName}_badger_key_idx ON {tableName} (badger_key);
+			CREATE INDEX {tableName}_post_hash_idx ON {tableName} (post_hash);
+			CREATE INDEX {tableName}_timestamp_idx ON {tableName} (timestamp desc);
+			CREATE INDEX {tableName}_nft_idx ON {tableName} (is_nft);
 -- 			NOTE: It would be nice for these to be foreign keys, but that would require consensus to
 -- 			be able to handle the case where a post is deleted, which is not currently done. 
-			CREATE INDEX reposted_post_hash_idx ON post_entry (reposted_post_hash);
-			CREATE INDEX parent_post_hash_idx ON post_entry (parent_post_hash);
-			CREATE INDEX poster_public_key_timestamp_idx ON post_entry (poster_public_key, timestamp DESC);
-			CREATE INDEX poster_public_key_nft_timestamp_idx ON post_entry (poster_public_key, timestamp, is_nft DESC);
-			CREATE INDEX nft_timestamp_idx ON post_entry (timestamp, is_nft DESC);
-			CREATE INDEX post_extra_data_node_id_idx
-			ON post_entry ((extra_data ->> 'Node'));
+			CREATE INDEX {tableName}_reposted_post_hash_idx ON {tableName} (reposted_post_hash);
+			CREATE INDEX {tableName}_parent_post_hash_idx ON {tableName} (parent_post_hash);
+			CREATE INDEX {tableName}_poster_public_key_timestamp_idx ON {tableName} (poster_public_key, timestamp DESC);
+			CREATE INDEX {tableName}_poster_public_key_nft_timestamp_idx ON {tableName} (poster_public_key, timestamp, is_nft DESC);
+			CREATE INDEX {tableName}_nft_timestamp_idx ON {tableName} (timestamp, is_nft DESC);
+			CREATE INDEX {tableName}_post_extra_data_node_id_idx
+			ON {tableName} ((extra_data ->> 'Node'));
+		`, "{tableName}", tableName, -1))
+	return err
+}
+
+func init() {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+
+		// Make sure work_mem is set to a sufficient amount
+		_, err := db.Exec(`
+			SET work_mem = '32MB';
 		`)
 		if err != nil {
 			return err
 		}
-		return nil
+
+		// Create post entry table
+		if err = createPostEntryTable(db, "post_entry"); err != nil {
+			return err
+		}
+
+		// Create utxo op table for post entries
+		if err = createPostEntryTable(db, "post_entry_utxo_ops"); err != nil {
+			return err
+		}
+
+		return AddUtxoOpColumnsToTable(db, "post_entry_utxo_ops")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE post_entry;
+			DROP TABLE post_entry_utxo_ops;
 		`)
 		if err != nil {
 			return err

@@ -10,10 +10,9 @@ import (
 	"github.com/uptrace/bun/extra/bunbig"
 )
 
-type PGBalanceEntry struct {
-	bun.BaseModel `bun:"table:balance_entry"`
-	HodlerPkid    string `pg:",use_zero"`
-	CreatorPkid   string `pg:",use_zero"`
+type BalanceEntry struct {
+	HodlerPkid  string `pg:",use_zero"`
+	CreatorPkid string `pg:",use_zero"`
 	// Use bunbig.Int to store the balance as a numeric in the pg database.
 	BalanceNanos *bunbig.Int `pg:",use_zero"`
 	HasPurchased bool        `pg:",use_zero"`
@@ -21,9 +20,20 @@ type PGBalanceEntry struct {
 	BadgerKey    []byte      `pg:",pk,use_zero"`
 }
 
+type PGBalanceEntry struct {
+	bun.BaseModel `bun:"table:balance_entry"`
+	BalanceEntry
+}
+
+type PGBalanceEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:balance_entry_utxo_ops"`
+	BalanceEntry
+	UtxoOperation
+}
+
 // Convert the DeSo encoder to the postgres struct used by bun.
-func BalanceEntryEncoderToPGStruct(balanceEntry *lib.BalanceEntry, keyBytes []byte) *PGBalanceEntry {
-	return &PGBalanceEntry{
+func BalanceEntryEncoderToPGStruct(balanceEntry *lib.BalanceEntry, keyBytes []byte) BalanceEntry {
+	return BalanceEntry{
 		HodlerPkid:   consumer.PublicKeyBytesToBase58Check(balanceEntry.HODLerPKID[:]),
 		CreatorPkid:  consumer.PublicKeyBytesToBase58Check(balanceEntry.CreatorPKID[:]),
 		BalanceNanos: bunbig.FromMathBig(balanceEntry.BalanceNanos.ToBig()),
@@ -61,7 +71,7 @@ func bulkInsertBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, operati
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = BalanceEntryEncoderToPGStruct(entry.Encoder.(*lib.BalanceEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGBalanceEntry{BalanceEntry: BalanceEntryEncoderToPGStruct(entry.Encoder.(*lib.BalanceEntry), entry.KeyBytes)}
 	}
 
 	// Execute the insert query.

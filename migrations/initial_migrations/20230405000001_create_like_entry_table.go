@@ -2,31 +2,37 @@ package initial_migrations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
 
-func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-
-		_, err := db.Exec(`
-			CREATE TABLE like_entry (
+func createLikeEntryTable(db *bun.DB, tableName string) error {
+	_, err := db.Exec(strings.Replace(`
+			CREATE TABLE {tableName} (
 				public_key                   VARCHAR NOT NULL,
 				post_hash                    VARCHAR NOT NULL,
 				badger_key                   BYTEA PRIMARY KEY NOT NULL
 			);
-			CREATE INDEX like_public_key_idx ON like_entry (public_key);
-			CREATE INDEX like_post_hash_idx ON like_entry (post_hash);
-			CREATE UNIQUE INDEX like_badger_key_idx ON like_entry (badger_key);
-			-- TODO: Define FK relations
-		`)
-		if err != nil {
+			CREATE INDEX {tableName}_public_key_idx ON {tableName} (public_key);
+			CREATE INDEX {tableName}_post_hash_idx ON {tableName} (post_hash);
+`, "{tableName}", tableName, -1))
+	return err
+}
+
+func init() {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+		if err := createLikeEntryTable(db, "like_entry"); err != nil {
 			return err
 		}
-		return nil
+		if err := createLikeEntryTable(db, "like_entry_utxo_ops"); err != nil {
+			return err
+		}
+		return AddUtxoOpColumnsToTable(db, "like_entry_utxo_ops")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE like_entry;
+			DROP TABLE like_entry_utxo_ops;
 		`)
 		if err != nil {
 			return err

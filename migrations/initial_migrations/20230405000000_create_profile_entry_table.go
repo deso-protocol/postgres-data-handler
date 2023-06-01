@@ -2,15 +2,14 @@ package initial_migrations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
 
-func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-
-		_, err := db.Exec(`
-			CREATE TABLE profile_entry (
+func createProfileEntryTable(db *bun.DB, tableName string) error {
+	_, err := db.Exec(strings.Replace(`
+			CREATE TABLE {tableName} (
 				public_key                   VARCHAR PRIMARY KEY NOT NULL,
 			    pkid						 VARCHAR NOT NULL,
 				username                     VARCHAR,
@@ -24,18 +23,27 @@ func init() {
 				extra_data                   JSONB,
 				badger_key                   BYTEA NOT NULL
 			);
-			CREATE INDEX profile_pkid_idx ON profile_entry (pkid);
-			CREATE INDEX profile_username_idx ON profile_entry (username);
-			CREATE INDEX profile_badger_key_idx ON profile_entry (badger_key);
+			CREATE INDEX {tableName}_pkid_idx ON {tableName} (pkid);
+			CREATE INDEX {tableName}_username_idx ON {tableName} (username);
+			CREATE INDEX {tableName}_badger_key_idx ON {tableName} (badger_key);
 			-- TODO: Define FK relation to post_entry table.
-		`)
-		if err != nil {
+		`, "{tableName}", tableName, -1))
+	return err
+}
+
+func init() {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+		if err := createProfileEntryTable(db, "profile_entry"); err != nil {
 			return err
 		}
-		return nil
+		if err := createProfileEntryTable(db, "profile_entry_utxo_ops"); err != nil {
+			return err
+		}
+		return AddUtxoOpColumnsToTable(db, "profile_entry_utxo_ops")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE profile_entry;
+			DROP TABLE profile_entry_utxo_ops;
 		`)
 		if err != nil {
 			return err

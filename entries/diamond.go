@@ -9,18 +9,28 @@ import (
 	"github.com/uptrace/bun"
 )
 
+type DiamondEntry struct {
+	SenderPkid   string `pg:",use_zero"`
+	ReceiverPkid string `pg:",use_zero"`
+	DiamondLevel int64  `pg:",use_zero"`
+	PostHash     string `pg:",use_zero"`
+	BadgerKey    []byte `pg:",pk,use_zero"`
+}
+
 type PGDiamondEntry struct {
 	bun.BaseModel `bun:"table:diamond_entry"`
-	SenderPkid    string `pg:",use_zero"`
-	ReceiverPkid  string `pg:",use_zero"`
-	DiamondLevel  int64  `pg:",use_zero"`
-	PostHash      string `pg:",use_zero"`
-	BadgerKey     []byte `pg:",pk,use_zero"`
+	DiamondEntry
+}
+
+type PGDiamondEntryUtxoOps struct {
+	bun.BaseModel `bun:"table:diamond_entry_utxo_ops"`
+	DiamondEntry
+	UtxoOperation
 }
 
 // Convert the Diamond DeSo encoder to the PG struct used by bun.
-func DiamondEncoderToPGStruct(diamondEntry *lib.DiamondEntry, keyBytes []byte) *PGDiamondEntry {
-	return &PGDiamondEntry{
+func DiamondEncoderToPGStruct(diamondEntry *lib.DiamondEntry, keyBytes []byte) DiamondEntry {
+	return DiamondEntry{
 		SenderPkid:   consumer.PublicKeyBytesToBase58Check(diamondEntry.SenderPKID[:]),
 		ReceiverPkid: consumer.PublicKeyBytesToBase58Check(diamondEntry.ReceiverPKID[:]),
 		DiamondLevel: diamondEntry.DiamondLevel,
@@ -56,7 +66,7 @@ func bulkInsertDiamondEntry(entries []*lib.StateChangeEntry, db *bun.DB, operati
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = DiamondEncoderToPGStruct(entry.Encoder.(*lib.DiamondEntry), entry.KeyBytes)
+		pgEntrySlice[ii] = &PGDiamondEntry{DiamondEntry: DiamondEncoderToPGStruct(entry.Encoder.(*lib.DiamondEntry), entry.KeyBytes)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)
