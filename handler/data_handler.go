@@ -87,7 +87,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 		// TODO: Once more encoder types are written out, do a comprehensive comparison between creating indexes
 		// immediately and applying indexes after the chain has been hypersynced.
 		//postgresDataHandler.DB.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
-		//RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync)
+		RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync)
 	case consumer.SyncEventComplete:
 		fmt.Printf("\n***** Sync complete *****\n\n")
 	}
