@@ -66,6 +66,8 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 		err = entries.UtxoOperationBatchOperation(batchedEntries, postgresDataHandler.DB)
 	case lib.EncoderTypeBlock:
 		err = entries.BlockBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeTxn:
+		err = entries.TransactionBatchOperation(batchedEntries, postgresDataHandler.DB)
 	}
 
 	if err != nil {

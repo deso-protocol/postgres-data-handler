@@ -1,6 +1,7 @@
 package entries
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
@@ -78,10 +79,11 @@ func UtxoOperationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) er
 
 // bulkInsertUtxoOperationsEntry inserts a batch of user_association entries into the database.
 func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
-	pgEntrySlice := make([]*PGUtxoOperationEntry, len(uniqueEntries))
+	//pgEntrySlice := make([]*PGUtxoOperationEntry, len(uniqueEntries))
 
 	//postEntryUtxoOps := make([]*PGPostEntryUtxoOps, 0)
 	//profileEntryUtxoOps := make([]*PGProfileEntryUtxoOps, 0)
@@ -103,18 +105,38 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	affectedPublicKeys := make([]*PGAffectedPublicKeyEntry, 0)
 
 	// Loop through the utxo op bundles and extract the utxo operation entries from them.
-	for ii, entry := range uniqueEntries {
+	for _, entry := range uniqueEntries {
+
+		// Check if the entry is a bundle with multiple utxo operations, or a single transaction.
+		// If bundle, get a list of transactions based on the block hash extracted from the key.
+		// If single transaction, get the transaction based on the transaction hash, extracted from the key.
+
+		transactions := []*PGTransactionEntry{}
+		// We can use this function regardless of the db prefix, because both block_hash and transaction_hash
+		// are stored in the same blockHashHex format in the key.
+		blockHash := ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes)
+		filterField := ""
+
+		// Determine how the transactions should be filtered based on the entry key prefix.
+		if bytes.Equal(entry.KeyBytes[:1], lib.Prefixes.PrefixTxnHashToUtxoOps) {
+			filterField = "transaction_hash"
+		} else if bytes.Equal(entry.KeyBytes[:1], lib.Prefixes.PrefixBlockHashToUtxoOperations) {
+			filterField = "block_hash"
+		} else {
+			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Unrecognized prefix %v", entry.KeyBytes[:1])
+		}
+
+		// Note: it's normally considered bad practice to use string formatting to insert values into a query. However,
+		// in this case, the filterField is a constant and the value is clearly only block hash or transaction hash -
+		// so there is no risk of SQL injection.
+		err := db.NewSelect().Model(&transactions).Column("txn_bytes", "transaction_hash").Where(fmt.Sprintf("%s = ?", filterField), blockHash).Order("index_in_block ASC").Scan(context.Background())
+		if err != nil {
+			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem getting transactions for entry %+v at block height %v", entry, entry.BlockHeight)
+		}
+
 		utxoOperations, ok := entry.Encoder.(*lib.UtxoOperationBundle)
 		if !ok {
 			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem with entry %v", entry)
-		}
-
-		// Retrieve the transactions from the db for the block of these utxo operations.
-		transactions := []*PGTransactionEntry{}
-		blockHash := ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes)
-		err := db.NewSelect().Model(&transactions).Column("txn_bytes", "transaction_hash").Where("block_hash = ?", blockHash).Order("index_in_block ASC").Scan(context.Background())
-		if err != nil {
-			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem getting transactions for entry %+v at block height %v", entry, entry.BlockHeight)
 		}
 
 		for jj, utxoOps := range utxoOperations.UtxoOpBundle {
@@ -157,311 +179,311 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				transactionUpdates = append(transactionUpdates, transactions[jj])
 			}
 
-			for utxoOpIndex, utxoOp := range utxoOps {
-				pgEntrySlice[ii] = UtxoOperationEncoderToPGStruct(utxoOp, entry.KeyBytes, uint64(jj), uint64(utxoOpIndex), entry.BlockHeight)
-				//	//			// TODO: Reduce duplicated code here.
-				//	if utxoOp.PrevPostEntry != nil {
-				//		postEntry, _ := PostEntryEncoderToPGStruct(utxoOp.PrevPostEntry, []byte{})
-				//		prevPostEntry := &PGPostEntryUtxoOps{
-				//			PostEntry: postEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevPostEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		postEntryUtxoOps = append(postEntryUtxoOps, prevPostEntry)
-				//	}
-				//	if utxoOp.PrevParentPostEntry != nil {
-				//		postEntry, _ := PostEntryEncoderToPGStruct(utxoOp.PrevParentPostEntry, []byte{})
-				//		prevPostEntry := &PGPostEntryUtxoOps{
-				//			PostEntry: postEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevParentPostEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		postEntryUtxoOps = append(postEntryUtxoOps, prevPostEntry)
-				//	}
-				//	if utxoOp.PrevGrandparentPostEntry != nil {
-				//		postEntry, _ := PostEntryEncoderToPGStruct(utxoOp.PrevGrandparentPostEntry, []byte{})
-				//		prevPostEntry := &PGPostEntryUtxoOps{
-				//			PostEntry: postEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevGrandparentPostEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		postEntryUtxoOps = append(postEntryUtxoOps, prevPostEntry)
-				//	}
-				//	if utxoOp.PrevRepostedPostEntry != nil {
-				//		postEntry, _ := PostEntryEncoderToPGStruct(utxoOp.PrevRepostedPostEntry, []byte{})
-				//		prevPostEntry := &PGPostEntryUtxoOps{
-				//			PostEntry: postEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevRepostedPostEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		postEntryUtxoOps = append(postEntryUtxoOps, prevPostEntry)
-				//	}
-				//	if utxoOp.PrevProfileEntry != nil {
-				//		profileEntry := ProfileEntryEncoderToPGStruct(utxoOp.PrevProfileEntry, append(lib.Prefixes.PrefixPKIDToProfileEntry, utxoOp.PrevProfileEntry.PublicKey...))
-				//		prevProfileEntry := &PGProfileEntryUtxoOps{
-				//			ProfileEntry: profileEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevProfileEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		profileEntryUtxoOps = append(profileEntryUtxoOps, prevProfileEntry)
-				//	}
-				//	if utxoOp.PrevLikeEntry != nil {
-				//		likeEntry := LikeEncoderToPGStruct(utxoOp.PrevLikeEntry, []byte{})
-				//		prevLikeEntry := &PGLikeEntryUtxoOps{
-				//			LikeEntry: likeEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevLikeEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		likeEntryUtxoOps = append(likeEntryUtxoOps, prevLikeEntry)
-				//	}
-				//	if utxoOp.PrevDiamondEntry != nil {
-				//		diamondEntry := DiamondEncoderToPGStruct(utxoOp.PrevDiamondEntry, []byte{})
-				//		prevDiamondEntry := &PGDiamondEntryUtxoOps{
-				//			DiamondEntry: diamondEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevDiamondEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		diamondEntryUtxoOps = append(diamondEntryUtxoOps, prevDiamondEntry)
-				//	}
-				//	if utxoOp.PrevNFTEntry != nil {
-				//		nftEntry := NftEncoderToPGStruct(utxoOp.PrevNFTEntry, []byte{})
-				//		prevNFTEntry := &PGNftEntryUtxoOps{
-				//			NftEntry: nftEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevNFTEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		nftEntryUtxoOps = append(nftEntryUtxoOps, prevNFTEntry)
-				//	}
-				//	if utxoOp.PrevNFTBidEntry != nil {
-				//		nftBidEntry := NftBidEncoderToPGStruct(utxoOp.PrevNFTBidEntry, []byte{})
-				//		prevNFTBidEntry := &PGNftBidEntryUtxoOps{
-				//			NftBidEntry: nftBidEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevNFTBidEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		nftBidEntryUtxoOps = append(nftBidEntryUtxoOps, prevNFTBidEntry)
-				//	}
-				//	if utxoOp.DeletedNFTBidEntries != nil {
-				//		for jj, nftBidEntry := range utxoOp.DeletedNFTBidEntries {
-				//			deletedNftBidEntry := NftBidEncoderToPGStruct(nftBidEntry, []byte{})
-				//			prevNFTBidEntry := &PGNftBidEntryUtxoOps{
-				//				NftBidEntry: deletedNftBidEntry,
-				//				UtxoOperation: UtxoOperation{
-				//					UtxoOpEntryType:  "DeletedNFTBidEntry",
-				//					UtxoOpIndex:      uint64(utxoOpIndex),
-				//					TransactionIndex: uint64(jj),
-				//					ArrayIndex:       uint64(jj),
-				//					BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//				},
-				//			}
-				//			nftBidEntryUtxoOps = append(nftBidEntryUtxoOps, prevNFTBidEntry)
-				//		}
-				//	}
-				//	if utxoOp.PrevAcceptedNFTBidEntries != nil {
-				//		for jj, nftBidEntry := range *utxoOp.PrevAcceptedNFTBidEntries {
-				//			acceptedNftBidEntry := NftBidEntry{}
-				//			if nftBidEntry != nil && nftBidEntry.BidderPKID != nil {
-				//				acceptedNftBidEntry = NftBidEncoderToPGStruct(nftBidEntry, []byte{})
-				//			}
-				//			prevNFTBidEntry := &PGNftBidEntryUtxoOps{
-				//				NftBidEntry: acceptedNftBidEntry,
-				//				UtxoOperation: UtxoOperation{
-				//					UtxoOpEntryType:  "PrevAcceptedNFTBidEntry",
-				//					UtxoOpIndex:      uint64(utxoOpIndex),
-				//					TransactionIndex: uint64(jj),
-				//					ArrayIndex:       uint64(jj),
-				//					BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//				},
-				//			}
-				//			nftBidEntryUtxoOps = append(nftBidEntryUtxoOps, prevNFTBidEntry)
-				//		}
-				//	}
-				//	if utxoOp.PrevDerivedKeyEntry != nil {
-				//		derivedKeyEntry, _ := DerivedKeyEncoderToPGStruct(utxoOp.PrevDerivedKeyEntry, []byte{})
-				//		prevDerivedKeyEntry := &PGDerivedKeyEntryUtxoOps{
-				//			DerivedKeyEntry: derivedKeyEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevDerivedKeyEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		derivedKeyEntryUtxoOps = append(derivedKeyEntryUtxoOps, prevDerivedKeyEntry)
-				//	}
-				//	if utxoOp.PrevTransactorBalanceEntry != nil {
-				//		prevTransactorBalanceEntry := BalanceEntryEncoderToPGStruct(utxoOp.PrevTransactorBalanceEntry, []byte{})
-				//		prevTransactorBalanceEntryUtxoOps := &PGBalanceEntryUtxoOps{
-				//			BalanceEntry: prevTransactorBalanceEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevTransactorBalanceEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		balanceEntryUtxoOps = append(balanceEntryUtxoOps, prevTransactorBalanceEntryUtxoOps)
-				//	}
-				//	if utxoOp.PrevCreatorBalanceEntry != nil {
-				//		prevCreatorBalanceEntry := BalanceEntryEncoderToPGStruct(utxoOp.PrevCreatorBalanceEntry, []byte{})
-				//		prevCreatorBalanceEntryUtxoOps := &PGBalanceEntryUtxoOps{
-				//			BalanceEntry: prevCreatorBalanceEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevCreatorBalanceEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		balanceEntryUtxoOps = append(balanceEntryUtxoOps, prevCreatorBalanceEntryUtxoOps)
-				//	}
-				//	if utxoOp.PrevSenderBalanceEntry != nil {
-				//		prevSenderBalanceEntry := BalanceEntryEncoderToPGStruct(utxoOp.PrevSenderBalanceEntry, []byte{})
-				//		prevSenderBalanceEntryUtxoOps := &PGBalanceEntryUtxoOps{
-				//			BalanceEntry: prevSenderBalanceEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevSenderBalanceEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		balanceEntryUtxoOps = append(balanceEntryUtxoOps, prevSenderBalanceEntryUtxoOps)
-				//	}
-				//	if utxoOp.PrevReceiverBalanceEntry != nil {
-				//		prevReceiverBalanceEntry := BalanceEntryEncoderToPGStruct(utxoOp.PrevReceiverBalanceEntry, []byte{})
-				//		prevReceiverBalanceEntryUtxoOps := &PGBalanceEntryUtxoOps{
-				//			BalanceEntry: prevReceiverBalanceEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevReceiverBalanceEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		balanceEntryUtxoOps = append(balanceEntryUtxoOps, prevReceiverBalanceEntryUtxoOps)
-				//	}
-				//	if utxoOp.PrevUserAssociationEntry != nil {
-				//		prevUserAssociationEntry := UserAssociationEncoderToPGStruct(utxoOp.PrevUserAssociationEntry, []byte{})
-				//		prevUserAssociationEntryUtxoOps := &PGUserAssociationEntryUtxoOps{
-				//			UserAssociationEntry: prevUserAssociationEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevUserAssociationEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		userAssociationEntryUtxoOps = append(userAssociationEntryUtxoOps, prevUserAssociationEntryUtxoOps)
-				//	}
-				//	if utxoOp.PrevPostAssociationEntry != nil {
-				//		prevPostAssociationEntry := PostAssociationEncoderToPGStruct(utxoOp.PrevPostAssociationEntry, []byte{})
-				//		prevPostAssociationEntryUtxoOps := &PGPostAssociationEntryUtxoOps{
-				//			PostAssociationEntry: prevPostAssociationEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevPostAssociationEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		postAssociationEntryUtxoOps = append(postAssociationEntryUtxoOps, prevPostAssociationEntryUtxoOps)
-				//	}
-				//	if utxoOp.PrevAccessGroupEntry != nil {
-				//		prevAccessGroupEntry := AccessGroupEncoderToPGStruct(utxoOp.PrevAccessGroupEntry, []byte{})
-				//		prevAccessGroupEntryUtxoOps := &PGAccessGroupEntryUtxoOps{
-				//			AccessGroupEntry: prevAccessGroupEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevAccessGroupEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		accessGroupEntryUtxoOps = append(accessGroupEntryUtxoOps, prevAccessGroupEntryUtxoOps)
-				//	}
-				//	if utxoOp.PrevAccessGroupMembersList != nil && len(utxoOp.PrevAccessGroupMembersList) > 0 {
-				//		for jj, prevAccessGroupMembersList := range utxoOp.PrevAccessGroupMembersList {
-				//			prevAccessGroupMembersListEntry := AccessGroupMemberEncoderToPGStruct(prevAccessGroupMembersList, []byte{})
-				//			prevAccessGroupMembersListEntryUtxoOps := &PGAccessGroupMemberEntryUtxoOps{
-				//				AccessGroupMemberEntry: prevAccessGroupMembersListEntry,
-				//				UtxoOperation: UtxoOperation{
-				//					UtxoOpEntryType:  "PrevAccessGroupMembersList",
-				//					UtxoOpIndex:      uint64(utxoOpIndex),
-				//					TransactionIndex: uint64(jj),
-				//					ArrayIndex:       uint64(jj),
-				//					BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//				},
-				//			}
-				//			accessGroupMemberEntryUtxoOps = append(accessGroupMemberEntryUtxoOps, prevAccessGroupMembersListEntryUtxoOps)
-				//		}
-				//	}
-				//	if utxoOp.PrevNewMessageEntry != nil {
-				//		prevNewMessageEntry := NewMessageEncoderToPGStruct(utxoOp.PrevNewMessageEntry, []byte{})
-				//		prevNewMessageEntryUtxoOps := &PGNewMessageEntryUtxoOps{
-				//			NewMessageEntry: prevNewMessageEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevNewMessageEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		newMessageEntryUtxoOps = append(newMessageEntryUtxoOps, prevNewMessageEntryUtxoOps)
-				//	}
-				//	if utxoOp.BalanceAmountNanos != 0 {
-				//		prevDesoBalanceEntry := DesoBalanceEncoderToPGStruct(&lib.DeSoBalanceEntry{
-				//			PKID:         lib.NewPKID(utxoOp.BalancePublicKey),
-				//			BalanceNanos: utxoOp.BalanceAmountNanos,
-				//		}, []byte{})
-				//		prevDesoBalanceUtxoOp := &PGDesoBalanceEntryUtxoOps{
-				//			DesoBalanceEntry: prevDesoBalanceEntry,
-				//			UtxoOperation: UtxoOperation{
-				//				UtxoOpEntryType:  "PrevDesoBalanceEntry",
-				//				UtxoOpIndex:      uint64(utxoOpIndex),
-				//				TransactionIndex: uint64(jj),
-				//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
-				//			},
-				//		}
-				//		desoBalanceEntryUtxoOps = append(desoBalanceEntryUtxoOps, prevDesoBalanceUtxoOp)
-				//	}
-			}
+			//for utxoOpIndex, utxoOp := range utxoOps {
+			//	pgEntrySlice[ii] = UtxoOperationEncoderToPGStruct(utxoOp, entry.KeyBytes, uint64(jj), uint64(utxoOpIndex), entry.BlockHeight)
+			//	//	//			// TODO: Reduce duplicated code here.
+			//	//	if utxoOp.PrevPostEntry != nil {
+			//	//		postEntry, _ := PostEntryEncoderToPGStruct(utxoOp.PrevPostEntry, []byte{})
+			//	//		prevPostEntry := &PGPostEntryUtxoOps{
+			//	//			PostEntry: postEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevPostEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		postEntryUtxoOps = append(postEntryUtxoOps, prevPostEntry)
+			//	//	}
+			//	//	if utxoOp.PrevParentPostEntry != nil {
+			//	//		postEntry, _ := PostEntryEncoderToPGStruct(utxoOp.PrevParentPostEntry, []byte{})
+			//	//		prevPostEntry := &PGPostEntryUtxoOps{
+			//	//			PostEntry: postEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevParentPostEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		postEntryUtxoOps = append(postEntryUtxoOps, prevPostEntry)
+			//	//	}
+			//	//	if utxoOp.PrevGrandparentPostEntry != nil {
+			//	//		postEntry, _ := PostEntryEncoderToPGStruct(utxoOp.PrevGrandparentPostEntry, []byte{})
+			//	//		prevPostEntry := &PGPostEntryUtxoOps{
+			//	//			PostEntry: postEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevGrandparentPostEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		postEntryUtxoOps = append(postEntryUtxoOps, prevPostEntry)
+			//	//	}
+			//	//	if utxoOp.PrevRepostedPostEntry != nil {
+			//	//		postEntry, _ := PostEntryEncoderToPGStruct(utxoOp.PrevRepostedPostEntry, []byte{})
+			//	//		prevPostEntry := &PGPostEntryUtxoOps{
+			//	//			PostEntry: postEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevRepostedPostEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		postEntryUtxoOps = append(postEntryUtxoOps, prevPostEntry)
+			//	//	}
+			//	//	if utxoOp.PrevProfileEntry != nil {
+			//	//		profileEntry := ProfileEntryEncoderToPGStruct(utxoOp.PrevProfileEntry, append(lib.Prefixes.PrefixPKIDToProfileEntry, utxoOp.PrevProfileEntry.PublicKey...))
+			//	//		prevProfileEntry := &PGProfileEntryUtxoOps{
+			//	//			ProfileEntry: profileEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevProfileEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		profileEntryUtxoOps = append(profileEntryUtxoOps, prevProfileEntry)
+			//	//	}
+			//	//	if utxoOp.PrevLikeEntry != nil {
+			//	//		likeEntry := LikeEncoderToPGStruct(utxoOp.PrevLikeEntry, []byte{})
+			//	//		prevLikeEntry := &PGLikeEntryUtxoOps{
+			//	//			LikeEntry: likeEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevLikeEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		likeEntryUtxoOps = append(likeEntryUtxoOps, prevLikeEntry)
+			//	//	}
+			//	//	if utxoOp.PrevDiamondEntry != nil {
+			//	//		diamondEntry := DiamondEncoderToPGStruct(utxoOp.PrevDiamondEntry, []byte{})
+			//	//		prevDiamondEntry := &PGDiamondEntryUtxoOps{
+			//	//			DiamondEntry: diamondEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevDiamondEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		diamondEntryUtxoOps = append(diamondEntryUtxoOps, prevDiamondEntry)
+			//	//	}
+			//	//	if utxoOp.PrevNFTEntry != nil {
+			//	//		nftEntry := NftEncoderToPGStruct(utxoOp.PrevNFTEntry, []byte{})
+			//	//		prevNFTEntry := &PGNftEntryUtxoOps{
+			//	//			NftEntry: nftEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevNFTEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		nftEntryUtxoOps = append(nftEntryUtxoOps, prevNFTEntry)
+			//	//	}
+			//	//	if utxoOp.PrevNFTBidEntry != nil {
+			//	//		nftBidEntry := NftBidEncoderToPGStruct(utxoOp.PrevNFTBidEntry, []byte{})
+			//	//		prevNFTBidEntry := &PGNftBidEntryUtxoOps{
+			//	//			NftBidEntry: nftBidEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevNFTBidEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		nftBidEntryUtxoOps = append(nftBidEntryUtxoOps, prevNFTBidEntry)
+			//	//	}
+			//	//	if utxoOp.DeletedNFTBidEntries != nil {
+			//	//		for jj, nftBidEntry := range utxoOp.DeletedNFTBidEntries {
+			//	//			deletedNftBidEntry := NftBidEncoderToPGStruct(nftBidEntry, []byte{})
+			//	//			prevNFTBidEntry := &PGNftBidEntryUtxoOps{
+			//	//				NftBidEntry: deletedNftBidEntry,
+			//	//				UtxoOperation: UtxoOperation{
+			//	//					UtxoOpEntryType:  "DeletedNFTBidEntry",
+			//	//					UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//					TransactionIndex: uint64(jj),
+			//	//					ArrayIndex:       uint64(jj),
+			//	//					BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//				},
+			//	//			}
+			//	//			nftBidEntryUtxoOps = append(nftBidEntryUtxoOps, prevNFTBidEntry)
+			//	//		}
+			//	//	}
+			//	//	if utxoOp.PrevAcceptedNFTBidEntries != nil {
+			//	//		for jj, nftBidEntry := range *utxoOp.PrevAcceptedNFTBidEntries {
+			//	//			acceptedNftBidEntry := NftBidEntry{}
+			//	//			if nftBidEntry != nil && nftBidEntry.BidderPKID != nil {
+			//	//				acceptedNftBidEntry = NftBidEncoderToPGStruct(nftBidEntry, []byte{})
+			//	//			}
+			//	//			prevNFTBidEntry := &PGNftBidEntryUtxoOps{
+			//	//				NftBidEntry: acceptedNftBidEntry,
+			//	//				UtxoOperation: UtxoOperation{
+			//	//					UtxoOpEntryType:  "PrevAcceptedNFTBidEntry",
+			//	//					UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//					TransactionIndex: uint64(jj),
+			//	//					ArrayIndex:       uint64(jj),
+			//	//					BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//				},
+			//	//			}
+			//	//			nftBidEntryUtxoOps = append(nftBidEntryUtxoOps, prevNFTBidEntry)
+			//	//		}
+			//	//	}
+			//	//	if utxoOp.PrevDerivedKeyEntry != nil {
+			//	//		derivedKeyEntry, _ := DerivedKeyEncoderToPGStruct(utxoOp.PrevDerivedKeyEntry, []byte{})
+			//	//		prevDerivedKeyEntry := &PGDerivedKeyEntryUtxoOps{
+			//	//			DerivedKeyEntry: derivedKeyEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevDerivedKeyEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		derivedKeyEntryUtxoOps = append(derivedKeyEntryUtxoOps, prevDerivedKeyEntry)
+			//	//	}
+			//	//	if utxoOp.PrevTransactorBalanceEntry != nil {
+			//	//		prevTransactorBalanceEntry := BalanceEntryEncoderToPGStruct(utxoOp.PrevTransactorBalanceEntry, []byte{})
+			//	//		prevTransactorBalanceEntryUtxoOps := &PGBalanceEntryUtxoOps{
+			//	//			BalanceEntry: prevTransactorBalanceEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevTransactorBalanceEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		balanceEntryUtxoOps = append(balanceEntryUtxoOps, prevTransactorBalanceEntryUtxoOps)
+			//	//	}
+			//	//	if utxoOp.PrevCreatorBalanceEntry != nil {
+			//	//		prevCreatorBalanceEntry := BalanceEntryEncoderToPGStruct(utxoOp.PrevCreatorBalanceEntry, []byte{})
+			//	//		prevCreatorBalanceEntryUtxoOps := &PGBalanceEntryUtxoOps{
+			//	//			BalanceEntry: prevCreatorBalanceEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevCreatorBalanceEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		balanceEntryUtxoOps = append(balanceEntryUtxoOps, prevCreatorBalanceEntryUtxoOps)
+			//	//	}
+			//	//	if utxoOp.PrevSenderBalanceEntry != nil {
+			//	//		prevSenderBalanceEntry := BalanceEntryEncoderToPGStruct(utxoOp.PrevSenderBalanceEntry, []byte{})
+			//	//		prevSenderBalanceEntryUtxoOps := &PGBalanceEntryUtxoOps{
+			//	//			BalanceEntry: prevSenderBalanceEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevSenderBalanceEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		balanceEntryUtxoOps = append(balanceEntryUtxoOps, prevSenderBalanceEntryUtxoOps)
+			//	//	}
+			//	//	if utxoOp.PrevReceiverBalanceEntry != nil {
+			//	//		prevReceiverBalanceEntry := BalanceEntryEncoderToPGStruct(utxoOp.PrevReceiverBalanceEntry, []byte{})
+			//	//		prevReceiverBalanceEntryUtxoOps := &PGBalanceEntryUtxoOps{
+			//	//			BalanceEntry: prevReceiverBalanceEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevReceiverBalanceEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		balanceEntryUtxoOps = append(balanceEntryUtxoOps, prevReceiverBalanceEntryUtxoOps)
+			//	//	}
+			//	//	if utxoOp.PrevUserAssociationEntry != nil {
+			//	//		prevUserAssociationEntry := UserAssociationEncoderToPGStruct(utxoOp.PrevUserAssociationEntry, []byte{})
+			//	//		prevUserAssociationEntryUtxoOps := &PGUserAssociationEntryUtxoOps{
+			//	//			UserAssociationEntry: prevUserAssociationEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevUserAssociationEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		userAssociationEntryUtxoOps = append(userAssociationEntryUtxoOps, prevUserAssociationEntryUtxoOps)
+			//	//	}
+			//	//	if utxoOp.PrevPostAssociationEntry != nil {
+			//	//		prevPostAssociationEntry := PostAssociationEncoderToPGStruct(utxoOp.PrevPostAssociationEntry, []byte{})
+			//	//		prevPostAssociationEntryUtxoOps := &PGPostAssociationEntryUtxoOps{
+			//	//			PostAssociationEntry: prevPostAssociationEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevPostAssociationEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		postAssociationEntryUtxoOps = append(postAssociationEntryUtxoOps, prevPostAssociationEntryUtxoOps)
+			//	//	}
+			//	//	if utxoOp.PrevAccessGroupEntry != nil {
+			//	//		prevAccessGroupEntry := AccessGroupEncoderToPGStruct(utxoOp.PrevAccessGroupEntry, []byte{})
+			//	//		prevAccessGroupEntryUtxoOps := &PGAccessGroupEntryUtxoOps{
+			//	//			AccessGroupEntry: prevAccessGroupEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevAccessGroupEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		accessGroupEntryUtxoOps = append(accessGroupEntryUtxoOps, prevAccessGroupEntryUtxoOps)
+			//	//	}
+			//	//	if utxoOp.PrevAccessGroupMembersList != nil && len(utxoOp.PrevAccessGroupMembersList) > 0 {
+			//	//		for jj, prevAccessGroupMembersList := range utxoOp.PrevAccessGroupMembersList {
+			//	//			prevAccessGroupMembersListEntry := AccessGroupMemberEncoderToPGStruct(prevAccessGroupMembersList, []byte{})
+			//	//			prevAccessGroupMembersListEntryUtxoOps := &PGAccessGroupMemberEntryUtxoOps{
+			//	//				AccessGroupMemberEntry: prevAccessGroupMembersListEntry,
+			//	//				UtxoOperation: UtxoOperation{
+			//	//					UtxoOpEntryType:  "PrevAccessGroupMembersList",
+			//	//					UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//					TransactionIndex: uint64(jj),
+			//	//					ArrayIndex:       uint64(jj),
+			//	//					BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//				},
+			//	//			}
+			//	//			accessGroupMemberEntryUtxoOps = append(accessGroupMemberEntryUtxoOps, prevAccessGroupMembersListEntryUtxoOps)
+			//	//		}
+			//	//	}
+			//	//	if utxoOp.PrevNewMessageEntry != nil {
+			//	//		prevNewMessageEntry := NewMessageEncoderToPGStruct(utxoOp.PrevNewMessageEntry, []byte{})
+			//	//		prevNewMessageEntryUtxoOps := &PGNewMessageEntryUtxoOps{
+			//	//			NewMessageEntry: prevNewMessageEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevNewMessageEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		newMessageEntryUtxoOps = append(newMessageEntryUtxoOps, prevNewMessageEntryUtxoOps)
+			//	//	}
+			//	//	if utxoOp.BalanceAmountNanos != 0 {
+			//	//		prevDesoBalanceEntry := DesoBalanceEncoderToPGStruct(&lib.DeSoBalanceEntry{
+			//	//			PKID:         lib.NewPKID(utxoOp.BalancePublicKey),
+			//	//			BalanceNanos: utxoOp.BalanceAmountNanos,
+			//	//		}, []byte{})
+			//	//		prevDesoBalanceUtxoOp := &PGDesoBalanceEntryUtxoOps{
+			//	//			DesoBalanceEntry: prevDesoBalanceEntry,
+			//	//			UtxoOperation: UtxoOperation{
+			//	//				UtxoOpEntryType:  "PrevDesoBalanceEntry",
+			//	//				UtxoOpIndex:      uint64(utxoOpIndex),
+			//	//				TransactionIndex: uint64(jj),
+			//	//				BlockHash:        ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes),
+			//	//			},
+			//	//		}
+			//	//		desoBalanceEntryUtxoOps = append(desoBalanceEntryUtxoOps, prevDesoBalanceUtxoOp)
+			//	//	}
+			//}
 		}
 	}
 
@@ -549,16 +571,18 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		}
 	}
 
-	query := db.NewInsert().Model(&pgEntrySlice)
+	// Insert utxo ops into db
+	//query := db.NewInsert().Model(&pgEntrySlice)
 
-	if operationType == lib.DbOperationTypeUpsert {
-		query = query.On("CONFLICT (block_hash, transaction_index, utxo_op_index) DO UPDATE")
-	}
+	//if operationType == lib.DbOperationTypeUpsert {
+	//	query = query.On("CONFLICT (block_hash, transaction_index, utxo_op_index) DO UPDATE")
+	//}
+	//
+	//if _, err := query.Returning("").Exec(context.Background()); err != nil {
+	//	return errors.Wrapf(err, "entries.bulkInsertUtxoOperation: Error inserting entries")
+	//}
 
-	if _, err := query.Returning("").Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.bulkInsertUtxoOperation: Error inserting entries")
-	}
-
+	// Insert affected public keys into db
 	if len(affectedPublicKeys) > 0 {
 		_, err := db.NewInsert().Model(&affectedPublicKeys).On("CONFLICT (public_key, transaction_hash) DO UPDATE").Exec(context.Background())
 		if err != nil {

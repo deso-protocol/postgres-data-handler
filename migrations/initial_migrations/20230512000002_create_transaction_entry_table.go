@@ -26,10 +26,13 @@ func init() {
 				extra_data                		JSONB,
 				signature		              	BYTEA,
 				txn_bytes						BYTEA NOT NULL,
-				index_in_block		  			INTEGER NOT NULL
+				index_in_block		  			INTEGER NOT NULL,
+				badger_key						BYTEA NOT NULL
 			);
 			CREATE INDEX transaction_index_in_block_idx ON transaction (index_in_block);
+			CREATE INDEX transaction_index_badger_key_idx ON transaction (badger_key);
 			CREATE INDEX transaction_block_hash_index_idx ON transaction (block_hash, index_in_block);
+			CREATE INDEX transaction_block_hash_idx ON transaction (block_hash);
 			CREATE INDEX transaction_type_idx ON transaction (txn_type);
 			CREATE INDEX transaction_public_key_idx ON transaction (public_key);
 		`)
