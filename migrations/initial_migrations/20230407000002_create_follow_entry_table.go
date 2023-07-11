@@ -24,13 +24,7 @@ func createFollowEntryTable(db *bun.DB, tableName string) error {
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if err := createFollowEntryTable(db, "follow_entry"); err != nil {
-			return err
-		}
-		if err := createFollowEntryTable(db, "follow_entry_utxo_ops"); err != nil {
-			return err
-		}
-		return AddUtxoOpColumnsToTable(db, "follow_entry_utxo_ops")
+		return createFollowEntryTable(db, "follow_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE follow_entry;

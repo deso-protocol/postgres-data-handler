@@ -33,13 +33,7 @@ func createUserAssociationEntry(db *bun.DB, tableName string) error {
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if err := createUserAssociationEntry(db, "user_association_entry"); err != nil {
-			return err
-		}
-		if err := createUserAssociationEntry(db, "user_association_entry_utxo_ops"); err != nil {
-			return err
-		}
-		return AddUtxoOpColumnsToTable(db, "user_association_entry_utxo_ops")
+		return createUserAssociationEntry(db, "user_association_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE user_association_entry;

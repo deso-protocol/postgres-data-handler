@@ -22,13 +22,7 @@ func createDesoBalanceEntryTable(db *bun.DB, tableName string) error {
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if err := createDesoBalanceEntryTable(db, "deso_balance_entry"); err != nil {
-			return err
-		}
-		if err := createDesoBalanceEntryTable(db, "deso_balance_entry_utxo_ops"); err != nil {
-			return err
-		}
-		return AddUtxoOpColumnsToTable(db, "deso_balance_entry_utxo_ops")
+		return createDesoBalanceEntryTable(db, "deso_balance_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE deso_balance_entry;

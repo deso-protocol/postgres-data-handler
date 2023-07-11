@@ -25,13 +25,7 @@ func createAccessGroupMemberEntryTable(db *bun.DB, tableName string) error {
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if err := createAccessGroupMemberEntryTable(db, "access_group_member_entry"); err != nil {
-			return err
-		}
-		if err := createAccessGroupMemberEntryTable(db, "access_group_member_entry_utxo_ops"); err != nil {
-			return err
-		}
-		return AddUtxoOpColumnsToTable(db, "access_group_member_entry_utxo_ops")
+		return createAccessGroupMemberEntryTable(db, "access_group_member_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE access_group_member_entry;

@@ -26,13 +26,7 @@ func createDiamondEntryTable(db *bun.DB, tableName string) error {
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if err := createDiamondEntryTable(db, "diamond_entry"); err != nil {
-			return err
-		}
-		if err := createDiamondEntryTable(db, "diamond_entry_utxo_ops"); err != nil {
-			return err
-		}
-		return AddUtxoOpColumnsToTable(db, "diamond_entry_utxo_ops")
+		return createDiamondEntryTable(db, "diamond_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE diamond_entry;

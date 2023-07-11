@@ -33,13 +33,7 @@ func createProfileEntryTable(db *bun.DB, tableName string) error {
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if err := createProfileEntryTable(db, "profile_entry"); err != nil {
-			return err
-		}
-		if err := createProfileEntryTable(db, "profile_entry_utxo_ops"); err != nil {
-			return err
-		}
-		return AddUtxoOpColumnsToTable(db, "profile_entry_utxo_ops")
+		return createProfileEntryTable(db, "profile_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE profile_entry;

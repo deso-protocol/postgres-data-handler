@@ -30,13 +30,7 @@ func createNftBidEntryTable(db *bun.DB, tableName string) error {
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if err := createNftBidEntryTable(db, "nft_bid_entry"); err != nil {
-			return err
-		}
-		if err := createNftBidEntryTable(db, "nft_bid_entry_utxo_ops"); err != nil {
-			return err
-		}
-		return AddUtxoOpColumnsToTable(db, "nft_bid_entry_utxo_ops")
+		return createNftBidEntryTable(db, "nft_bid_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE nft_bid_entry;

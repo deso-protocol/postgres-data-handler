@@ -63,16 +63,7 @@ func init() {
 		}
 
 		// Create post entry table
-		if err = createPostEntryTable(db, "post_entry"); err != nil {
-			return err
-		}
-
-		// Create utxo op table for post entries
-		if err = createPostEntryTable(db, "post_entry_utxo_ops"); err != nil {
-			return err
-		}
-
-		return AddUtxoOpColumnsToTable(db, "post_entry_utxo_ops")
+		return createPostEntryTable(db, "post_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE post_entry;
