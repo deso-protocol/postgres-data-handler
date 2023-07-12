@@ -169,7 +169,7 @@ func init() {
 			return err
 		}
 
-		err = createAndAssignPublicKeyTriggerFn(db, "access_group_member_entry", "access_group_owner_public_key")
+		err = createAndAssignPublicKeyTriggerFn(db, "access_group_member_entry", "access_group_member_public_key")
 		if err != nil {
 			return err
 		}
