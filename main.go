@@ -11,16 +11,16 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
-	//"github.com/uptrace/bun/extra/bundebug"
+	"github.com/uptrace/bun/extra/bundebug"
 )
 
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
-	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit := getConfigValues()
+	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries := getConfigValues()
 
 	// Initialize the DB.
-	db, err := setupDb(pgURI, threadLimit)
+	db, err := setupDb(pgURI, threadLimit, logQueries)
 	if err != nil {
 		glog.Fatalf("Error setting up DB: %v", err)
 	}
@@ -56,14 +56,14 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int) {
+func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int, logQueries bool) {
 
-	DB_HOST := viper.GetString("DB_HOST")
-	DB_PORT := viper.GetString("DB_PORT")
-	DB_USERNAME := viper.GetString("DB_USERNAME")
-	DB_PASSWORD := viper.GetString("DB_PASSWORD")
+	dbHost := viper.GetString("DB_HOST")
+	dbPort := viper.GetString("DB_PORT")
+	dbUsername := viper.GetString("DB_USERNAME")
+	dbPassword := viper.GetString("DB_PASSWORD")
 
-	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable", DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT)
+	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable", dbUsername, dbPassword, dbHost, dbPort)
 
 	stateChangeFileName = viper.GetString("STATE_CHANGE_FILE_NAME")
 	if stateChangeFileName == "" {
@@ -87,10 +87,12 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 	if threadLimit == 0 {
 		threadLimit = 25
 	}
-	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit
+	logQueries = viper.GetBool("LOG_QUERIES")
+
+	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries
 }
 
-func setupDb(pgURI string, threadLimit int) (*bun.DB, error) {
+func setupDb(pgURI string, threadLimit int, logQueries bool) (*bun.DB, error) {
 	// Open a PostgreSQL database.
 	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
 	if pgdb == nil {
@@ -104,8 +106,10 @@ func setupDb(pgURI string, threadLimit int) (*bun.DB, error) {
 
 	db.SetMaxIdleConns(threadLimit * 2)
 
-	// Print all queries to stdout for debugging.
-	//db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+	//Print all queries to stdout for debugging.
+	if logQueries {
+		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+	}
 
 	// Apply db migrations.
 	err := handler.RunMigrations(db, false, handler.MigrationTypeInitial)
