@@ -57,10 +57,13 @@ func setupFlags() {
 }
 
 func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int) {
-	pgURI = viper.GetString("PG_URI")
-	if pgURI == "" {
-		pgURI = "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable&timeout=240&connect_timeout=240&write_timeout=240&read_timeout=240&dial_timeout=240"
-	}
+
+	DB_HOST := viper.GetString("DB_HOST")
+	DB_PORT := viper.GetString("DB_PORT")
+	DB_USERNAME := viper.GetString("DB_USERNAME")
+	DB_PASSWORD := viper.GetString("DB_PASSWORD")
+
+	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable", DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT)
 
 	stateChangeFileName = viper.GetString("STATE_CHANGE_FILE_NAME")
 	if stateChangeFileName == "" {
