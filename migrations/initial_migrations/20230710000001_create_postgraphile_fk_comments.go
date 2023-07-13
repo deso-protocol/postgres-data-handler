@@ -24,7 +24,7 @@ func init() {
 			comment on table post_association_entry is E'@foreignKey (transactor_pkid) references wallet (pkid)\n@foreignKey (app_pkid) references wallet (pkid)\n@foreignKey (post_hash) references post_entry (post_hash)\n@foreignKey (block_height) references block (height)';
 			comment on table post_association_entry is E'@foreignKey (transactor_pkid) references wallet (pkid)\n@foreignKey (app_pkid) references wallet (pkid)\n@foreignKey (post_hash) references post_entry (post_hash)\n@foreignKey (block_height) references block (height)';
 			comment on table post_entry is E'@foreignKey (poster_public_key) references wallet (public_key)\n@foreignKey (parent_post_hash) references post_entry (post_hash)\n@foreignKey (reposted_post_hash) references post_entry (post_hash)';
-			comment on table profile_entry is E'@foreignKey (pkid) references wallet (pkid)\n@foreignKey (public_key) references wallet (public_key)\n@unique username';
+			comment on table profile_entry is E'@foreignKey (public_key) references wallet (public_key)\n@unique username';
 			comment on table transaction is E'@foreignKey (block_hash) references block (block_hash)';
 			comment on table user_association_entry is E'@foreignKey (transactor_pkid) references wallet (pkid)\n@foreignKey (app_pkid) references wallet (pkid)\n@foreignKey (target_user_pkid) references wallet (pkid)\n@foreignKey (block_height) references block (height)';
 			comment on table utxo_operation is E'@foreignKey (block_hash, transaction_index) references transaction (block_hash, index_in_block)';
