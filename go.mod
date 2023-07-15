@@ -6,7 +6,6 @@ replace github.com/deso-protocol/core => ../core/
 
 require (
 	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
-	github.com/deso-protocol/state-consumer v1.0.4-0.20230706040416-bba12bd33bad
 	github.com/golang/glog v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.7.1
@@ -14,6 +13,7 @@ require (
 	github.com/uptrace/bun/dialect/pgdialect v1.1.14
 	github.com/uptrace/bun/driver/pgdriver v1.1.14
 	github.com/uptrace/bun/extra/bunbig v1.1.14
+	github.com/uptrace/bun/extra/bundebug v1.1.14
 )
 
 require (
@@ -32,6 +32,7 @@ require (
 	github.com/decred/dcrd/lru v1.1.1 // indirect
 	github.com/deso-protocol/go-deadlock v1.0.0 // indirect
 	github.com/deso-protocol/go-merkle-tree v1.0.0 // indirect
+	github.com/deso-protocol/state-consumer v1.0.4-0.20230715052547-37a1ae00755d // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
@@ -68,7 +69,6 @@ require (
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/unrolled/secure v1.0.8 // indirect
-	github.com/uptrace/bun/extra/bundebug v1.1.14 // indirect
 	github.com/vmihailenco/bufpool v0.1.11 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser v0.1.2 // indirect

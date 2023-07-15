@@ -11,7 +11,10 @@ import (
 type AccessGroupMemberEntry struct {
 	AccessGroupMemberPublicKey string `pg:",use_zero"`
 	AccessGroupMemberKeyName   string `pg:",use_zero"`
-	EncryptedKey               []byte `pg:",use_zero"`
+	AccessGroupKeyName         string `pg:",use_zero"`
+	AccessGroupOwnerPublicKey  string `pg:",use_zero"`
+
+	EncryptedKey []byte `pg:",use_zero"`
 
 	ExtraData map[string]string `bun:"type:jsonb"`
 	BadgerKey []byte            `pg:",pk,use_zero"`
@@ -30,10 +33,15 @@ type PGAccessGroupMemberEntryUtxoOps struct {
 
 // Convert the AccessGroupMember DeSo encoder to the PGAccessGroupMemberEntry struct used by bun.
 func AccessGroupMemberEncoderToPGStruct(accessGroupMemberEntry *lib.AccessGroupMemberEntry, keyBytes []byte) AccessGroupMemberEntry {
+
+	_, accessGroupOwnerPublicKey, accessGroupKeyName, _ := consumer.GetAccessGroupMemberFieldsFromKey(keyBytes)
+
 	pgAccessGroupMemberEntry := AccessGroupMemberEntry{
-		EncryptedKey: accessGroupMemberEntry.EncryptedKey,
-		ExtraData:    consumer.ExtraDataBytesToString(accessGroupMemberEntry.ExtraData),
-		BadgerKey:    keyBytes,
+		EncryptedKey:              accessGroupMemberEntry.EncryptedKey,
+		ExtraData:                 consumer.ExtraDataBytesToString(accessGroupMemberEntry.ExtraData),
+		AccessGroupOwnerPublicKey: consumer.PublicKeyBytesToBase58Check(accessGroupOwnerPublicKey),
+		AccessGroupKeyName:        string(accessGroupKeyName),
+		BadgerKey:                 keyBytes,
 	}
 
 	if accessGroupMemberEntry.AccessGroupMemberKeyName != nil {

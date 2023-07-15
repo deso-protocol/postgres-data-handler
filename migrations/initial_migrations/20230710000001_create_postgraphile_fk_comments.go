@@ -9,6 +9,7 @@ import (
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
+			comment on view account is E'@unique username\n@unique public_key\n@unique pkid\n@primaryKey public_key';
 			comment on table access_group_entry is E'@foreignKey (access_group_owner_public_key) references account (public_key)';
 			comment on table access_group_member_entry is E'@foreignKey (access_group_member_public_key) references account (public_key)';
 			comment on table affected_public_key is E'@foreignKey (public_key) references account (public_key)\n@foreignKey (transaction_hash) references transaction (transaction_hash)';

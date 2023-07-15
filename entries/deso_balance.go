@@ -9,7 +9,7 @@ import (
 )
 
 type DesoBalanceEntry struct {
-	Pkid         string `pg:",use_zero"`
+	PublicKey    string `pg:",use_zero"`
 	BalanceNanos uint64 `pg:",use_zero"`
 	BadgerKey    []byte `pg:",pk,use_zero"`
 }
@@ -28,7 +28,7 @@ type PGDesoBalanceEntryUtxoOps struct {
 // Convert the Diamond DeSo encoder to the PG struct used by bun.
 func DesoBalanceEncoderToPGStruct(desoBalanceEntry *lib.DeSoBalanceEntry, keyBytes []byte) DesoBalanceEntry {
 	return DesoBalanceEntry{
-		Pkid:         consumer.PublicKeyBytesToBase58Check(desoBalanceEntry.PKID[:]),
+		PublicKey:    consumer.PublicKeyBytesToBase58Check(desoBalanceEntry.PublicKey[:]),
 		BalanceNanos: desoBalanceEntry.BalanceNanos,
 		BadgerKey:    keyBytes,
 	}

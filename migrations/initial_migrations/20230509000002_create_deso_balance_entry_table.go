@@ -10,7 +10,7 @@ import (
 func createDesoBalanceEntryTable(db *bun.DB, tableName string) error {
 	_, err := db.Exec(strings.Replace(`
 			CREATE TABLE {tableName} (
-				pkid            VARCHAR NOT NULL,
+				public_key      VARCHAR NOT NULL,
 				balance_nanos   BIGINT NOT NULL,
 				badger_key      BYTEA PRIMARY KEY NOT NULL
 			);
