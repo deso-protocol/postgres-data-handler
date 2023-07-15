@@ -1,6 +1,7 @@
 package entries
 
 import (
+	"bytes"
 	"context"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
@@ -17,6 +18,7 @@ type NewMessageEntry struct {
 	RecipientAccessGroupKeyName        string    `bun:",nullzero"`
 	RecipientAccessGroupPublicKey      string    `bun:",nullzero"`
 	EncryptedText                      string    `pg:",use_zero"`
+	IsGroupChatMessage                 bool      `bun:",nullzero"`
 	Timestamp                          time.Time `pg:",use_zero"`
 
 	ExtraData map[string]string `bun:"type:jsonb"`
@@ -36,11 +38,18 @@ type PGNewMessageEntryUtxoOps struct {
 
 // Convert the NewMessage DeSo encoder to the PGNewMessageEntry struct used by bun.
 func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes []byte) NewMessageEntry {
+	isGroupChatMessage := false
+
+	if bytes.Equal(keyBytes[:1], lib.Prefixes.PrefixGroupChatMessagesIndex) {
+		isGroupChatMessage = true
+	}
+
 	pgNewMessageEntry := NewMessageEntry{
-		EncryptedText: string(newMessageEntry.EncryptedText[:]),
-		Timestamp:     consumer.UnixNanoToTime(newMessageEntry.TimestampNanos),
-		ExtraData:     consumer.ExtraDataBytesToString(newMessageEntry.ExtraData),
-		BadgerKey:     keyBytes,
+		EncryptedText:      string(newMessageEntry.EncryptedText[:]),
+		Timestamp:          consumer.UnixNanoToTime(newMessageEntry.TimestampNanos),
+		ExtraData:          consumer.ExtraDataBytesToString(newMessageEntry.ExtraData),
+		IsGroupChatMessage: isGroupChatMessage,
+		BadgerKey:          keyBytes,
 	}
 
 	if newMessageEntry.SenderAccessGroupOwnerPublicKey != nil {
