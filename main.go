@@ -12,12 +12,15 @@ import (
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
+	"time"
 )
 
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
-	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries := getConfigValues()
+	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, syncDelaySeconds := getConfigValues()
+
+	time.Sleep(time.Duration(syncDelaySeconds) * time.Second)
 
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit, logQueries)
@@ -56,7 +59,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int, logQueries bool) {
+func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int, logQueries bool, syncDelaySeconds int) {
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
@@ -89,7 +92,9 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 	}
 	logQueries = viper.GetBool("LOG_QUERIES")
 
-	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries
+	syncDelaySeconds = viper.GetInt("SYNC_DELAY")
+
+	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, syncDelaySeconds
 }
 
 func setupDb(pgURI string, threadLimit int, logQueries bool) (*bun.DB, error) {
