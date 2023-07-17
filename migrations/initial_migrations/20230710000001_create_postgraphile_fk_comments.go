@@ -17,7 +17,7 @@ func init() {
 			comment on table derived_key_entry is E'@foreignKey (owner_public_key) references account (public_key)';
 			comment on table deso_balance_entry is E'@foreignKey (pkid) references account (public_key)|@fieldName desoBalanceEntry';
 			comment on table diamond_entry is E'@foreignKey (sender_pkid) references account (pkid)\n@foreignKey (receiver_pkid) references account (pkid)\n@foreignKey (post_hash) references post_entry (post_hash)';
-			comment on table follow_entry is E'@foreignKey (follower_pkid) references account (pkid)|@foreignFieldName following\n@foreignKey (followed_pkid) references account (pkid)|@foreignFieldName followers';
+			comment on table follow_entry is E'@foreignKey (follower_pkid) references account (pkid)|@foreignFieldName following|@fieldName follower\n@foreignKey (followed_pkid) references account (pkid)|@foreignFieldName followers|@fieldName followee';
 			comment on table like_entry is E'@foreignKey (public_key) references account (public_key)\n@foreignKey (post_hash) references post_entry (post_hash)';
 			comment on table message_entry is E'@foreignKey (sender_public_key) references account (public_key)\n@foreignKey (recipient_public_key) references account (public_key)';
 			comment on table new_message_entry is E'@foreignKey (sender_access_group_owner_public_key) references account (public_key)\n@foreignKey (recipient_access_group_owner_public_key) references account (public_key)\n@foreignKey (sender_access_group_public_key) references access_group_entry (access_group_public_key)\n@foreignKey (recipient_access_group_public_key) references access_group_entry (access_group_public_key)';
