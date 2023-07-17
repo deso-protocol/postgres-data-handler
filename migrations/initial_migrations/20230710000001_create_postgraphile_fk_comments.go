@@ -13,7 +13,7 @@ func init() {
 			comment on table access_group_entry is E'@name access_group\n@foreignKey (access_group_owner_public_key) references account (public_key)|@foreignFieldName accessGroups|@fieldName owner';
 			comment on table access_group_member_entry is E'@name access_group_member\n@foreignKey (access_group_member_public_key) references account (public_key)';
 			comment on table affected_public_key is E'@foreignKey (public_key) references account (public_key)|@foreignFieldName transactionHashes|@fieldName account\n@foreignKey (transaction_hash) references transaction (transaction_hash)|@fieldName transaction';
-			comment on table balance_entry is E'@foreignKey (hodler_pkid) references account (pkid)|@foreignFieldName tokenBalanceEntries|@fieldName owner\n@foreignKey (creator_pkid) references account (pkid)|@fieldName creator';
+			comment on table balance_entry is E'@name tokenBalance\n@foreignKey (hodler_pkid) references account (pkid)|@foreignFieldName tokenBalances|@fieldName holderAccount\n@foreignKey (creator_pkid) references account (pkid)|@fieldName tokenAccount';
 			comment on table derived_key_entry is E'@foreignKey (owner_public_key) references account (public_key)';
 			comment on table deso_balance_entry is E'@foreignKey (pkid) references account (public_key)|@fieldName desoBalanceEntry';
 			comment on table diamond_entry is E'@foreignKey (sender_pkid) references account (pkid)\n@foreignKey (receiver_pkid) references account (pkid)\n@foreignKey (post_hash) references post_entry (post_hash)';
