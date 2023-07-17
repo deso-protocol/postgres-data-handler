@@ -14,7 +14,7 @@ func createDesoBalanceEntryTable(db *bun.DB, tableName string) error {
 				balance_nanos   BIGINT NOT NULL,
 				badger_key      BYTEA PRIMARY KEY NOT NULL
 			);
-			CREATE INDEX {tableName}_pkid_idx ON {tableName} (pkid);
+			CREATE INDEX {tableName}_pkid_idx ON {tableName} (public_key);
 			-- TODO: Define FK relations
 		`, "{tableName}", tableName, -1))
 	return err

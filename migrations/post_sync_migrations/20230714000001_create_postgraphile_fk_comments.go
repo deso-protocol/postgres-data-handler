@@ -1,13 +1,14 @@
-package initial_migrations
+package post_sync_migrations
 
 import (
+	"PostgresDataHandler/migrations/initial_migrations"
 	"context"
 
 	"github.com/uptrace/bun"
 )
 
 func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+	initial_migrations.Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			comment on view account is E'@unique username\n@unique public_key\n@unique pkid\n@primaryKey public_key';
 			comment on table access_group_entry is E'@foreignKey (access_group_owner_public_key) references account (public_key)';

@@ -1,12 +1,13 @@
-package initial_migrations
+package post_sync_migrations
 
 import (
+	"PostgresDataHandler/migrations/initial_migrations"
 	"context"
 	"github.com/uptrace/bun"
 )
 
 func init() {
-	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+	initial_migrations.Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			CREATE OR REPLACE VIEW wallet AS
 			SELECT pkid, public_key FROM pkid_entry
