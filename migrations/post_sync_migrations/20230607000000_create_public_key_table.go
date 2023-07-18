@@ -66,7 +66,7 @@ func init() {
 				union all
 				select poster_public_key from post_entry
 				union all
-				select pkid as public_key from deso_balance_entry
+				select public_key from deso_balance_entry
 				union all
 				select hodler_pkid as public_key from balance_entry
 				union all

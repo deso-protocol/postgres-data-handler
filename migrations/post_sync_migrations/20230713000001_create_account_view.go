@@ -1,13 +1,12 @@
 package post_sync_migrations
 
 import (
-	"PostgresDataHandler/migrations/initial_migrations"
 	"context"
 	"github.com/uptrace/bun"
 )
 
 func init() {
-	initial_migrations.Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			CREATE OR REPLACE VIEW account AS
 			SELECT

@@ -30,7 +30,6 @@ func init() {
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE balance_entry;
-			DROP TABLE balance_entry_utxo_ops;
 		`)
 		if err != nil {
 			return err

@@ -39,7 +39,7 @@ func BalanceEntryEncoderToPGStruct(balanceEntry *lib.BalanceEntry, keyBytes []by
 		BalanceNanos: bunbig.FromMathBig(balanceEntry.BalanceNanos.ToBig()),
 		HasPurchased: balanceEntry.HasPurchased,
 		// Check to see if the key has the prefix for a DAO coin.
-		IsDaoCoin: bytes.Equal(keyBytes, lib.Prefixes.PrefixHODLerPKIDCreatorPKIDToDAOCoinBalanceEntry),
+		IsDaoCoin: bytes.Equal(keyBytes[:1], lib.Prefixes.PrefixHODLerPKIDCreatorPKIDToDAOCoinBalanceEntry),
 		BadgerKey: keyBytes,
 	}
 }
