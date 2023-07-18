@@ -53,7 +53,6 @@ func init() {
 			comment on table bun_migration_locks is E'@omit';
 			comment on column deso_balance_entry.pkid is E'@name public_key';
 			comment on table pkid_entry is E'@omit';
-			comment on column account.pkid is E'@omit';
 			comment on view wallet is E'@omit';
 		`)
 		if err != nil {
@@ -106,7 +105,6 @@ func init() {
 			comment on column deso_balance_entry.pkid is NULL';
 			comment on table pkid_entry is NULL;
 			comment on view wallet is NULL;
-			comment on column account.pkid is NULL;
 		`)
 		if err != nil {
 			return err
