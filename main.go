@@ -2,6 +2,7 @@ package main
 
 import (
 	"PostgresDataHandler/handler"
+	"PostgresDataHandler/migrations/initial_migrations"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -12,18 +13,15 @@ import (
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
-	"time"
 )
 
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
-	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, syncDelaySeconds := getConfigValues()
-
-	time.Sleep(time.Duration(syncDelaySeconds) * time.Second)
+	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, readOnlyUserPassword := getConfigValues()
 
 	// Initialize the DB.
-	db, err := setupDb(pgURI, threadLimit, logQueries)
+	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword)
 	if err != nil {
 		glog.Fatalf("Error setting up DB: %v", err)
 	}
@@ -59,7 +57,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int, logQueries bool, syncDelaySeconds int) {
+func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string) {
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
@@ -90,14 +88,14 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 	if threadLimit == 0 {
 		threadLimit = 25
 	}
+	
 	logQueries = viper.GetBool("LOG_QUERIES")
+	readonlyUserPassword = viper.GetString("READONLY_USER_PASSWORD")
 
-	syncDelaySeconds = viper.GetInt("SYNC_DELAY")
-
-	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, syncDelaySeconds
+	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, readonlyUserPassword
 }
 
-func setupDb(pgURI string, threadLimit int, logQueries bool) (*bun.DB, error) {
+func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string) (*bun.DB, error) {
 	// Open a PostgreSQL database.
 	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
 	if pgdb == nil {
@@ -115,6 +113,9 @@ func setupDb(pgURI string, threadLimit int, logQueries bool) (*bun.DB, error) {
 	if logQueries {
 		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 	}
+
+	// Set the readonly user password for the initial migrations.
+	initial_migrations.SetQueryUserPassword(readonlyUserPassword)
 
 	// Apply db migrations.
 	err := handler.RunMigrations(db, false, handler.MigrationTypeInitial)
