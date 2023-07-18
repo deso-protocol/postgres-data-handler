@@ -6,6 +6,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
+// TODO: revisit access group relationships when we refactor the messaging app to use the graphql API.
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
@@ -20,7 +21,7 @@ func init() {
 			comment on table follow_entry is E'@name follow\n@foreignKey (follower_pkid) references account (pkid)|@foreignFieldName following|@fieldName follower\n@foreignKey (followed_pkid) references account (pkid)|@foreignFieldName followers|@fieldName followee';
 			comment on table like_entry is E'@name like\n@foreignKey (public_key) references account (public_key)\n@foreignKey (post_hash) references post_entry (post_hash)|@foreignFieldName likes|@fieldName post';
 			comment on table message_entry is E'@name legacyMessage\n@foreignKey (sender_public_key) references account (public_key)|@foreignFieldName legacyMessagesSent|@fieldName sender\n@foreignKey (recipient_public_key) references account (public_key)|@foreignFieldName legacyMessagesReceived|@fieldName receiver';
-			comment on table new_message_entry is E'@foreignKey (sender_access_group_owner_public_key) references account (public_key)\n@foreignKey (recipient_access_group_owner_public_key) references account (public_key)\n@foreignKey (sender_access_group_public_key) references access_group_entry (access_group_public_key)\n@foreignKey (recipient_access_group_public_key) references access_group_entry (access_group_public_key)';
+			comment on table new_message_entry is E'@name message\n@foreignKey (sender_access_group_owner_public_key) references account (public_key)|@foreignFieldName messagesSent|@fieldName sender\n@foreignKey (recipient_access_group_owner_public_key) references account (public_key)|@foreignFieldName messagesReceived|@fieldName receiver\n@foreignKey (sender_access_group_public_key) references access_group_entry (access_group_public_key)\n@foreignKey (recipient_access_group_public_key) references access_group_entry (access_group_public_key)';
 			comment on table nft_bid_entry is E'@foreignKey (bidder_pkid) references account (pkid)\n@foreignKey (nft_post_hash) references post_entry (post_hash)\n@foreignKey (accepted_block_height) references block (height)';
 			comment on table nft_entry is E'@foreignKey (last_owner_pkid) references account (pkid)\n@foreignKey (owner_pkid) references account (pkid)\n@foreignKey (nft_post_hash) references post_entry (post_hash)';
 			comment on table post_association_entry is E'@foreignKey (transactor_pkid) references account (pkid)\n@foreignKey (app_pkid) references account (pkid)\n@foreignKey (post_hash) references post_entry (post_hash)\n@foreignKey (block_height) references block (height)';
