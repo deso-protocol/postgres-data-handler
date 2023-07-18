@@ -18,8 +18,8 @@ func init() {
 			comment on table deso_balance_entry is E'@name desoBalance\n@foreignKey (pkid) references account (public_key)|@fieldName desoBalanceEntry';
 			comment on table diamond_entry is E'@name diamond\n@foreignKey (sender_pkid) references account (pkid)|@foreignFieldName diamondsSent|@fieldName sender\n@foreignKey (receiver_pkid) references account (pkid)|@foreignFieldName diamondsReceived|@fieldName reciever\n@foreignKey (post_hash) references post_entry (post_hash)|@foreignFieldName diamonds|@fieldName post';
 			comment on table follow_entry is E'@name follow\n@foreignKey (follower_pkid) references account (pkid)|@foreignFieldName following|@fieldName follower\n@foreignKey (followed_pkid) references account (pkid)|@foreignFieldName followers|@fieldName followee';
-			comment on table like_entry is E'@foreignKey (public_key) references account (public_key)\n@foreignKey (post_hash) references post_entry (post_hash)';
-			comment on table message_entry is E'@foreignKey (sender_public_key) references account (public_key)\n@foreignKey (recipient_public_key) references account (public_key)';
+			comment on table like_entry is E'@name like\n@foreignKey (public_key) references account (public_key)\n@foreignKey (post_hash) references post_entry (post_hash)';
+			comment on table message_entry is E'@name legacyMessage\n@foreignKey (sender_public_key) references account (public_key)\n@foreignKey (recipient_public_key) references account (public_key)';
 			comment on table new_message_entry is E'@foreignKey (sender_access_group_owner_public_key) references account (public_key)\n@foreignKey (recipient_access_group_owner_public_key) references account (public_key)\n@foreignKey (sender_access_group_public_key) references access_group_entry (access_group_public_key)\n@foreignKey (recipient_access_group_public_key) references access_group_entry (access_group_public_key)';
 			comment on table nft_bid_entry is E'@foreignKey (bidder_pkid) references account (pkid)\n@foreignKey (nft_post_hash) references post_entry (post_hash)\n@foreignKey (accepted_block_height) references block (height)';
 			comment on table nft_entry is E'@foreignKey (last_owner_pkid) references account (pkid)\n@foreignKey (owner_pkid) references account (pkid)\n@foreignKey (nft_post_hash) references post_entry (post_hash)';
@@ -49,6 +49,8 @@ func init() {
 			comment on column profile_entry.badger_key is E'@omit';
 			comment on column transaction.badger_key is E'@omit';
 			comment on column user_association_entry.badger_key is E'@omit';
+			comment on table bun_migrations is E'@omit';
+			comment on table bun_migration_locks is E'@omit';
 		`)
 		if err != nil {
 			return err
@@ -95,6 +97,8 @@ func init() {
 			comment on column profile_entry.badger_key is NULL;
 			comment on column transaction.badger_key is NULL;
 			comment on column user_association_entry.badger_key is NULL;
+			comment on table bun_migrations is NULL;
+			comment on table bun_migration_locks is NULL;
 		`)
 		if err != nil {
 			return err
