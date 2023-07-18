@@ -26,7 +26,7 @@ func init() {
 			comment on table nft_entry is E'@name nft\n@foreignKey (last_owner_pkid) references account (pkid)|@fieldName lastOwner\n@foreignKey (owner_pkid) references account (pkid)|@foreignFieldName nftsOwned|@fieldName owner\n@foreignKey (nft_post_hash) references post_entry (post_hash)|@foreignFieldName nfts|@fieldName post';
 			comment on table post_association_entry is E'@name post_association\n@foreignKey (transactor_pkid) references account (pkid)|@foreignFieldName postAssociations|@fieldName transactor\n@foreignKey (app_pkid) references account (pkid)|@fieldName app\n@foreignKey (post_hash) references post_entry (post_hash)|@fieldName post\n@foreignKey (block_height) references block (height)|@fieldName block';
 			comment on table post_entry is E'@name post\n@foreignKey (poster_public_key) references account (public_key)|@foreignFieldName posts|@fieldName poster\n@foreignKey (parent_post_hash) references post_entry (post_hash)|@foreignFieldName replies|@fieldName parentPost\n@foreignKey (reposted_post_hash) references post_entry (post_hash)|@foreignFieldName reposts|@fieldName repostedPost';
-			comment on table profile_entry is E'@foreignKey (public_key) references account (public_key)\n@unique username';
+			comment on table profile_entry is E'@name profile\n@foreignKey (public_key) references account (public_key)|@foreignFieldName profile|@fieldName account\n@unique username';
 			comment on table transaction is E'@foreignKey (block_hash) references block (block_hash)';
 			comment on table user_association_entry is E'@foreignKey (transactor_pkid) references account (pkid)\n@foreignKey (app_pkid) references account (pkid)\n@foreignKey (target_user_pkid) references account (pkid)\n@foreignKey (block_height) references block (height)';
 			comment on table utxo_operation is E'@foreignKey (block_hash, transaction_index) references transaction (block_hash, index_in_block)';
@@ -51,6 +51,7 @@ func init() {
 			comment on column user_association_entry.badger_key is E'@omit';
 			comment on table bun_migrations is E'@omit';
 			comment on table bun_migration_locks is E'@omit';
+			comment on column deso_balance_entry.pkid is E'@name public_key';
 		`)
 		if err != nil {
 			return err
@@ -99,6 +100,7 @@ func init() {
 			comment on column user_association_entry.badger_key is NULL;
 			comment on table bun_migrations is NULL;
 			comment on table bun_migration_locks is NULL;
+			comment on column deso_balance_entry.pkid is NULL';
 		`)
 		if err != nil {
 			return err
