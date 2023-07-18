@@ -15,8 +15,8 @@ func init() {
 			comment on table affected_public_key is E'@foreignKey (public_key) references account (public_key)|@foreignFieldName transactionHashes|@fieldName account\n@foreignKey (transaction_hash) references transaction (transaction_hash)|@fieldName transaction';
 			comment on table balance_entry is E'@name tokenBalance\n@foreignKey (hodler_pkid) references account (pkid)|@foreignFieldName tokenBalances|@fieldName holderAccount\n@foreignKey (creator_pkid) references account (pkid)|@fieldName tokenAccount';
 			comment on table derived_key_entry is E'@foreignKey (owner_public_key) references account (public_key)';
-			comment on table deso_balance_entry is E'@foreignKey (pkid) references account (public_key)|@fieldName desoBalanceEntry';
-			comment on table diamond_entry is E'@foreignKey (sender_pkid) references account (pkid)\n@foreignKey (receiver_pkid) references account (pkid)\n@foreignKey (post_hash) references post_entry (post_hash)';
+			comment on table deso_balance_entry is E'@name desoBalance\n@foreignKey (pkid) references account (public_key)|@fieldName desoBalanceEntry';
+			comment on table diamond_entry is E'@name diamond\n@foreignKey (sender_pkid) references account (pkid)|@foreignFieldName diamondsSent|@fieldName sender\n@foreignKey (receiver_pkid) references account (pkid)|@foreignFieldName diamondsReceived|@fieldName reciever\n@foreignKey (post_hash) references post_entry (post_hash)|@foreignFieldName diamonds|@fieldName post';
 			comment on table follow_entry is E'@foreignKey (follower_pkid) references account (pkid)|@foreignFieldName following|@fieldName follower\n@foreignKey (followed_pkid) references account (pkid)|@foreignFieldName followers|@fieldName followee';
 			comment on table like_entry is E'@foreignKey (public_key) references account (public_key)\n@foreignKey (post_hash) references post_entry (post_hash)';
 			comment on table message_entry is E'@foreignKey (sender_public_key) references account (public_key)\n@foreignKey (recipient_public_key) references account (public_key)';
