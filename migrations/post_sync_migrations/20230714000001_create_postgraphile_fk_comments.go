@@ -28,7 +28,7 @@ func init() {
 			comment on table post_entry is E'@name post\n@foreignKey (poster_public_key) references account (public_key)|@foreignFieldName posts|@fieldName poster\n@foreignKey (parent_post_hash) references post_entry (post_hash)|@foreignFieldName replies|@fieldName parentPost\n@foreignKey (reposted_post_hash) references post_entry (post_hash)|@foreignFieldName reposts|@fieldName repostedPost';
 			comment on table profile_entry is E'@name profile\n@foreignKey (public_key) references account (public_key)|@foreignFieldName profile|@fieldName account\n@unique username';
 			comment on table transaction is E'@foreignKey (block_hash) references block (block_hash)|@foreignFieldName transactions|@fieldName block';
-			comment on table user_association_entry is E'@foreignKey (transactor_pkid) references account (pkid)\n@foreignKey (app_pkid) references account (pkid)\n@foreignKey (target_user_pkid) references account (pkid)\n@foreignKey (block_height) references block (height)';
+			comment on table user_association_entry is E'@name user_association\n@foreignKey (transactor_pkid) references account (pkid)|@foreignFieldName userAssocationsAsTransactor|@fieldName transactor\n@foreignKey (app_pkid) references account (pkid)|@fieldName app\n@foreignKey (target_user_pkid) references account (pkid)|@foreignFieldName userAssociationsAsTarget|@fieldName target\n@foreignKey (block_height) references block (height)|@fieldName block';
 			comment on table utxo_operation is E'@foreignKey (block_hash, transaction_index) references transaction (block_hash, index_in_block)';
 			comment on column access_group_entry.badger_key is E'@omit';
 			comment on column access_group_member_entry.badger_key is E'@omit';
