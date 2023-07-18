@@ -14,7 +14,7 @@ func init() {
 			comment on table access_group_entry is E'@name access_group\n@foreignKey (access_group_owner_public_key) references account (public_key)|@foreignFieldName accessGroupsOwned|@fieldName owner';
 			comment on table access_group_member_entry is E'@name access_group_member\n@foreignKey (access_group_member_public_key) references account (public_key)|@foreignFieldName accessGroupMemberships|@fieldName member';
 			comment on table affected_public_key is E'@foreignKey (public_key) references account (public_key)|@foreignFieldName transactionHashes|@fieldName account\n@foreignKey (transaction_hash) references transaction (transaction_hash)|@fieldName transaction';
-			comment on table balance_entry is E'@name tokenBalance\n@foreignKey (hodler_pkid) references account (pkid)|@foreignFieldName tokenBalances|@fieldName holder';
+			comment on table balance_entry is E'@name tokenBalance\n@foreignKey (hodler_pkid) references account (pkid)|@foreignFieldName tokenBalances|@fieldName holder\n@foreignKey (creator_pkid) references account (pkid)|@fieldName creator';
 			comment on table derived_key_entry is E'@name derived_key\n@foreignKey (owner_public_key) references account (public_key)|@foreignFieldName derivedKeys|@fieldName owner';
 			comment on table deso_balance_entry is E'@name desoBalance\n@foreignKey (pkid) references account (public_key)|@fieldName desoBalanceEntry';
 			comment on table diamond_entry is E'@name diamond\n@foreignKey (sender_pkid) references account (pkid)|@foreignFieldName diamondsSent|@fieldName sender\n@foreignKey (receiver_pkid) references account (pkid)|@foreignFieldName diamondsReceived|@fieldName reciever\n@foreignKey (post_hash) references post_entry (post_hash)|@foreignFieldName diamonds|@fieldName post';
