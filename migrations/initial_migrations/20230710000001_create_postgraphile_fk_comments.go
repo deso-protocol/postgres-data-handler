@@ -17,7 +17,7 @@ func init() {
 			comment on table derived_key_entry is E'@foreignKey (owner_public_key) references account (public_key)';
 			comment on table deso_balance_entry is E'@name desoBalance\n@foreignKey (pkid) references account (public_key)|@fieldName desoBalanceEntry';
 			comment on table diamond_entry is E'@name diamond\n@foreignKey (sender_pkid) references account (pkid)|@foreignFieldName diamondsSent|@fieldName sender\n@foreignKey (receiver_pkid) references account (pkid)|@foreignFieldName diamondsReceived|@fieldName reciever\n@foreignKey (post_hash) references post_entry (post_hash)|@foreignFieldName diamonds|@fieldName post';
-			comment on table follow_entry is E'@foreignKey (follower_pkid) references account (pkid)|@foreignFieldName following|@fieldName follower\n@foreignKey (followed_pkid) references account (pkid)|@foreignFieldName followers|@fieldName followee';
+			comment on table follow_entry is E'@name follow\n@foreignKey (follower_pkid) references account (pkid)|@foreignFieldName following|@fieldName follower\n@foreignKey (followed_pkid) references account (pkid)|@foreignFieldName followers|@fieldName followee';
 			comment on table like_entry is E'@foreignKey (public_key) references account (public_key)\n@foreignKey (post_hash) references post_entry (post_hash)';
 			comment on table message_entry is E'@foreignKey (sender_public_key) references account (public_key)\n@foreignKey (recipient_public_key) references account (public_key)';
 			comment on table new_message_entry is E'@foreignKey (sender_access_group_owner_public_key) references account (public_key)\n@foreignKey (recipient_access_group_owner_public_key) references account (public_key)\n@foreignKey (sender_access_group_public_key) references access_group_entry (access_group_public_key)\n@foreignKey (recipient_access_group_public_key) references access_group_entry (access_group_public_key)';
@@ -30,6 +30,25 @@ func init() {
 			comment on table transaction is E'@foreignKey (block_hash) references block (block_hash)';
 			comment on table user_association_entry is E'@foreignKey (transactor_pkid) references account (pkid)\n@foreignKey (app_pkid) references account (pkid)\n@foreignKey (target_user_pkid) references account (pkid)\n@foreignKey (block_height) references block (height)';
 			comment on table utxo_operation is E'@foreignKey (block_hash, transaction_index) references transaction (block_hash, index_in_block)';
+			comment on column access_group_entry.badger_key is E'@omit';
+			comment on column access_group_member_entry.badger_key is E'@omit';
+			comment on column balance_entry.badger_key is E'@omit';
+			comment on column block.badger_key is E'@omit';
+			comment on column derived_key_entry.badger_key is E'@omit';
+			comment on column deso_balance_entry.badger_key is E'@omit';
+			comment on column diamond_entry.badger_key is E'@omit';
+			comment on column follow_entry.badger_key is E'@omit';
+			comment on column like_entry.badger_key is E'@omit';
+			comment on column message_entry.badger_key is E'@omit';
+			comment on column new_message_entry.badger_key is E'@omit';
+			comment on column nft_bid_entry.badger_key is E'@omit';
+			comment on column nft_entry.badger_key is E'@omit';
+			comment on column pkid_entry.badger_key is E'@omit';
+			comment on column post_association_entry.badger_key is E'@omit';
+			comment on column post_entry.badger_key is E'@omit';
+			comment on column profile_entry.badger_key is E'@omit';
+			comment on column transaction.badger_key is E'@omit';
+			comment on column user_association_entry.badger_key is E'@omit';
 		`)
 		if err != nil {
 			return err
@@ -57,6 +76,25 @@ func init() {
 			comment on table transaction is NULL;
 			comment on table user_association_entry is NULL;
 			comment on table utxo_operation is NULL;
+			comment on column access_group_entry.badger_key is NULL;
+			comment on column access_group_member_entry.badger_key is NULL;
+			comment on column balance_entry.badger_key is NULL;
+			comment on column block.badger_key is NULL;
+			comment on column derived_key_entry.badger_key is NULL;
+			comment on column deso_balance_entry.badger_key is NULL;
+			comment on column diamond_entry.badger_key is NULL;
+			comment on column follow_entry.badger_key is NULL;
+			comment on column like_entry.badger_key is NULL;
+			comment on column message_entry.badger_key is NULL;
+			comment on column new_message_entry.badger_key is NULL;
+			comment on column nft_bid_entry.badger_key is NULL;
+			comment on column nft_entry.badger_key is NULL;
+			comment on column pkid_entry.badger_key is NULL;
+			comment on column post_association_entry.badger_key is NULL;
+			comment on column post_entry.badger_key is NULL;
+			comment on column profile_entry.badger_key is NULL;
+			comment on column transaction.badger_key is NULL;
+			comment on column user_association_entry.badger_key is NULL;
 		`)
 		if err != nil {
 			return err
