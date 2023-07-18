@@ -49,8 +49,15 @@ func createAndAssignPublicKeyTriggerFn(db *bun.DB, tableName string, fieldName s
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		// Create public key table.
+		// Increase statement timeout to 10 minutes.
 		err := RunMigrationWithRetries(db, `
+ 			SET statement_timeout = 600000;
+		`)
+		if err != nil {
+			return err
+		}
+		// Create public key table.
+		err = RunMigrationWithRetries(db, `
  			CREATE TABLE public_key (
  				public_key VARCHAR PRIMARY KEY
 			);
@@ -59,44 +66,30 @@ func init() {
 			return err
 		}
 		// Populate public key table with initial data post-hypersync.
-		err = RunMigrationWithRetries(db, `
- 			INSERT INTO public_key(public_key)
-			select distinct public_key from (
-				select public_key from profile_entry
-				union all
-				select poster_public_key from post_entry
-				union all
-				select public_key from deso_balance_entry
-				union all
-				select hodler_pkid as public_key from balance_entry
-				union all
-				select creator_pkid as public_key from balance_entry
-				union all
-				select owner_public_key  as public_key from derived_key_entry
-				union all
-				select public_key from pkid_entry
-				union all
-				select sender_public_key as public_key from message_entry
-				union all
-				select recipient_public_key as public_key from message_entry
-				union all
-				select sender_access_group_owner_public_key as public_key from new_message_entry
-				union all
-				select recipient_access_group_owner_public_key as public_key from new_message_entry
-				union all
-				select target_user_pkid as public_key from user_association_entry
-				union all
-				select access_group_owner_public_key as public_key from access_group_entry
-				union all
-				select access_group_member_public_key as public_key from access_group_member_entry
-				union all
-				select follower_pkid as public_key from follow_entry
-				union all
-				select public_key from like_entry
-			) public_keys;
-		`)
-		if err != nil {
-			return err
+		queries := []string{
+			`INSERT INTO public_key(public_key) SELECT DISTINCT public_key FROM profile_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT poster_public_key FROM post_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT public_key FROM deso_balance_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT hodler_pkid AS public_key FROM balance_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT creator_pkid AS public_key FROM balance_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT owner_public_key AS public_key FROM derived_key_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT public_key FROM pkid_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT sender_public_key AS public_key FROM message_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT recipient_public_key AS public_key FROM message_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT sender_access_group_owner_public_key AS public_key FROM new_message_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT recipient_access_group_owner_public_key AS public_key FROM new_message_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT target_user_pkid AS public_key FROM user_association_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT access_group_owner_public_key AS public_key FROM access_group_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT access_group_member_public_key AS public_key FROM access_group_member_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT follower_pkid AS public_key FROM follow_entry ON CONFLICT (public_key) DO NOTHING;`,
+			`INSERT INTO public_key(public_key) SELECT DISTINCT public_key FROM like_entry ON CONFLICT (public_key) DO NOTHING;`,
+		}
+
+		for _, query := range queries {
+			err = RunMigrationWithRetries(db, query)
+			if err != nil {
+				return err
+			}
 		}
 
 		err = createAndAssignPublicKeyTriggerFn(db, "profile_entry", "public_key")
@@ -119,7 +112,7 @@ func init() {
 			return err
 		}
 
-		err = createAndAssignPublicKeyTriggerFn(db, "deso_balance_entry", "pkid")
+		err = createAndAssignPublicKeyTriggerFn(db, "deso_balance_entry", "public_key")
 		if err != nil {
 			return err
 		}

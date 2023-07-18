@@ -84,12 +84,11 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 		fmt.Println("Starting hypersync")
 	case consumer.SyncEventHypersyncComplete:
 		fmt.Println("Hypersync complete")
-		// After hypersync, we don't need to maintain so many idle open connections.
-		postgresDataHandler.DB.SetMaxIdleConns(4)
 		// TODO: Once more encoder types are written out, do a comprehensive comparison between creating indexes
 		// immediately and applying indexes after the chain has been hypersynced.
-		//postgresDataHandler.DB.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 		RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync)
+		// After hypersync, we don't need to maintain so many idle open connections.
+		postgresDataHandler.DB.SetMaxIdleConns(4)
 	case consumer.SyncEventComplete:
 		fmt.Printf("\n***** Sync complete *****\n\n")
 	}
