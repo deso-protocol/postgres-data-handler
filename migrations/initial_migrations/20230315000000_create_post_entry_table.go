@@ -47,6 +47,8 @@ func createPostEntryTable(db *bun.DB, tableName string) error {
 			CREATE INDEX {tableName}_nft_timestamp_idx ON {tableName} (timestamp, is_nft DESC);
 			CREATE INDEX {tableName}_post_extra_data_node_id_idx
 			ON {tableName} ((extra_data ->> 'Node'));
+			CREATE INDEX {tableName}_post_extra_data_blog_slug_title_idx ON post_entry ((extra_data ->> 'BlogTitleSlug'));
+			CREATE INDEX {tableName}_post_extra_data_keys_idx ON post_entry USING gin (extra_data jsonb_path_ops);
 		`, "{tableName}", tableName, -1))
 	return err
 }
