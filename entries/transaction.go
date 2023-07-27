@@ -17,7 +17,7 @@ type TransactionEntry struct {
 	Inputs                       []map[string]string `bun:"type:jsonb"`
 	Outputs                      []map[string]string `bun:"type:jsonb"`
 	FeeNanos                     uint64
-	NonceExperiationBlockHeight  uint64
+	NonceExpirationBlockHeight   uint64
 	NoncePartialId               uint64
 	TxnMeta                      lib.DeSoTxnMetadata `bun:"type:jsonb"`
 	TxIndexMetadata              lib.DeSoEncoder     `bun:"type:jsonb"`
@@ -84,7 +84,7 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 	}
 
 	if transaction.TxnNonce != nil {
-		transactionEntry.NonceExperiationBlockHeight = transaction.TxnNonce.ExpirationBlockHeight
+		transactionEntry.NonceExpirationBlockHeight = transaction.TxnNonce.ExpirationBlockHeight
 		transactionEntry.NoncePartialId = transaction.TxnNonce.PartialID
 	}
 
