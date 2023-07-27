@@ -3,6 +3,7 @@ package main
 import (
 	"PostgresDataHandler/handler"
 	"PostgresDataHandler/migrations/initial_migrations"
+	"PostgresDataHandler/migrations/post_sync_migrations"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -18,10 +19,10 @@ import (
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
-	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, readOnlyUserPassword := getConfigValues()
+	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics := getConfigValues()
 
 	// Initialize the DB.
-	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword)
+	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
 	if err != nil {
 		glog.Fatalf("Error setting up DB: %v", err)
 	}
@@ -57,7 +58,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string) {
+func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool) {
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
@@ -88,14 +89,15 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 	if threadLimit == 0 {
 		threadLimit = 25
 	}
-	
+
 	logQueries = viper.GetBool("LOG_QUERIES")
 	readonlyUserPassword = viper.GetString("READONLY_USER_PASSWORD")
+	explorerStatistics = viper.GetBool("CALCULATE_EXPLORER_STATISTICS")
 
-	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, readonlyUserPassword
+	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics
 }
 
-func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string) (*bun.DB, error) {
+func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {
 	// Open a PostgreSQL database.
 	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
 	if pgdb == nil {
@@ -116,6 +118,8 @@ func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPasswor
 
 	// Set the readonly user password for the initial migrations.
 	initial_migrations.SetQueryUserPassword(readonlyUserPassword)
+
+	post_sync_migrations.SetCalculateExplorerStatistics(calculateExplorerStatistics)
 
 	// Apply db migrations.
 	err := handler.RunMigrations(db, false, handler.MigrationTypeInitial)

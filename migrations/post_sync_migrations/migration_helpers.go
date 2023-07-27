@@ -1,6 +1,7 @@
 package post_sync_migrations
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/uptrace/bun"
@@ -9,12 +10,14 @@ import (
 )
 
 const (
-	retryLimit = 5
+	retryLimit = 10
 )
 
 func RunMigrationWithRetries(db *bun.DB, migrationQuery string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Minute)
+	defer cancel()
 	for ii := 0; ii < retryLimit; ii++ {
-		_, err := db.Exec(migrationQuery)
+		_, err := db.Exec(migrationQuery, ctx)
 		if err == nil {
 			return nil
 		}

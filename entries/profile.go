@@ -17,6 +17,9 @@ type ProfileEntry struct {
 	CreatorBasisPoints               uint64
 	CoinWatermarkNanos               uint64
 	MintingDisabled                  bool
+	DesoLockedNanos                  uint64
+	CcCoinsInCirculationNanos        uint64
+	DaoCoinsInCirculationNanosHex    string
 	DaoCoinMintingDisabled           bool
 	DaoCoinTransferRestrictionStatus lib.TransferRestrictionStatus
 	ExtraData                        map[string]string `bun:"type:jsonb"`
@@ -44,6 +47,9 @@ func ProfileEntryEncoderToPGStruct(profileEntry *lib.ProfileEntry, keyBytes []by
 		CreatorBasisPoints:               profileEntry.CreatorCoinEntry.CreatorBasisPoints,
 		CoinWatermarkNanos:               profileEntry.CreatorCoinEntry.CoinWatermarkNanos,
 		MintingDisabled:                  profileEntry.CreatorCoinEntry.MintingDisabled,
+		DesoLockedNanos:                  profileEntry.CreatorCoinEntry.DeSoLockedNanos,
+		CcCoinsInCirculationNanos:        profileEntry.CreatorCoinEntry.CoinsInCirculationNanos.Uint64(),
+		DaoCoinsInCirculationNanosHex:    profileEntry.DAOCoinEntry.CoinsInCirculationNanos.String(),
 		DaoCoinMintingDisabled:           profileEntry.DAOCoinEntry.MintingDisabled,
 		DaoCoinTransferRestrictionStatus: profileEntry.DAOCoinEntry.TransferRestrictionStatus,
 		ExtraData:                        consumer.ExtraDataBytesToString(profileEntry.ExtraData),

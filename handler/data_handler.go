@@ -2,6 +2,7 @@ package handler
 
 import (
 	"PostgresDataHandler/entries"
+	"PostgresDataHandler/migrations/post_sync_migrations"
 	"fmt"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
@@ -62,6 +63,8 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 		err = entries.PkidBatchOperation(batchedEntries, postgresDataHandler.DB)
 	case lib.EncoderTypeDeSoBalanceEntry:
 		err = entries.DesoBalanceBatchOperation(batchedEntries, postgresDataHandler.DB)
+	case lib.EncoderTypeDAOCoinLimitOrderEntry:
+		err = entries.DaoCoinLimitOrderBatchOperation(batchedEntries, postgresDataHandler.DB)
 	case lib.EncoderTypeUtxoOperationBundle:
 		err = entries.UtxoOperationBatchOperation(batchedEntries, postgresDataHandler.DB)
 	case lib.EncoderTypeBlock:
@@ -84,9 +87,8 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 		fmt.Println("Starting hypersync")
 	case consumer.SyncEventHypersyncComplete:
 		fmt.Println("Hypersync complete")
-		// TODO: Once more encoder types are written out, do a comprehensive comparison between creating indexes
-		// immediately and applying indexes after the chain has been hypersynced.
 		RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync)
+		go post_sync_migrations.RefreshExplorerStatistics(postgresDataHandler.DB)
 		// After hypersync, we don't need to maintain so many idle open connections.
 		postgresDataHandler.DB.SetMaxIdleConns(4)
 	case consumer.SyncEventComplete:

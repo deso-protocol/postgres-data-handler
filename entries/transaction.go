@@ -33,7 +33,7 @@ type TransactionEntry struct {
 }
 
 type PGTransactionEntry struct {
-	bun.BaseModel `bun:"table:transaction"`
+	bun.BaseModel `bun:"table:transaction_partitioned"`
 	TransactionEntry
 }
 
