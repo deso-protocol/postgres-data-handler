@@ -33,8 +33,18 @@ func init() {
 
 		// Create readonly user and grant readonly role to it.
 		_, err = db.Exec(`
-		CREATE USER query_user WITH PASSWORD ?;
-		GRANT readaccess TO query_user;
+		DO
+		$do$
+		BEGIN
+		   IF NOT EXISTS (
+			  SELECT FROM pg_catalog.pg_user 
+			  WHERE  usename = 'query_user') THEN
+		
+			  CREATE USER query_user WITH PASSWORD '?';
+              GRANT readaccess TO query_user;
+		   END IF;
+		END
+		$do$;
 	`, queryUserPassword)
 		if err != nil {
 			return err
