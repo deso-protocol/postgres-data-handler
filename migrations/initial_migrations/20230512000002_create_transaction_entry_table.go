@@ -99,7 +99,7 @@ func init() {
 			CREATE INDEX transaction_partition_02_tx_meta_diamond_level_idx on transaction_partition_02 ((tx_index_metadata ->> 'DiamondLevel'));
 
 			CREATE INDEX transaction_partition_26_buying_coin_pub_key_idx ON transaction_partition_26 ((tx_index_metadata ->> 'BuyingDAOCoinCreatorPublicKey'));
-			CREATE INDEX transaction_partition_26_selling_coin_pub_key_idx ON transaction_partition_26 ((tx_index_metadata ->> 'SellingDAOCoinCreatorPublicKey'));z
+			CREATE INDEX transaction_partition_26_selling_coin_pub_key_idx ON transaction_partition_26 ((tx_index_metadata ->> 'SellingDAOCoinCreatorPublicKey'));
 			CREATE INDEX transaction_partition_26_gin_tx_index_metadata_idx ON transaction_partition_26 USING gin (tx_index_metadata jsonb_path_ops);
 		`)
 		if err != nil {
