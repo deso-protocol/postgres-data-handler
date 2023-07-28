@@ -115,6 +115,12 @@ func init() {
 			where parent_post_hash is null
 			and reposted_post_hash is null
 			and NOT (post_entry.extra_data ? 'BlogDeltaRtfFormat');
+
+			CREATE MATERIALIZED VIEW statistic_post_longform_count AS
+			select count(post_hash) as count from post_entry
+			where parent_post_hash is null
+			and reposted_post_hash is null
+			and (post_entry.extra_data ? 'BlogDeltaRtfFormat');
 			
 			CREATE MATERIALIZED VIEW statistic_comment_count AS
 			select count(post_hash) from post_entry
@@ -357,6 +363,7 @@ func init() {
 				statistic_txn_fee_1_d.avg as txn_fee_1_d,
 				statistic_total_supply.sum as total_supply,
 				statistic_post_count.count as post_count,
+				statistic_post_longform_count.count as post_longform_count,
 				statistic_comment_count.count as comment_count,
 				statistic_repost_count.count as repost_count,
 				statistic_txn_count_creator_coin.count as txn_count_creator_coin,
@@ -383,6 +390,8 @@ func init() {
 			statistic_total_supply
 			CROSS JOIN
 			statistic_post_count
+			CROSS JOIN
+			statistic_post_longform_count
 			CROSS JOIN
 			statistic_comment_count
 			CROSS JOIN

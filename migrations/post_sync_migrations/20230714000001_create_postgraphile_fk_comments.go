@@ -97,6 +97,7 @@ func init() {
 			comment on materialized view statistic_txn_fee_1_d is E'@omit';
 			comment on materialized view statistic_total_supply is E'@omit';
 			comment on materialized view statistic_post_count is E'@omit';
+			comment on materialized view statistic_post_longform_count is E'@omit';
 			comment on materialized view statistic_comment_count is E'@omit';
 			comment on materialized view statistic_repost_count is E'@omit';
 			comment on materialized view statistic_txn_count_creator_coin is E'@omit';
@@ -213,6 +214,7 @@ func init() {
 			comment on materialized view statistic_txn_fee_1_d is NULL;
 			comment on materialized view statistic_total_supply is NULL;
 			comment on materialized view statistic_post_count is NULL;
+			comment on materialized view statistic_post_longform_count is NULL;
 			comment on materialized view statistic_comment_count is NULL;
 			comment on materialized view statistic_repost_count is NULL;
 			comment on materialized view statistic_txn_count_creator_coin is NULL;
