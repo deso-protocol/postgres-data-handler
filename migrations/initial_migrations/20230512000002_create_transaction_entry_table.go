@@ -31,7 +31,7 @@ func init() {
 				badger_key                       bytea    not null,
 				PRIMARY KEY (transaction_hash, txn_type)
 			) PARTITION BY LIST (txn_type);
-			CREATE INDEX transaction_hash_idx ON transaction_partitioned (transaction_hash);
+			CREATE UNIQUE INDEX transaction_hash_idx ON transaction_partitioned (transaction_hash);
 			CREATE INDEX transaction_index_in_block_idx ON transaction_partitioned (index_in_block);
 			CREATE INDEX transaction_index_badger_key_idx ON transaction_partitioned (badger_key);
 			CREATE INDEX transaction_block_hash_index_idx ON transaction_partitioned (block_hash, index_in_block);
