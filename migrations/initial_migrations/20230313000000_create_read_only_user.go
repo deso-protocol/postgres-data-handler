@@ -56,20 +56,23 @@ func init() {
 		if queryUserPassword == "" {
 			return nil
 		}
-		// First, revoke the readaccess role from query_user.
+		// Revoke the readaccess role from query_user. Then reset the default privileges and revoke all permissions that the readaccess role has.
 		_, err := db.Exec(`
-		REVOKE readaccess FROM query_user;
+		DO
+		$do$
+		BEGIN
+		   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'query_user') THEN
+			  REVOKE readaccess FROM query_user;
+		   END IF;
+		   
+		   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'readaccess') THEN
+			  REVOKE ALL ON SCHEMA public FROM readaccess;
+			  REVOKE ALL ON ALL TABLES IN SCHEMA public FROM readaccess;
+			  ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM readaccess;
+		   END IF;
+		END
+		$do$;
 	`)
-		if err != nil {
-			return err
-		}
-
-		// Next, reset the default privileges and revoke all permissions that the readaccess role has.
-		_, err = db.Exec(`
-        REVOKE ALL ON SCHEMA public FROM readaccess;
-        REVOKE ALL ON ALL TABLES IN SCHEMA public FROM readaccess;
-        ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM readaccess;
-    `)
 		if err != nil {
 			return err
 		}
