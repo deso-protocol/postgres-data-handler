@@ -35,7 +35,7 @@ func createDaoCoinLimitOrderEntryTable(db *bun.DB, tableName string) error {
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		return createPostAssociationEntryTable(db, "dao_coin_limit_order_entry")
+		return createDaoCoinLimitOrderEntryTable(db, "dao_coin_limit_order_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP TABLE IF EXISTS dao_coin_limit_order_entry;

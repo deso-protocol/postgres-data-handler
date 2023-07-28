@@ -17,7 +17,7 @@ func RunMigrationWithRetries(db *bun.DB, migrationQuery string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Minute)
 	defer cancel()
 	for ii := 0; ii < retryLimit; ii++ {
-		_, err := db.Exec(migrationQuery, ctx)
+		_, err := db.ExecContext(ctx, migrationQuery)
 		if err == nil {
 			return nil
 		}
