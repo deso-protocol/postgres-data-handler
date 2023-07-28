@@ -46,7 +46,7 @@ func init() {
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE utxo_operation;
+			DROP TABLE IF EXISTS utxo_operation;
 		`)
 		if err != nil {
 			return err

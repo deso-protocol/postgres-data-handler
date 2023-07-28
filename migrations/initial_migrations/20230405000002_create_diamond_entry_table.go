@@ -29,7 +29,7 @@ func init() {
 		return createDiamondEntryTable(db, "diamond_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE diamond_entry;
+			DROP TABLE IF EXISTS diamond_entry;
 		`)
 		if err != nil {
 			return err

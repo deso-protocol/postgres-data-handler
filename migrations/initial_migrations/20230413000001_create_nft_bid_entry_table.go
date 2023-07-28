@@ -33,7 +33,7 @@ func init() {
 		return createNftBidEntryTable(db, "nft_bid_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE nft_bid_entry;
+			DROP TABLE IF EXISTS nft_bid_entry;
 		`)
 		if err != nil {
 			return err

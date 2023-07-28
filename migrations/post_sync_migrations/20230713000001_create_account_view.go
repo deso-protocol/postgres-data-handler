@@ -34,7 +34,7 @@ func init() {
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP VIEW account;
+			DROP VIEW IF EXISTS account;
 		`)
 		if err != nil {
 			return err

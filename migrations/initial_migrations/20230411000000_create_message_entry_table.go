@@ -40,7 +40,7 @@ func init() {
 		return createMessageEntryTable(db, "message_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE message_entry;
+			DROP TABLE IF EXISTS message_entry;
 		`)
 		if err != nil {
 			return err

@@ -25,7 +25,7 @@ func init() {
 		return createDesoBalanceEntryTable(db, "deso_balance_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE deso_balance_entry;
+			DROP TABLE IF EXISTS deso_balance_entry;
 		`)
 		if err != nil {
 			return err

@@ -34,7 +34,7 @@ func init() {
 		return createDerivedKeyEntryTable(db, "derived_key_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE derived_key_entry;
+			DROP TABLE IF EXISTS derived_key_entry;
 		`)
 		if err != nil {
 			return err

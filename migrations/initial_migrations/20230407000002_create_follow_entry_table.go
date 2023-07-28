@@ -27,7 +27,7 @@ func init() {
 		return createFollowEntryTable(db, "follow_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE follow_entry;
+			DROP TABLE IF EXISTS follow_entry;
 		`)
 		if err != nil {
 			return err

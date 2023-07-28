@@ -115,8 +115,8 @@ func init() {
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP VIEW transaction;
-			DROP TABLE transaction_partitioned;
+			DROP VIEW IF EXISTS transaction;
+			DROP TABLE IF EXISTS transaction_partitioned;
 		`)
 		if err != nil {
 			return err

@@ -76,7 +76,7 @@ func init() {
 
 		// Next, delete the query_user.
 		_, err = db.Exec(`
-		DROP USER query_user;
+		DROP USER IF EXISTS query_user;
 	`)
 		if err != nil {
 			return err
@@ -84,7 +84,7 @@ func init() {
 
 		// Lastly, delete the readaccess role.
 		_, err = db.Exec(`
-		DROP ROLE readaccess;
+		DROP ROLE IF EXISTS readaccess;
 	`)
 		if err != nil {
 			return err

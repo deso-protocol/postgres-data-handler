@@ -29,7 +29,7 @@ func init() {
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE block;
+			DROP TABLE IF EXISTS block;
 		`)
 		if err != nil {
 			return err

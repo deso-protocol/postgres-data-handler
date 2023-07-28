@@ -36,7 +36,7 @@ func init() {
 		return createPostAssociationEntryTable(db, "post_association_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE post_association_entry;
+			DROP TABLE IF EXISTS post_association_entry;
 		`)
 		if err != nil {
 			return err

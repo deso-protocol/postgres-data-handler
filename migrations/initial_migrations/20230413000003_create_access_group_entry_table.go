@@ -30,7 +30,7 @@ func init() {
 		return createAccessGroupEntryTable(db, "access_group_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE access_group_entry;
+			DROP TABLE IF EXISTS access_group_entry;
 		`)
 		if err != nil {
 			return err

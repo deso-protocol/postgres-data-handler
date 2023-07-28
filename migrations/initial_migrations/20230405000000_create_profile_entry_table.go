@@ -39,7 +39,7 @@ func init() {
 		return createProfileEntryTable(db, "profile_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE profile_entry;
+			DROP TABLE IF EXISTS profile_entry;
 		`)
 		if err != nil {
 			return err

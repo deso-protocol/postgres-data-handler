@@ -22,7 +22,7 @@ func init() {
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE affected_public_key;
+			DROP TABLE IF EXISTS affected_public_key;
 		`)
 		if err != nil {
 			return err

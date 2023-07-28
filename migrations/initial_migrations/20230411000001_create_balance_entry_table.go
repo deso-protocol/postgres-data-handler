@@ -29,7 +29,7 @@ func init() {
 		return createBalanceEntryTable(db, "balance_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE balance_entry;
+			DROP TABLE IF EXISTS balance_entry;
 		`)
 		if err != nil {
 			return err

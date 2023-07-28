@@ -68,7 +68,7 @@ func init() {
 		return createPostEntryTable(db, "post_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE post_entry;
+			DROP TABLE IF EXISTS post_entry;
 		`)
 		if err != nil {
 			return err

@@ -419,39 +419,39 @@ func init() {
 			return nil
 		}
 		_, err := db.Exec(`
-			DROP FUNCTION refresh_statistic_views;
-			DROP VIEW statistic_dashboard;
-			DROP MATERIALIZED VIEW statistic_txn_count_all;
-			DROP MATERIALIZED VIEW statistic_txn_count_30_d;
-			DROP MATERIALIZED VIEW statistic_wallet_count_all;
-			DROP MATERIALIZED VIEW statistic_wallet_count_30_d;
-			DROP MATERIALIZED VIEW statistic_block_height_current;
-			DROP MATERIALIZED VIEW statistic_txn_count_pending;
-			DROP MATERIALIZED VIEW statistic_txn_fee_1_d;
-			DROP MATERIALIZED VIEW statistic_total_supply;
-			DROP MATERIALIZED VIEW statistic_post_count;
-			DROP MATERIALIZED VIEW statistic_comment_count;
-			DROP MATERIALIZED VIEW statistic_repost_count;
-			DROP MATERIALIZED VIEW statistic_txn_count_creator_coin;
-			DROP MATERIALIZED VIEW statistic_txn_count_nft;
-			DROP MATERIALIZED VIEW statistic_txn_count_dex;
-			DROP MATERIALIZED VIEW statistic_txn_count_social;
-			DROP MATERIALIZED VIEW statistic_follow_count;
-			DROP MATERIALIZED VIEW statistic_message_count;
-			DROP MATERIALIZED VIEW statistic_social_leaderboard_likes;
-			DROP MATERIALIZED VIEW statistic_social_leaderboard_reactions;
-			DROP MATERIALIZED VIEW statistic_social_leaderboard_diamonds;
-			DROP MATERIALIZED VIEW statistic_social_leaderboard_reposts;
-			DROP MATERIALIZED VIEW statistic_social_leaderboard_comments;
-			DROP MATERIALIZED VIEW statistic_social_leaderboard;
-			DROP MATERIALIZED VIEW statistic_nft_leaderboard;
-			DROP MATERIALIZED VIEW statistic_defi_leaderboard;
-			DROP MATERIALIZED VIEW statistic_txn_count_monthly;
-			DROP MATERIALIZED VIEW statistic_wallet_count_monthly;
-			DROP TABLE public_key_first_transaction;
-			DROP FUNCTION refresh_public_key_first_transaction;
-			DROP FUNCTION get_transaction_count;
-			DROP FUNCTION hex_to_decimal;
+			DROP FUNCTION IF EXISTS refresh_statistic_views;
+			DROP VIEW IF EXISTS statistic_dashboard;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_all;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_30_d;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_wallet_count_all;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_wallet_count_30_d;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_block_height_current;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_pending;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_fee_1_d;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_total_supply;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_post_count;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_comment_count;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_repost_count;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_creator_coin;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_nft;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_dex;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_social;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_follow_count;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_message_count;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_social_leaderboard_likes;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_social_leaderboard_reactions;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_social_leaderboard_diamonds;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_social_leaderboard_reposts;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_social_leaderboard_comments;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_social_leaderboard;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_nft_leaderboard;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_defi_leaderboard;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_monthly;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_wallet_count_monthly;
+			DROP TABLE IF EXISTS public_key_first_transaction;
+			DROP FUNCTION IF EXISTS refresh_public_key_first_transaction;
+			DROP FUNCTION IF EXISTS get_transaction_count;
+			DROP FUNCTION IF EXISTS hex_to_decimal;
 		`)
 		if err != nil {
 			return err
