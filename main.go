@@ -65,7 +65,7 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 	dbUsername := viper.GetString("DB_USERNAME")
 	dbPassword := viper.GetString("DB_PASSWORD")
 
-	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable", dbUsername, dbPassword, dbHost, dbPort)
+	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable&timeout=1200s", dbUsername, dbPassword, dbHost, dbPort)
 
 	stateChangeFileName = viper.GetString("STATE_CHANGE_FILE_NAME")
 	if stateChangeFileName == "" {
