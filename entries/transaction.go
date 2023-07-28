@@ -134,7 +134,7 @@ func bulkInsertTransactionEntry(entries []*PGTransactionEntry, db *bun.DB, opera
 	transactionQuery := db.NewInsert().Model(&entries)
 
 	if operationType == lib.DbOperationTypeUpsert {
-		transactionQuery = transactionQuery.On("CONFLICT (transaction_hash) DO UPDATE")
+		transactionQuery = transactionQuery.On("CONFLICT (transaction_hash, txn_type) DO UPDATE")
 	}
 
 	if _, err := transactionQuery.Exec(context.Background()); err != nil {
