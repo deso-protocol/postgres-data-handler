@@ -40,7 +40,7 @@ func init() {
 			  SELECT FROM pg_catalog.pg_user 
 			  WHERE  usename = 'query_user') THEN
 		
-			  CREATE USER query_user WITH PASSWORD '?';
+			  CREATE USER query_user WITH PASSWORD ?;
               GRANT readaccess TO query_user;
 		   END IF;
 		END
