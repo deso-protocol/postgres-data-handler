@@ -266,11 +266,7 @@ func init() {
 			group by t.public_key, pe.username
 			order by sum(COALESCE(CAST(tx_index_metadata ->> 'BidAmountNanos' AS BIGINT), 0)) desc
 			limit 10;
-			
-			CREATE INDEX transaction_partition_26_buying_coin_pub_key_idx ON transaction_partition_26 ((tx_index_metadata ->> 'BuyingDAOCoinCreatorPublicKey'));
-			CREATE INDEX transaction_partition_26_selling_coin_pub_key_idx ON transaction_partition_26 ((tx_index_metadata ->> 'SellingDAOCoinCreatorPublicKey'));z
-			CREATE INDEX idx_gin_tx_index_metadata ON transaction_partition_26 USING gin (tx_index_metadata jsonb_path_ops);
-			
+
 			create or replace function hex_to_decimal(hexval character varying) returns numeric
 				language plpgsql
 			as
