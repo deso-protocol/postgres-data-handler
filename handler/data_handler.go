@@ -87,12 +87,11 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 		fmt.Println("Starting hypersync")
 	case consumer.SyncEventHypersyncComplete:
 		fmt.Println("Hypersync complete")
+	case consumer.SyncEventBlocksyncStart:
 		RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync)
 		go post_sync_migrations.RefreshExplorerStatistics(postgresDataHandler.DB)
 		// After hypersync, we don't need to maintain so many idle open connections.
 		postgresDataHandler.DB.SetMaxIdleConns(4)
-	case consumer.SyncEventComplete:
-		fmt.Printf("\n***** Sync complete *****\n\n")
 	}
 
 	return nil

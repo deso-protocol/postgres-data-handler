@@ -32,7 +32,7 @@ var (
 		{Query: "REFRESH MATERIALIZED VIEW statistic_txn_count_social", Ticker: time.NewTicker(60 * time.Second)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_follow_count", Ticker: time.NewTicker(60 * time.Second)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_message_count", Ticker: time.NewTicker(60 * time.Second)},
-		{Query: "PERFORM refresh_public_key_first_transaction()", Ticker: time.NewTicker(5 * time.Minute)},
+		{Query: "SELECT refresh_public_key_first_transaction()", Ticker: time.NewTicker(5 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_social_leaderboard_likes", Ticker: time.NewTicker(10 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_social_leaderboard_reactions", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_social_leaderboard_diamonds", Ticker: time.NewTicker(15 * time.Minute)},
