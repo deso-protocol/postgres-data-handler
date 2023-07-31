@@ -102,7 +102,7 @@ func init() {
 			select count(*) as count from transaction where block_hash = '';
 			
 			CREATE MATERIALIZED VIEW statistic_txn_fee_1_d AS
-			select avg(t.fee_nanos) as avg from transaction t
+			select avg(t.fee_nanos) as avg from transaction_partition_05 t
 			join block b on t.block_hash = b.block_hash
 			where b.timestamp > NOW() - INTERVAL '1 day'
 			and t.fee_nanos != 0;
@@ -183,9 +183,19 @@ func init() {
 			CREATE MATERIALIZED VIEW statistic_wallet_count_all AS
 			SELECT COALESCE(reltuples::bigint, 0) as count FROM pg_class WHERE relname = 'public_key_first_transaction';
 			
-			CREATE MATERIALIZED VIEW statistic_wallet_count_30_d AS
+			CREATE MATERIALIZED VIEW statistic_new_wallet_count_30_d AS
 			SELECT count(*) from public_key_first_transaction
 			WHERE timestamp > NOW() - INTERVAL '30 days';
+
+			CREATE MATERIALIZED VIEW statistic_active_wallet_count_30_d AS
+			WITH filtered_block AS (
+			  SELECT block_hash
+			  FROM block
+			  WHERE timestamp > current_date - interval '1 month'
+			)
+			SELECT COUNT(DISTINCT t.public_key)
+			FROM transaction_partitioned t
+			JOIN filtered_block fb ON t.block_hash = fb.block_hash;
 
 			CREATE MATERIALIZED VIEW statistic_social_leaderboard_likes AS
 			select count(*) as count, pe.poster_public_key from transaction_partition_10 t
@@ -342,6 +352,31 @@ func init() {
 			FROM public_key_first_transaction
 			WHERE timestamp > NOW() - INTERVAL '1 year'
 			GROUP BY month;
+
+			CREATE MATERIALIZED VIEW statistic_txn_count_daily AS
+			SELECT DATE(b.timestamp) AS day, COUNT(*) AS transaction_count
+			FROM transaction t
+			JOIN block b ON t.block_hash = b.block_hash
+			WHERE b.timestamp > NOW() - INTERVAL '1 month'
+			GROUP BY day;
+			
+			CREATE MATERIALIZED VIEW statistic_new_wallet_count_daily AS
+			SELECT date(timestamp) AS day, COUNT(*) AS wallet_count
+			FROM public_key_first_transaction
+			WHERE timestamp > NOW() - INTERVAL '1 month'
+			GROUP BY day;
+
+			CREATE MATERIALIZED VIEW statistic_active_wallet_count_daily AS
+			WITH filtered_block AS (
+			  SELECT block_hash, DATE(timestamp) as day
+			  FROM block
+			  WHERE timestamp > current_date - interval '1 month'
+			)
+			SELECT fb.day, COUNT(DISTINCT t.public_key)
+			FROM transaction_partitioned t
+			JOIN filtered_block fb ON t.block_hash = fb.block_hash
+			GROUP BY fb.day
+			ORDER BY fb.day;
 		`)
 		if err != nil {
 			return err
@@ -353,7 +388,8 @@ func init() {
 				statistic_txn_count_all.count as txn_count_all,
 				statistic_txn_count_30_d.count as txn_count_30_d,
 				statistic_wallet_count_all.count as wallet_count_all,
-				statistic_wallet_count_30_d.count as wallet_count_30_d,
+				statistic_active_wallet_count_30_d.count as active_wallet_count_30_d,
+				statistic_new_wallet_count_30_d.count as new_wallet_count_30_d,
 				statistic_block_height_current.height as block_height_current,
 				statistic_txn_count_pending.count as txn_count_pending,
 				statistic_txn_fee_1_d.avg as txn_fee_1_d,
@@ -375,7 +411,9 @@ func init() {
 			CROSS JOIN
 			statistic_wallet_count_all
 			CROSS JOIN
-			statistic_wallet_count_30_d
+			statistic_active_wallet_count_30_d
+			CROSS JOIN
+			statistic_new_wallet_count_30_d
 			CROSS JOIN
 			statistic_block_height_current
 			CROSS JOIN
@@ -420,7 +458,8 @@ func init() {
 			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_all;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_30_d;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_wallet_count_all;
-			DROP MATERIALIZED VIEW IF EXISTS statistic_wallet_count_30_d;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_new_wallet_count_30_d;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_active_wallet_count_30_d;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_block_height_current;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_pending;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_fee_1_d;
@@ -444,6 +483,9 @@ func init() {
 			DROP MATERIALIZED VIEW IF EXISTS statistic_defi_leaderboard;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_monthly;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_wallet_count_monthly;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_daily;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_new_wallet_count_daily;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_active_wallet_count_daily;
 			DROP TABLE IF EXISTS public_key_first_transaction;
 			DROP FUNCTION IF EXISTS refresh_public_key_first_transaction;
 			DROP FUNCTION IF EXISTS get_transaction_count;

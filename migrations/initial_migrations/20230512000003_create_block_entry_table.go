@@ -21,6 +21,7 @@ func init() {
 			CREATE INDEX block_prev_block_hash_idx ON block (prev_block_hash);
 			CREATE INDEX block_height_idx ON block (height desc);
 			CREATE INDEX block_timestamp_idx ON block (timestamp desc);
+			CREATE INDEX block_blockhash_timestamp_idx ON block (block_hash, timestamp desc);
 			CREATE UNIQUE INDEX block_badger_key_idx ON block (badger_key);
 		`)
 		if err != nil {

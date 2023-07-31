@@ -88,10 +88,22 @@ func init() {
 			comment on table transaction_partition_32 is E'@omit';
 			comment on table transaction_partition_33 is E'@omit';
 			comment on view wallet is E'@omit';
+		`)
+		if err != nil {
+			return err
+		}
+
+		// Only annotate the explorer statistics views if the env var is set to enable them.
+		if !calculateExplorerStatistics {
+			return nil
+		}
+
+		_, err = db.Exec(`
 			comment on materialized view statistic_txn_count_all is E'@omit';
 			comment on materialized view statistic_txn_count_30_d is E'@omit';
 			comment on materialized view statistic_wallet_count_all is E'@omit';
-			comment on materialized view statistic_wallet_count_30_d is E'@omit';
+			comment on materialized view statistic_new_wallet_count_30_d is E'@omit';
+			comment on materialized view statistic_active_wallet_count_30_d is E'@omit';
 			comment on materialized view statistic_block_height_current is E'@omit';
 			comment on materialized view statistic_txn_count_pending is E'@omit';
 			comment on materialized view statistic_txn_fee_1_d is E'@omit';
@@ -120,11 +132,15 @@ func init() {
 			comment on materialized view statistic_nft_leaderboard is E'@name nftLeaderboardStat';
 			comment on materialized view statistic_defi_leaderboard is E'@name defiLeaderboardStat';
 			comment on materialized view statistic_txn_count_monthly is E'@name monthlyTxnCountStat';
-			comment on materialized view statistic_wallet_count_monthly is E'@name monthlyWalletCountStat';
+			comment on materialized view statistic_wallet_count_monthly is E'@name monthlyNewWalletCountStat';
+			comment on materialized view statistic_txn_count_daily is E'@name dailyTxnCountStat';
+			comment on materialized view statistic_new_wallet_count_daily is E'@name dailyNewWalletCountStat';
+			comment on materialized view statistic_active_wallet_count_daily is E'@name dailyActiveWalletCountStat';
 		`)
 		if err != nil {
 			return err
 		}
+
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
@@ -205,10 +221,22 @@ func init() {
 			comment on table transaction_partition_31 is NULL;
 			comment on table transaction_partition_32 is NULL;
 			comment on table transaction_partition_33 is NULL;
+		`)
+		if err != nil {
+			return err
+		}
+
+		// Only revert the explorer statistics views if the env var is set to enable them.
+		if !calculateExplorerStatistics {
+			return nil
+		}
+
+		_, err = db.Exec(`
 			comment on materialized view statistic_txn_count_all is NULL;
 			comment on materialized view statistic_txn_count_30_d is NULL;
 			comment on materialized view statistic_wallet_count_all is NULL;
-			comment on materialized view statistic_wallet_count_30_d is NULL;
+			comment on materialized view statistic_new_wallet_count_30_d is NULL;
+			comment on materialized view statistic_active_wallet_count_30_d is NULL;
 			comment on materialized view statistic_block_height_current is NULL;
 			comment on materialized view statistic_txn_count_pending is NULL;
 			comment on materialized view statistic_txn_fee_1_d is NULL;
@@ -238,10 +266,15 @@ func init() {
 			comment on materialized view statistic_defi_leaderboard is NULL;
 			comment on materialized view statistic_txn_count_monthly is NULL;
 			comment on materialized view statistic_wallet_count_monthly is NULL;
+			comment on materialized view statistic_wallet_count_monthly is NULL;
+			comment on materialized view statistic_txn_count_daily is NULL;
+			comment on materialized view statistic_new_wallet_count_daily is NULL;
+			comment on materialized view statistic_active_wallet_count_daily is NULL;
 		`)
 		if err != nil {
 			return err
 		}
+
 		return nil
 	})
 }

@@ -18,7 +18,8 @@ var (
 		{Query: "REFRESH MATERIALIZED VIEW statistic_txn_count_all", Ticker: time.NewTicker(60 * time.Second)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_txn_count_30_d", Ticker: time.NewTicker(60 * time.Second)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_wallet_count_all", Ticker: time.NewTicker(60 * time.Second)},
-		{Query: "REFRESH MATERIALIZED VIEW statistic_wallet_count_30_d", Ticker: time.NewTicker(60 * time.Second)},
+		{Query: "REFRESH MATERIALIZED VIEW statistic_new_wallet_count_30_d", Ticker: time.NewTicker(60 * time.Second)},
+		{Query: "REFRESH MATERIALIZED VIEW statistic_active_wallet_count_30_d", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_block_height_current", Ticker: time.NewTicker(60 * time.Second)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_txn_count_pending", Ticker: time.NewTicker(60 * time.Second)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_txn_fee_1_d", Ticker: time.NewTicker(60 * time.Second)},
@@ -42,7 +43,10 @@ var (
 		{Query: "REFRESH MATERIALIZED VIEW statistic_nft_leaderboard", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_defi_leaderboard", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW statistic_txn_count_monthly", Ticker: time.NewTicker(10 * time.Minute)},
-		{Query: "REFRESH MATERIALIZED VIEW statistic_wallet_count_monthly", Ticker: time.NewTicker(5 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW statistic_wallet_count_monthly", Ticker: time.NewTicker(10 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW statistic_txn_count_daily", Ticker: time.NewTicker(10 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW statistic_new_wallet_count_daily", Ticker: time.NewTicker(10 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW statistic_active_wallet_count_daily", Ticker: time.NewTicker(10 * time.Minute)},
 	}
 )
 
