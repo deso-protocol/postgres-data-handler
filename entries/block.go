@@ -74,7 +74,7 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 		blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes)
 		pgBlockEntrySlice = append(pgBlockEntrySlice, blockEntry)
 		for jj, transaction := range block.Txns {
-			pgTransactionEntry, err := TransactionEncoderToPGStruct(transaction, uint64(jj), blockEntry.BlockHash)
+			pgTransactionEntry, err := TransactionEncoderToPGStruct(transaction, uint64(jj), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp)
 			if err != nil {
 				return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Problem converting transaction to PG struct")
 			}

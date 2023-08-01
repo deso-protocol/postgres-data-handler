@@ -8,6 +8,7 @@ import (
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
+	"time"
 )
 
 type TransactionEntry struct {
@@ -29,7 +30,9 @@ type TransactionEntry struct {
 	ExtraData                    map[string]string `bun:"type:jsonb"`
 	Signature                    []byte
 	IndexInBlock                 uint64
-	BadgerKey                    []byte `pg:",use_zero"`
+	BlockHeight                  uint64
+	Timestamp                    time.Time `pg:",use_zero"`
+	BadgerKey                    []byte    `pg:",use_zero"`
 }
 
 type PGTransactionEntry struct {
@@ -37,7 +40,7 @@ type PGTransactionEntry struct {
 	TransactionEntry
 }
 
-func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64, blockHash string) (*PGTransactionEntry, error) {
+func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64, blockHash string, blockHeight uint64, timestamp time.Time) (*PGTransactionEntry, error) {
 
 	var txInputs []map[string]string
 	for _, input := range transaction.TxInputs {
@@ -79,6 +82,8 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 			PublicKey:       consumer.PublicKeyBytesToBase58Check(transaction.PublicKey[:]),
 			ExtraData:       consumer.ExtraDataBytesToString(transaction.ExtraData),
 			IndexInBlock:    blockIndex,
+			BlockHeight:     blockHeight,
+			Timestamp:       timestamp,
 			BadgerKey:       transaction.Hash()[:],
 		},
 	}
@@ -120,7 +125,7 @@ func transformTransactionEntry(entries []*lib.StateChangeEntry) ([]*PGTransactio
 
 	for _, entry := range uniqueTransactions {
 		transaction := entry.Encoder.(*lib.MsgDeSoTxn)
-		transactionEntry, err := TransactionEncoderToPGStruct(transaction, 0, "")
+		transactionEntry, err := TransactionEncoderToPGStruct(transaction, 0, "", 0, time.Now())
 		if err != nil {
 			return nil, errors.Wrapf(err, "entries.transformAndBulkInsertTransactionEntry: Problem converting transaction to PG struct")
 		}

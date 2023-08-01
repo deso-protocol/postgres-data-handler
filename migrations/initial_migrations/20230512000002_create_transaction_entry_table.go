@@ -28,10 +28,14 @@ func init() {
 				signature                        bytea,
 				txn_bytes                        bytea    not null,
 				index_in_block                   integer  not null,
+				block_height    				 bigint,
+				timestamp                        timestamp,
 				badger_key                       bytea    not null,
 				PRIMARY KEY (transaction_hash, txn_type)
 			) PARTITION BY LIST (txn_type);
 			CREATE INDEX transaction_hash_idx ON transaction_partitioned (transaction_hash);
+			CREATE INDEX transaction_block_height_idx ON transaction_partitioned (block_height desc);
+			CREATE INDEX transaction_timestamp_idx ON transaction_partitioned (timestamp desc);
 			CREATE INDEX transaction_index_in_block_idx ON transaction_partitioned (index_in_block);
 			CREATE INDEX transaction_index_badger_key_idx ON transaction_partitioned (badger_key);
 			CREATE INDEX transaction_block_hash_index_idx ON transaction_partitioned (block_hash, index_in_block);
