@@ -52,7 +52,7 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 	var txOutputs []map[string]string
 	for _, output := range transaction.TxOutputs {
 		txOutputs = append(txOutputs, map[string]string{
-			"public_key":   hex.EncodeToString(output.PublicKey[:]),
+			"public_key":   consumer.PublicKeyBytesToBase58Check(output.PublicKey[:]),
 			"amount_nanos": fmt.Sprintf("%d", output.AmountNanos),
 		})
 	}

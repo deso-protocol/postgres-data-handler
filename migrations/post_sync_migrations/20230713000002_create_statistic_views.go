@@ -86,54 +86,78 @@ func init() {
 
 		err = RunMigrationWithRetries(db, `
 			CREATE MATERIALIZED VIEW statistic_txn_count_all AS
-			SELECT SUM(get_transaction_count(s.i)) as count
+			SELECT SUM(get_transaction_count(s.i)) as count,
+			       0 as id
 			FROM generate_series(1, 33) AS s(i);
-			
+
+            CREATE UNIQUE INDEX statistic_txn_count_all_unique_index ON statistic_txn_count_all (id);
+
 			CREATE MATERIALIZED VIEW statistic_txn_count_30_d AS
-			select count(*) from transaction t
+			select count(*), 0 as id from transaction t
 			join block b
 			on t.block_hash = b.block_hash
 			where b.timestamp > NOW() - INTERVAL '30 days';
-			
+
+            CREATE UNIQUE INDEX statistic_txn_count_30_d_unique_index ON statistic_txn_count_30_d (id);
+
 			CREATE MATERIALIZED VIEW statistic_block_height_current AS
-			select height from block order by height desc limit 1;
-			
+			select height, 0 as id from block order by height desc limit 1;
+
+            CREATE UNIQUE INDEX statistic_block_height_current_unique_index ON statistic_block_height_current (id);
+
 			CREATE MATERIALIZED VIEW statistic_txn_count_pending AS
-			select count(*) as count from transaction where block_hash = '';
-			
+			select count(*) as count, 0 as id from transaction where block_hash = '';
+
+            CREATE UNIQUE INDEX statistic_txn_count_pending_unique_index ON statistic_txn_count_pending (id);
+
 			CREATE MATERIALIZED VIEW statistic_txn_fee_1_d AS
-			select avg(t.fee_nanos) as avg from transaction_partition_05 t
+			select avg(t.fee_nanos) as avg, 0 as id from transaction_partition_05 t
 			join block b on t.block_hash = b.block_hash
 			where b.timestamp > NOW() - INTERVAL '1 day'
 			and t.fee_nanos != 0;
-			
+
+            CREATE UNIQUE INDEX statistic_txn_fee_1_d_unique_index ON statistic_txn_fee_1_d (id);
+
 			CREATE MATERIALIZED VIEW statistic_total_supply AS
-			select sum(balance_nanos) as sum from deso_balance_entry;
-			
+			select sum(balance_nanos) as sum, 0 as id from deso_balance_entry;
+
+            CREATE UNIQUE INDEX statistic_total_supply_unique_index ON statistic_total_supply (id);
+
 			CREATE MATERIALIZED VIEW statistic_post_count AS
-			select count(post_hash) as count from post_entry
+			select count(post_hash) as count, 0 as id from post_entry
 			where parent_post_hash is null
 			and reposted_post_hash is null
 			and NOT (post_entry.extra_data ? 'BlogDeltaRtfFormat');
 
+            CREATE UNIQUE INDEX statistic_post_count_unique_index ON statistic_post_count (id);
+
 			CREATE MATERIALIZED VIEW statistic_post_longform_count AS
-			select count(post_hash) as count from post_entry
+			select count(post_hash) as count, 0 as id from post_entry
 			where parent_post_hash is null
 			and reposted_post_hash is null
 			and (post_entry.extra_data ? 'BlogDeltaRtfFormat');
-			
+
+            CREATE UNIQUE INDEX statistic_post_longform_count_unique_index ON statistic_post_longform_count (id);
+
 			CREATE MATERIALIZED VIEW statistic_comment_count AS
-			select count(post_hash) from post_entry
+			select count(post_hash), 0 as id from post_entry
 			where parent_post_hash is not null;
-			
+
+            CREATE UNIQUE INDEX statistic_comment_count_unique_index ON statistic_comment_count (id);
+
 			CREATE MATERIALIZED VIEW statistic_repost_count AS
-			select count(post_hash) from post_entry
+			select count(post_hash), 0 as id from post_entry
 			where reposted_post_hash is not null;
-			
+
+            CREATE UNIQUE INDEX statistic_repost_count_unique_index ON statistic_repost_count (id);
+
+
 			CREATE MATERIALIZED VIEW statistic_txn_count_creator_coin AS
 			select get_transaction_count(11) +
-				   get_transaction_count(14) as count;
-			
+				   get_transaction_count(14) as count, 0 as id;
+
+            CREATE UNIQUE INDEX statistic_txn_count_creator_coin_unique_index ON statistic_txn_count_creator_coin (id);
+
 			CREATE MATERIALIZED VIEW statistic_txn_count_nft AS
 			select get_transaction_count(15) +
 				   get_transaction_count(16) +
@@ -141,13 +165,17 @@ func init() {
 				   get_transaction_count(18) +
 				   get_transaction_count(19) +
 				   get_transaction_count(20) +
-				   get_transaction_count(21) as count;
-			
+				   get_transaction_count(21) as count, 0 as id;
+
+            CREATE UNIQUE INDEX statistic_txn_count_nft_unique_index ON statistic_txn_count_nft (id);
+
 			CREATE MATERIALIZED VIEW statistic_txn_count_dex AS
 			select get_transaction_count(24) +
 				   get_transaction_count(25) +
-				   get_transaction_count(26) as count;
-			
+				   get_transaction_count(26) as count, 0 as id;
+
+            CREATE UNIQUE INDEX statistic_txn_count_dex_unique_index ON statistic_txn_count_dex (id);
+
 			CREATE MATERIALIZED VIEW statistic_txn_count_social AS
 			select get_transaction_count(4) +
 				   get_transaction_count(5) +
@@ -161,15 +189,19 @@ func init() {
 				   get_transaction_count(30) +
 				   get_transaction_count(31) +
 				   get_transaction_count(32) +
-				   get_transaction_count(33) as count;
-			
+				   get_transaction_count(33) as count, 0 as id;
+
+            CREATE UNIQUE INDEX statistic_txn_count_social_unique_index ON statistic_txn_count_social (id);
+
 			CREATE MATERIALIZED VIEW statistic_follow_count AS
-			SELECT reltuples::bigint AS count
+			SELECT reltuples::bigint AS count, 0 as id
 			FROM pg_class
 			WHERE relname = 'follow_entry';
-			
+
+            CREATE UNIQUE INDEX statistic_follow_count_unique_index ON statistic_follow_count (id);
+
 			CREATE MATERIALIZED VIEW statistic_message_count AS
-			SELECT SUM(count) as count
+			SELECT SUM(count) as count, 0 as id
 			FROM (
 			SELECT reltuples::bigint AS count
 			FROM pg_class
@@ -179,13 +211,19 @@ func init() {
 			FROM pg_class
 			WHERE relname = 'new_message_entry'
 			) AS subquery;
-			
+
+            CREATE UNIQUE INDEX statistic_message_count_unique_index ON statistic_message_count (id);
+
 			CREATE MATERIALIZED VIEW statistic_wallet_count_all AS
-			SELECT COALESCE(reltuples::bigint, 0) as count FROM pg_class WHERE relname = 'public_key_first_transaction';
-			
+			SELECT COALESCE(reltuples::bigint, 0) as count, 0 as id FROM pg_class WHERE relname = 'public_key_first_transaction';
+
+            CREATE UNIQUE INDEX statistic_wallet_count_all_unique_index ON statistic_wallet_count_all (id);
+
 			CREATE MATERIALIZED VIEW statistic_new_wallet_count_30_d AS
-			SELECT count(*) from public_key_first_transaction
+			SELECT count(*), 0 as id from public_key_first_transaction
 			WHERE timestamp > NOW() - INTERVAL '30 days';
+
+            CREATE UNIQUE INDEX statistic_new_wallet_count_30_d_unique_index ON statistic_new_wallet_count_30_d (id);
 
 			CREATE MATERIALIZED VIEW statistic_active_wallet_count_30_d AS
 			WITH filtered_block AS (
@@ -193,68 +231,80 @@ func init() {
 			  FROM block
 			  WHERE timestamp > current_date - interval '1 month'
 			)
-			SELECT COUNT(DISTINCT t.public_key)
+			SELECT COUNT(DISTINCT t.public_key), 0 as id
 			FROM transaction_partitioned t
 			JOIN filtered_block fb ON t.block_hash = fb.block_hash;
 
+            CREATE UNIQUE INDEX statistic_active_wallet_count_30_d_unique_index ON statistic_active_wallet_count_30_d (id);
+
 			CREATE MATERIALIZED VIEW statistic_social_leaderboard_likes AS
-			select count(*) as count, pe.poster_public_key from transaction_partition_10 t
+			select count(*) as count, pe.poster_public_key, row_number() OVER () AS id from transaction_partition_10 t
 			join post_entry pe on t.tx_index_metadata ->> 'PostHashHex' = pe.post_hash
 			join block b on t.block_hash = b.block_hash
 			where b.timestamp > NOW() - INTERVAL '30 days'
 			and t.tx_index_metadata ->> 'IsUnlike' = 'false'
 			group by pe.poster_public_key;
-			
+
+            CREATE UNIQUE INDEX statistic_social_leaderboard_likes_unique_index ON statistic_social_leaderboard_likes (id);
+
 			CREATE MATERIALIZED VIEW statistic_social_leaderboard_reactions AS
-			select count(*) as count, pe.poster_public_key from transaction_partition_29 t
+			select count(*) as count, pe.poster_public_key, row_number() OVER () AS id from transaction_partition_29 t
 			join post_entry pe on t.tx_index_metadata ->> 'PostHashHex' = pe.post_hash
 			join block b on t.block_hash = b.block_hash
 			where b.timestamp > NOW() - INTERVAL '30 days'
 			and t.tx_index_metadata ->> 'AssociationType' = 'REACTION'
 			group by pe.poster_public_key;
-			
+
+            CREATE UNIQUE INDEX statistic_social_leaderboard_reactions_unique_index ON statistic_social_leaderboard_reactions (id);
+
 			CREATE MATERIALIZED VIEW statistic_social_leaderboard_diamonds AS
-			select count(*), pe.poster_public_key from transaction_partition_02 t
+			select count(*), pe.poster_public_key, row_number() OVER () AS id from transaction_partition_02 t
 			join post_entry pe on t.tx_index_metadata ->> 'PostHashHex' = pe.post_hash
 			join block b on t.block_hash = b.block_hash
 			where b.timestamp > NOW() - INTERVAL '30 days'
 			group by pe.poster_public_key;
-			
+
+            CREATE UNIQUE INDEX statistic_social_leaderboard_diamonds_unique_index ON statistic_social_leaderboard_diamonds (id);
+
 			CREATE MATERIALIZED VIEW statistic_social_leaderboard_reposts AS
-			select count(*), pe.poster_public_key from post_entry pe
+			select count(*), pe.poster_public_key, row_number() OVER () AS id from post_entry pe
 			join post_entry per on per.reposted_post_hash = pe.post_hash
 			where per.timestamp > NOW() - INTERVAL '30 days'
 			and pe.timestamp > NOW() - INTERVAL '30 days'
 			group by pe.poster_public_key;
-			
+
+            CREATE UNIQUE INDEX statistic_social_leaderboard_reposts_unique_index ON statistic_social_leaderboard_reposts (id);
+
 			CREATE MATERIALIZED VIEW statistic_social_leaderboard_comments AS
-			select count(*), pe.poster_public_key from post_entry pe
+			select count(*), pe.poster_public_key, row_number() OVER () AS id from post_entry pe
 			join post_entry pec on pec.parent_post_hash = pe.post_hash
 			where pec.timestamp > NOW() - INTERVAL '30 days'
 			and pe.timestamp > NOW() - INTERVAL '30 days'
 			group by pe.poster_public_key;
-			
+
+            CREATE UNIQUE INDEX statistic_social_leaderboard_comments_unique_index ON statistic_social_leaderboard_comments (id);
+
 			CREATE MATERIALIZED VIEW statistic_social_leaderboard AS
-			select social_leaderboard.count, pe.* from (
+			select social_leaderboard.count, pe.*, row_number() OVER () AS id from (
 				select sum(social_interactions.count) as count, social_interactions.poster_public_key from (
 					select count, poster_public_key from statistic_social_leaderboard_likes
-			
+
 					UNION ALL
-			
+
 					select count, poster_public_key from statistic_social_leaderboard_reactions
-			
+
 					UNION ALL
-			
+
 					select count, poster_public_key from statistic_social_leaderboard_diamonds
-			
+
 					UNION ALL
-			
+
 					select count, poster_public_key from statistic_social_leaderboard_reposts
-			
+
 					UNION ALL
-			
+
 					select count, poster_public_key from statistic_social_leaderboard_comments
-			
+
 				) as social_interactions
 				group by poster_public_key
 				order by sum(count) desc
@@ -263,9 +313,11 @@ func init() {
 			join profile_entry pe
 			on social_leaderboard.poster_public_key = pe.public_key
 			order by social_leaderboard.count desc;
-			
+
+            CREATE UNIQUE INDEX statistic_social_leaderboard_unique_index ON statistic_social_leaderboard (id);
+
 			CREATE MATERIALIZED VIEW statistic_nft_leaderboard AS
-			select sum(COALESCE(CAST(tx_index_metadata ->> 'BidAmountNanos' AS BIGINT), 0)), t.public_key, pe.username from transaction_partition_17 t
+			select sum(COALESCE(CAST(tx_index_metadata ->> 'BidAmountNanos' AS BIGINT), 0)), t.public_key, pe.username, row_number() OVER () AS id from transaction_partition_17 t
 			join nft_entry ne
 				on tx_index_metadata ->> 'NFTPostHashHex' = ne.nft_post_hash
 				and tx_index_metadata ->> 'SerialNumber' = text(ne.serial_number)
@@ -276,6 +328,8 @@ func init() {
 			group by t.public_key, pe.username
 			order by sum(COALESCE(CAST(tx_index_metadata ->> 'BidAmountNanos' AS BIGINT), 0)) desc
 			limit 10;
+
+            CREATE UNIQUE INDEX statistic_nft_leaderboard_unique_index ON statistic_nft_leaderboard (id);
 
 			create or replace function hex_to_decimal(hexval character varying) returns numeric
 				language plpgsql
@@ -288,9 +342,9 @@ func init() {
 			  RETURN result;
 			END;
 			$$;
-			
+
 			CREATE MATERIALIZED VIEW statistic_defi_leaderboard AS
-			select top_tokens.*, pe.* from (
+			select top_tokens.*, pe.*, row_number() OVER () AS id from (
 				WITH buying AS (
 					SELECT
 						value ->> 'BuyingDAOCoinCreatorPublicKey' AS buying_public_key,
@@ -339,32 +393,42 @@ func init() {
 			join profile_entry pe on top_tokens.buying_public_key = pe.public_key
 			order by top_tokens.net_quantity desc
 			limit 10;
-			
+
+            CREATE UNIQUE INDEX statistic_defi_leaderboard_unique_index ON statistic_defi_leaderboard (id);
+
 			CREATE MATERIALIZED VIEW statistic_txn_count_monthly AS
-			SELECT date_trunc('month', b.timestamp) AS month, COUNT(*) AS transaction_count
+			SELECT date_trunc('month', b.timestamp) AS month, COUNT(*) AS transaction_count, row_number() OVER () AS id
 			FROM transaction t
 			JOIN block b ON t.block_hash = b.block_hash
 			WHERE b.timestamp > NOW() - INTERVAL '1 year'
 			GROUP BY month;
-			
+
+            CREATE UNIQUE INDEX statistic_txn_count_monthly_unique_index ON statistic_txn_count_monthly (id);
+
 			CREATE MATERIALIZED VIEW statistic_wallet_count_monthly AS
-			SELECT date_trunc('month', timestamp) AS month, COUNT(*) AS wallet_count
+			SELECT date_trunc('month', timestamp) AS month, COUNT(*) AS wallet_count, row_number() OVER () AS id
 			FROM public_key_first_transaction
 			WHERE timestamp > NOW() - INTERVAL '1 year'
 			GROUP BY month;
 
+            CREATE UNIQUE INDEX statistic_wallet_count_monthly_unique_index ON statistic_wallet_count_monthly (id);
+
 			CREATE MATERIALIZED VIEW statistic_txn_count_daily AS
-			SELECT DATE(b.timestamp) AS day, COUNT(*) AS transaction_count
+			SELECT DATE(b.timestamp) AS day, COUNT(*) AS transaction_count, row_number() OVER () AS id
 			FROM transaction t
 			JOIN block b ON t.block_hash = b.block_hash
 			WHERE b.timestamp > NOW() - INTERVAL '1 month'
 			GROUP BY day;
-			
+
+            CREATE UNIQUE INDEX statistic_txn_count_daily_unique_index ON statistic_txn_count_daily (id);
+
 			CREATE MATERIALIZED VIEW statistic_new_wallet_count_daily AS
-			SELECT date(timestamp) AS day, COUNT(*) AS wallet_count
+			SELECT date(timestamp) AS day, COUNT(*) AS wallet_count, row_number() OVER () AS id
 			FROM public_key_first_transaction
 			WHERE timestamp > NOW() - INTERVAL '1 month'
 			GROUP BY day;
+
+            CREATE UNIQUE INDEX statistic_new_wallet_count_daily_unique_index ON statistic_new_wallet_count_daily (id);
 
 			CREATE MATERIALIZED VIEW statistic_active_wallet_count_daily AS
 			WITH filtered_block AS (
@@ -372,11 +436,13 @@ func init() {
 			  FROM block
 			  WHERE timestamp > current_date - interval '1 month'
 			)
-			SELECT fb.day, COUNT(DISTINCT t.public_key)
+			SELECT fb.day, COUNT(DISTINCT t.public_key), row_number() OVER () AS id
 			FROM transaction_partitioned t
 			JOIN filtered_block fb ON t.block_hash = fb.block_hash
 			GROUP BY fb.day
 			ORDER BY fb.day;
+
+            CREATE UNIQUE INDEX statistic_active_wallet_count_daily_unique_index ON statistic_active_wallet_count_daily (id);
 		`)
 		if err != nil {
 			return err
