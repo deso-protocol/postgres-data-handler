@@ -82,6 +82,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consumer.SyncEvent) error {
 	switch syncEvent {
 	case consumer.SyncEventStart:
+		fmt.Println("Starting sync from beginning")
 		RunMigrations(postgresDataHandler.DB, true, MigrationTypeInitial)
 	case consumer.SyncEventHypersyncStart:
 		fmt.Println("Starting hypersync")

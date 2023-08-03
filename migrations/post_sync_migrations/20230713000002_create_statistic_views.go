@@ -50,7 +50,7 @@ func init() {
 				SELECT apk.public_key, min(b.timestamp), min(b.height) FROM affected_public_key apk
 				JOIN transaction t ON apk.transaction_hash = t.transaction_hash
 				JOIN block b ON t.block_hash = b.block_hash
-				WHERE timestamp > max_timestamp
+				WHERE b.timestamp > max_timestamp
 				group by apk.public_key
 				ON CONFLICT (public_key) DO NOTHING;
 			END;
