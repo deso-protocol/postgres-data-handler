@@ -21,6 +21,27 @@ func main() {
 	setupFlags()
 	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics := getConfigValues()
 
+	// Print all the config values in a single printf call broken up
+	// with newlines and make it look pretty both printed out and in code
+	glog.Infof(`
+		PostgresDataHandler Config Values:
+		---------------------------------
+		DB_HOST: %s
+		DB_PORT: %s
+		DB_USERNAME: %s
+		DB_PASSWORD: %s
+		STATE_CHANGE_FILE_NAME: %s
+		CONSUMER_PROGRESS_FILE_NAME: %s
+		BATCH_BYTES: %d
+		THREAD_LIMIT: %d
+		LOG_QUERIES: %t
+		READONLY_USER_PASSWORD: %s
+		CALCULATE_EXPLORER_STATISTICS: %t
+		`, viper.GetString("DB_HOST"), viper.GetString("DB_PORT"),
+		viper.GetString("DB_USERNAME"), viper.GetString("DB_PASSWORD"),
+		stateChangeFileName, consumerProgressFileName, batchBytes, threadLimit,
+		logQueries, readOnlyUserPassword, explorerStatistics)
+
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
 	if err != nil {
