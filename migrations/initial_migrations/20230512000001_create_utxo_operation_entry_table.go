@@ -36,6 +36,7 @@ func init() {
 				transaction_index		  INTEGER NOT NULL,
 				utxo_op_index             INTEGER NOT NULL,
 				utxo_op_bytes			  BYTEA NOT NULL
+				badger_key				  BYTEA NOT NULL,
 			);
 			CREATE UNIQUE INDEX utxo_operation_block_hash_transaction_utxo_op_idx ON utxo_operation (block_hash, transaction_index desc, utxo_op_index desc);
 			CREATE INDEX utxo_entry_type_block_hash_transaction_utxo_op_idx ON utxo_operation (operation_type, block_hash, transaction_index desc, utxo_op_index desc);

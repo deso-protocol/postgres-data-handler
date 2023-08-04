@@ -102,7 +102,6 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 // TransactionBatchOperation is the entry point for processing a batch of transaction entries. It determines the appropriate handler
 // based on the operation type and executes it.
 func TransactionBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
-	fmt.Println("\n\n****Inserting transaction****")
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
