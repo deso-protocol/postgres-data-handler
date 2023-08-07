@@ -50,6 +50,7 @@ var (
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_txn_count_daily", Ticker: time.NewTicker(30 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_new_wallet_count_daily", Ticker: time.NewTicker(30 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_active_wallet_count_daily", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_transactions", Ticker: time.NewTicker(30 * time.Minute)},
 	}
 )
 

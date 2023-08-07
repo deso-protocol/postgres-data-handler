@@ -34,6 +34,7 @@ type PGUtxoOperationEntry struct {
 
 type AffectedPublicKeyEntry struct {
 	PublicKey       string `pg:",pk,use_zero"`
+	Metadata        string `pg:",pk,use_zero"`
 	TransactionHash string `pg:",pk,use_zero"`
 }
 
@@ -153,6 +154,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 					affectedPublicKeyEntry := &PGAffectedPublicKeyEntry{
 						AffectedPublicKeyEntry: AffectedPublicKeyEntry{
 							PublicKey:       affectedPublicKey.PublicKeyBase58Check,
+							Metadata:        affectedPublicKey.Metadata,
 							TransactionHash: transactions[jj].TransactionHash,
 						},
 					}

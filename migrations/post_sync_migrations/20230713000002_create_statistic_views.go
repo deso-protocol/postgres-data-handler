@@ -443,6 +443,12 @@ func init() {
 			ORDER BY fb.day;
 
             CREATE UNIQUE INDEX statistic_active_wallet_count_daily_unique_index ON statistic_active_wallet_count_daily (id);
+
+			CREATE MATERIALIZED VIEW statistic_profile_transactions AS
+			select public_key, count(*) as count, sum(fee_nanos) as total_fees, min(timestamp) as first_transaction_timestamp, max(timestamp)  as latest_transaction_timestamp from transaction
+			group by public_key;
+			
+			CREATE UNIQUE INDEX statistic_profile_transaction_count_unique_index ON statistic_profile_transactions (public_key);
 		`)
 		if err != nil {
 			return err
@@ -552,6 +558,7 @@ func init() {
 			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_daily;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_new_wallet_count_daily;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_active_wallet_count_daily;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_transactions;
 			DROP TABLE IF EXISTS public_key_first_transaction;
 			DROP FUNCTION IF EXISTS refresh_public_key_first_transaction;
 			DROP FUNCTION IF EXISTS get_transaction_count;

@@ -136,6 +136,7 @@ func init() {
 			comment on materialized view statistic_txn_count_daily is E'@name dailyTxnCountStat';
 			comment on materialized view statistic_new_wallet_count_daily is E'@name dailyNewWalletCountStat';
 			comment on materialized view statistic_active_wallet_count_daily is E'@name dailyActiveWalletCountStat';
+			comment on materialized view statistic_profile_transactions is E'@name profileTransactionStat\n@unique public_key\n@omit all';
 		`)
 		if err != nil {
 			return err
@@ -270,6 +271,7 @@ func init() {
 			comment on materialized view statistic_txn_count_daily is NULL;
 			comment on materialized view statistic_new_wallet_count_daily is NULL;
 			comment on materialized view statistic_active_wallet_count_daily is NULL;
+			comment on materialized view statistic_profile_transactions is NULL;
 		`)
 		if err != nil {
 			return err
