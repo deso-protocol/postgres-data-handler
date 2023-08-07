@@ -29,7 +29,18 @@ func createProfileEntryTable(db *bun.DB, tableName string) error {
 			CREATE INDEX {tableName}_pkid_idx ON {tableName} (pkid);
 			CREATE INDEX {tableName}_username_idx ON {tableName} (username);
 			CREATE INDEX {tableName}_badger_key_idx ON {tableName} (badger_key);
-			-- TODO: Define FK relation to post_entry table.
+
+			ALTER TABLE profile_entry
+			ADD COLUMN coin_price_deso_nanos NUMERIC
+			GENERATED ALWAYS AS (
+					CASE
+					WHEN cc_coins_in_circulation_nanos = 0 THEN 0
+					ELSE
+							(
+					deso_locked_nanos::NUMERIC / (cc_coins_in_circulation_nanos::NUMERIC * 0.33333) * 1e9
+			)::NUMERIC
+					END
+			) STORED;
 		`, "{tableName}", tableName, -1))
 	return err
 }
