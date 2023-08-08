@@ -19,7 +19,26 @@ import (
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
-	pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics := getConfigValues()
+	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics := getConfigValues()
+
+	// Print all the config values in a single printf call broken up
+	// with newlines and make it look pretty both printed out and in code
+	glog.Infof(`
+		PostgresDataHandler Config Values:
+		---------------------------------
+		DB_HOST: %s
+		DB_PORT: %s
+		DB_USERNAME: %s
+		STATE_CHANGE_FILE_NAME: %s
+		CONSUMER_PROGRESS_FILE_NAME: %s
+		BATCH_BYTES: %d
+		THREAD_LIMIT: %d
+		LOG_QUERIES: %t
+		CALCULATE_EXPLORER_STATISTICS: %t
+		`, viper.GetString("DB_HOST"), viper.GetString("DB_PORT"),
+		viper.GetString("DB_USERNAME"),
+		stateChangeDir, consumerProgressDir, batchBytes, threadLimit,
+		logQueries, explorerStatistics)
 
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
@@ -30,10 +49,8 @@ func main() {
 	// Initialize and run a state syncer consumer.
 	stateSyncerConsumer := &consumer.StateSyncerConsumer{}
 	err = stateSyncerConsumer.InitializeAndRun(
-		stateChangeFileName,
-		stateChangeIndexFileName,
-		stateChangeMempoolFileName,
-		consumerProgressFileName,
+		stateChangeDir,
+		consumerProgressDir,
 		batchBytes,
 		threadLimit,
 		&handler.PostgresDataHandler{
@@ -58,7 +75,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeIndexFileName string, stateChangeMempoolFileName string, consumerProgressFileName string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool) {
+func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool) {
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
@@ -67,17 +84,14 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 
 	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable&timeout=18000s", dbUsername, dbPassword, dbHost, dbPort)
 
-	stateChangeFileName = viper.GetString("STATE_CHANGE_FILE_NAME")
-	if stateChangeFileName == "" {
-		stateChangeFileName = "/tmp/state-changes"
+	stateChangeDir = viper.GetString("STATE_CHANGE_DIR")
+	if stateChangeDir == "" {
+		stateChangeDir = "/tmp/state-changes"
 	}
 
-	stateChangeIndexFileName = fmt.Sprintf("%s-index", stateChangeFileName)
-	stateChangeMempoolFileName = fmt.Sprintf("%s-mempool", stateChangeFileName)
-
-	consumerProgressFileName = viper.GetString("CONSUMER_PROGRESS_FILE_NAME")
-	if consumerProgressFileName == "" {
-		consumerProgressFileName = "/tmp/consumer-progress"
+	consumerProgressDir = viper.GetString("CONSUMER_PROGRESS_DIR")
+	if consumerProgressDir == "" {
+		consumerProgressDir = "/tmp/consumer-progress"
 	}
 
 	batchBytes = viper.GetUint64("BATCH_BYTES")
@@ -94,7 +108,7 @@ func getConfigValues() (pgURI string, stateChangeFileName string, stateChangeInd
 	readonlyUserPassword = viper.GetString("READONLY_USER_PASSWORD")
 	explorerStatistics = viper.GetBool("CALCULATE_EXPLORER_STATISTICS")
 
-	return pgURI, stateChangeFileName, stateChangeIndexFileName, stateChangeMempoolFileName, consumerProgressFileName, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics
+	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics
 }
 
 func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {
