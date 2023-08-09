@@ -19,7 +19,7 @@ func init() {
     		(balance_entry.balance_nanos * coin_price_deso_nanos)::NUMERIC AS total_value_nanos
 			FROM balance_entry
 			JOIN profile_entry ON profile_entry.pkid = balance_entry.creator_pkid
-			WHERE is_dao_coin = false
+			WHERE is_dao_coin = false;
 		`)
 		if err != nil {
 			return err
