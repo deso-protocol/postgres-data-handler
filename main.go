@@ -14,12 +14,14 @@ import (
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 )
 
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
-	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics := getConfigValues()
+	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics, datadogProfiler := getConfigValues()
 
 	// Print all the config values in a single printf call broken up
 	// with newlines and make it look pretty both printed out and in code
@@ -35,15 +37,25 @@ func main() {
 		THREAD_LIMIT: %d
 		LOG_QUERIES: %t
 		CALCULATE_EXPLORER_STATISTICS: %t
+		DATA_DOG_PROFILER: %t
 		`, viper.GetString("DB_HOST"), viper.GetString("DB_PORT"),
 		viper.GetString("DB_USERNAME"),
 		stateChangeDir, consumerProgressDir, batchBytes, threadLimit,
-		logQueries, explorerStatistics)
+		logQueries, explorerStatistics, datadogProfiler)
 
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
 	if err != nil {
 		glog.Fatalf("Error setting up DB: %v", err)
+	}
+
+	// Setup profiler if enabled.
+	if datadogProfiler {
+		tracer.Start()
+		err := profiler.Start(profiler.WithProfileTypes(profiler.CPUProfile, profiler.BlockProfile, profiler.MutexProfile, profiler.GoroutineProfile, profiler.HeapProfile))
+		if err != nil {
+			glog.Fatal(err)
+		}
 	}
 
 	// Initialize and run a state syncer consumer.
@@ -75,7 +87,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool) {
+func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool) {
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
@@ -107,8 +119,9 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	logQueries = viper.GetBool("LOG_QUERIES")
 	readonlyUserPassword = viper.GetString("READONLY_USER_PASSWORD")
 	explorerStatistics = viper.GetBool("CALCULATE_EXPLORER_STATISTICS")
+	datadogProfiler = viper.GetBool("DATADOG_PROFILER")
 
-	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics
+	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler
 }
 
 func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {

@@ -30,6 +30,7 @@ func init() {
 			comment on view transaction is E'@foreignKey (block_hash) references block (block_hash)|@foreignFieldName transactions|@fieldName block\n@foreignKey (public_key) references account (public_key)|@foreignFieldName transactions|@fieldName account\n@unique transaction_hash';
 			comment on table user_association_entry is E'@name user_association\n@foreignKey (transactor_pkid) references account (pkid)|@foreignFieldName userAssociationsAsTransactor|@fieldName transactor\n@foreignKey (app_pkid) references account (pkid)|@foreignFieldName userAssociationsAsAppOwner|@fieldName app\n@foreignKey (target_user_pkid) references account (pkid)|@foreignFieldName userAssociationsAsTarget|@fieldName target\n@foreignKey (block_height) references block (height)|@foreignFieldName userAssociations|@fieldName block';
 			comment on table utxo_operation is E'@foreignKey (block_hash, transaction_index) references transaction (block_hash, index_in_block)|@fieldName transaction';
+			comment on table dao_coin_limit_order_entry is E'@name desoTokenLimitOrder\n@foreignKey (transactor_pkid) references account (pkid)|@foreignFieldName desoTokenLimitOrderByTransactor|@fieldName transactorAccount\n@foreignKey (buying_dao_coin_creator_pkid) references account (pkid)|@foreignFieldName desoTokenLimitOrderByCreatorBought|@fieldName creatorBoughtAccount\n@foreignKey (selling_dao_coin_creator_pkid) references account (pkid)|@foreignFieldName desoTokenLimitOrderByCreatorSold|@fieldName creatorSoldAccount\n@unique order_id\n@foreignKey (selling_dao_coin_creator_pkid, transactor_pkid) references balance_entry (creator_pkid, hodler_pkid)|@foreignFieldName desoTokenLimitOrders|@fieldName transactorSellingTokenBalance';
 			comment on table block is E'@unique block_hash\n@unique height';
 			comment on column access_group_entry.badger_key is E'@omit';
 			comment on column access_group_member_entry.badger_key is E'@omit';
@@ -82,11 +83,16 @@ func init() {
 			comment on table transaction_partition_26 is E'@omit';
 			comment on table transaction_partition_27 is E'@omit';
 			comment on table transaction_partition_28 is E'@omit';
-			comment on table transaction_partition_09 is E'@omit';
+			comment on table transaction_partition_29 is E'@omit';
 			comment on table transaction_partition_30 is E'@omit';
 			comment on table transaction_partition_31 is E'@omit';
 			comment on table transaction_partition_32 is E'@omit';
 			comment on table transaction_partition_33 is E'@omit';
+			comment on function checksum is E'@omit';
+			comment on function base58_check_encode_with_prefix is E'@omit';
+			comment on function bytes_to_bigint is E'@omit';
+			comment on function base58_encode is E'@omit';
+			comment on function base64_to_base58 is E'@omit';
 			comment on view wallet is E'@omit';
 		`)
 		if err != nil {
@@ -137,6 +143,16 @@ func init() {
 			comment on materialized view statistic_new_wallet_count_daily is E'@name dailyNewWalletCountStat';
 			comment on materialized view statistic_active_wallet_count_daily is E'@name dailyActiveWalletCountStat';
 			comment on materialized view statistic_profile_transactions is E'@name profileTransactionStat\n@unique public_key\n@omit all';
+			comment on materialized view statistic_profile_top_nft_owners is E'@name profileNftTopOwners';
+			comment on function hex_to_numeric is E'@omit';
+			comment on function cc_nanos_total_sell_value is E'@omit';
+			comment on view dao_coin_limit_order_max_bids is E'@omit';
+			comment on view dao_coin_limit_order_min_asks is E'@omit';
+			comment on view dao_coin_limit_order_bid_asks is E'@omit';
+			comment on materialized view statistic_cc_balance_totals is E'@omit';
+			comment on materialized view statistic_nft_balance_totals is E'@omit';
+			comment on materialized view statistic_deso_token_balance_totals is E'@omit';
+			comment on materialized view statistic_portfolio_value is E'@name profilePortfolioValueStat\n@unique public_key\n@omit all';
 		`)
 		if err != nil {
 			return err
@@ -162,7 +178,7 @@ func init() {
 			comment on table post_association_entry is NULL;
 			comment on table post_entry is NULL;
 			comment on table profile_entry is NULL;
-			comment on table transaction is NULL;
+			comment on view transaction is NULL;
 			comment on table user_association_entry is NULL;
 			comment on table utxo_operation is NULL;
 			comment on column access_group_entry.badger_key is NULL;
@@ -188,6 +204,7 @@ func init() {
 			comment on table bun_migration_locks is NULL;
 			comment on table pkid_entry is NULL;
 			comment on view wallet is NULL;
+			comment on table dao_coin_limit_order_entry is NULL;
 			comment on table transaction_partitioned is NULL;
 			comment on table transaction_partition_01 is NULL;
 			comment on table transaction_partition_02 is NULL;
@@ -222,6 +239,11 @@ func init() {
 			comment on table transaction_partition_31 is NULL;
 			comment on table transaction_partition_32 is NULL;
 			comment on table transaction_partition_33 is NULL;
+			comment on function checksum is NULL;
+			comment on function base58_check_encode_with_prefix is NULL;
+			comment on function bytes_to_bigint is NULL;
+			comment on function base58_encode is NULL;
+			comment on function base64_to_base58 is NULL;
 		`)
 		if err != nil {
 			return err
@@ -272,6 +294,15 @@ func init() {
 			comment on materialized view statistic_new_wallet_count_daily is NULL;
 			comment on materialized view statistic_active_wallet_count_daily is NULL;
 			comment on materialized view statistic_profile_transactions is NULL;
+			comment on materialized view statistic_profile_top_nft_owners is NULL;
+			comment on function cc_nanos_total_sell_value is NULL;
+			comment on view dao_coin_limit_order_max_bids is NULL;
+			comment on view dao_coin_limit_order_min_asks is NULL;
+			comment on view dao_coin_limit_order_bid_asks is NULL;
+			comment on materialized view statistic_cc_balance_totals is NULL;
+			comment on materialized view statistic_nft_balance_totals is NULL;
+			comment on materialized view statistic_deso_token_balance_totals is NULL;
+			comment on materialized view statistic_portfolio_value is NULL;
 		`)
 		if err != nil {
 			return err

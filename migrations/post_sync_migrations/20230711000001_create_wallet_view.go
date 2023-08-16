@@ -21,7 +21,7 @@ func init() {
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP VIEW IF EXISTS wallet;
+			DROP VIEW IF EXISTS wallet CASCADE;
 		`)
 		if err != nil {
 			return err

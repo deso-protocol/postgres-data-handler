@@ -51,6 +51,15 @@ var (
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_new_wallet_count_daily", Ticker: time.NewTicker(30 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_active_wallet_count_daily", Ticker: time.NewTicker(30 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_transactions", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_top_nft_owners", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_cc_balance_totals", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_nft_balance_totals", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_deso_token_balance_totals", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_portfolio_value", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_cc_royalties", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_diamond_earnings", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_nft_bid_royalty_earnings", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_nft_buy_now_royalty_earnings", Ticker: time.NewTicker(30 * time.Minute)},
 	}
 )
 

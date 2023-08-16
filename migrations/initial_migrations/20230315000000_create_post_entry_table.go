@@ -49,26 +49,19 @@ func createPostEntryTable(db *bun.DB, tableName string) error {
 			ON {tableName} ((extra_data ->> 'Node'));
 			CREATE INDEX {tableName}_post_extra_data_blog_slug_title_idx ON post_entry ((extra_data ->> 'BlogTitleSlug'));
 			CREATE INDEX {tableName}_post_extra_data_keys_idx ON post_entry USING gin (extra_data jsonb_path_ops);
+			CREATE INDEX post_entry_body_gin_idx ON post_entry USING GIN (body gin_trgm_ops);
+
 		`, "{tableName}", tableName, -1))
 	return err
 }
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-
-		// Make sure work_mem is set to a sufficient amount
-		_, err := db.Exec(`
-			SET work_mem = '32MB';
-		`)
-		if err != nil {
-			return err
-		}
-
 		// Create post entry table
 		return createPostEntryTable(db, "post_entry")
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
-			DROP TABLE IF EXISTS post_entry;
+			DROP TABLE IF EXISTS post_entry CASCADE;
 		`)
 		if err != nil {
 			return err
