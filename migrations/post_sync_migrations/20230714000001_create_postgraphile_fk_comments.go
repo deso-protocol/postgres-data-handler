@@ -94,6 +94,7 @@ func init() {
 			comment on function bytes_to_bigint is E'@omit';
 			comment on function base58_encode is E'@omit';
 			comment on function base64_to_base58 is E'@omit';
+			comment on view wallet is E'@omit';
 		`)
 		if err != nil {
 			return err
