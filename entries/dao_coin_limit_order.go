@@ -46,7 +46,7 @@ func DaoCoinLimitOrderEncoderToPGStruct(daoCoinLimitOrder *lib.DAOCoinLimitOrder
 	return pgEntry
 }
 
-// DaoCoinLimitOrderBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
+// DaoCoinLimitOrderBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
 // based on the operation type and executes it.
 func DaoCoinLimitOrderBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.

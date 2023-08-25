@@ -1,7 +1,7 @@
 package main
 
 import (
-	"PostgresDataHandler/methods"
+	"PostgresDataHandler/handler"
 	"PostgresDataHandler/migrations/initial_migrations"
 	"PostgresDataHandler/migrations/post_sync_migrations"
 	"database/sql"
@@ -72,7 +72,7 @@ func main() {
 		consumerProgressDir,
 		batchBytes,
 		threadLimit,
-		&methods.PostgresDataHandler{
+		&handler.PostgresDataHandler{
 			DB:     db,
 			Params: params,
 		},
@@ -158,7 +158,7 @@ func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPasswor
 	post_sync_migrations.SetCalculateExplorerStatistics(calculateExplorerStatistics)
 
 	// Apply db migrations.
-	err := methods.RunMigrations(db, false, methods.MigrationTypeInitial)
+	err := handler.RunMigrations(db, false, handler.MigrationTypeInitial)
 	if err != nil {
 		return nil, err
 	}

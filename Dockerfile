@@ -15,7 +15,7 @@ WORKDIR /postgres-data-handler/src/postgres-data-handler
 
 RUN go mod download
 
-# include postgres data methods src
+# include postgres data handler src
 COPY postgres-data-handler/entries        entries
 COPY postgres-data-handler/migrations    migrations
 COPY postgres-data-handler/handler    handler
@@ -29,8 +29,8 @@ COPY core/migrate   ../core/migrate
 
 RUN go mod tidy
 
-## build postgres data methods backend
-RUN GOOS=linux go build -mod=mod -a -installsuffix cgo -o bin/postgres-data-methods main.go
+## build postgres data handler backend
+RUN GOOS=linux go build -mod=mod -a -installsuffix cgo -o bin/postgres-data-handler main.go
 #
 ## create tiny image
 #FROM alpine:latest

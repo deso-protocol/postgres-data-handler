@@ -1,4 +1,4 @@
-package methods
+package handler
 
 import (
 	"PostgresDataHandler/entries"

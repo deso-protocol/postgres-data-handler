@@ -87,7 +87,7 @@ func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte, param
 	return pgPostEntry, nil
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
 // based on the operation type and executes it.
 func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
