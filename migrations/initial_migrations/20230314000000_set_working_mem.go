@@ -10,7 +10,6 @@ func init() {
 
 		// Make sure work_mem is set to a sufficient amount
 		_, err := db.Exec(`
-			SET work_mem = '32MB';
 			CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 		`)
@@ -22,7 +21,6 @@ func init() {
 	}, func(ctx context.Context, db *bun.DB) error {
 		_, err := db.Exec(`
 			DROP EXTENSION IF EXISTS pg_trgm;
-			SET work_mem = '4MB';
 		`)
 		if err != nil {
 			return err
