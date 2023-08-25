@@ -20,7 +20,11 @@ func init() {
 				profile_entry.minting_disabled,
 				profile_entry.dao_coin_minting_disabled,
 				profile_entry.dao_coin_transfer_restriction_status,
-				profile_entry.extra_data
+				profile_entry.extra_data,
+				profile_entry.coin_price_deso_nanos,
+				profile_entry.deso_locked_nanos,
+				profile_entry.cc_coins_in_circulation_nanos,
+        profile_entry.dao_coins_in_circulation_nanos_hex
 			FROM
 				wallet
 			LEFT JOIN
