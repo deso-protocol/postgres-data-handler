@@ -26,17 +26,17 @@ type PGDesoBalanceEntryUtxoOps struct {
 }
 
 // Convert the Diamond DeSo encoder to the PG struct used by bun.
-func DesoBalanceEncoderToPGStruct(desoBalanceEntry *lib.DeSoBalanceEntry, keyBytes []byte) DesoBalanceEntry {
+func DesoBalanceEncoderToPGStruct(desoBalanceEntry *lib.DeSoBalanceEntry, keyBytes []byte, params *lib.DeSoParams) DesoBalanceEntry {
 	return DesoBalanceEntry{
-		PublicKey:    consumer.PublicKeyBytesToBase58Check(desoBalanceEntry.PublicKey[:]),
+		PublicKey:    consumer.PublicKeyBytesToBase58Check(desoBalanceEntry.PublicKey[:], params),
 		BalanceNanos: desoBalanceEntry.BalanceNanos,
 		BadgerKey:    keyBytes,
 	}
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func DesoBalanceBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func DesoBalanceBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -44,7 +44,7 @@ func DesoBalanceBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) erro
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteDesoBalanceEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertDesoBalanceEntry(entries, db, operationType)
+		err = bulkInsertDesoBalanceEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.DesoBalanceBatchOperation: Problem with operation type %v", operationType)
@@ -53,7 +53,7 @@ func DesoBalanceBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) erro
 }
 
 // bulkInsertDiamondEntry inserts a batch of diamond entries into the database.
-func bulkInsertDesoBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertDesoBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -61,7 +61,7 @@ func bulkInsertDesoBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, ope
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGDesoBalanceEntry{DesoBalanceEntry: DesoBalanceEncoderToPGStruct(entry.Encoder.(*lib.DeSoBalanceEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGDesoBalanceEntry{DesoBalanceEntry: DesoBalanceEncoderToPGStruct(entry.Encoder.(*lib.DeSoBalanceEntry), entry.KeyBytes, params)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

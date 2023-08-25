@@ -1,12 +1,13 @@
 package main
 
 import (
-	"PostgresDataHandler/handler"
+	"PostgresDataHandler/methods"
 	"PostgresDataHandler/migrations/initial_migrations"
 	"PostgresDataHandler/migrations/post_sync_migrations"
 	"database/sql"
 	"flag"
 	"fmt"
+	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
 	"github.com/spf13/viper"
@@ -21,7 +22,7 @@ import (
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
-	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics, datadogProfiler := getConfigValues()
+	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics, datadogProfiler, isTestnet := getConfigValues()
 
 	// Print all the config values in a single printf call broken up
 	// with newlines and make it look pretty both printed out and in code
@@ -31,17 +32,18 @@ func main() {
 		DB_HOST: %s
 		DB_PORT: %s
 		DB_USERNAME: %s
-		STATE_CHANGE_FILE_NAME: %s
-		CONSUMER_PROGRESS_FILE_NAME: %s
+		STATE_CHANGE_DIR: %s
+		CONSUMER_PROGRESS_DIR: %s
 		BATCH_BYTES: %d
 		THREAD_LIMIT: %d
 		LOG_QUERIES: %t
 		CALCULATE_EXPLORER_STATISTICS: %t
 		DATA_DOG_PROFILER: %t
+		TESTNET: %t
 		`, viper.GetString("DB_HOST"), viper.GetString("DB_PORT"),
 		viper.GetString("DB_USERNAME"),
 		stateChangeDir, consumerProgressDir, batchBytes, threadLimit,
-		logQueries, explorerStatistics, datadogProfiler)
+		logQueries, explorerStatistics, datadogProfiler, isTestnet)
 
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
@@ -58,6 +60,11 @@ func main() {
 		}
 	}
 
+	params := &lib.DeSoMainnetParams
+	if isTestnet {
+		params = &lib.DeSoTestnetParams
+	}
+
 	// Initialize and run a state syncer consumer.
 	stateSyncerConsumer := &consumer.StateSyncerConsumer{}
 	err = stateSyncerConsumer.InitializeAndRun(
@@ -65,8 +72,9 @@ func main() {
 		consumerProgressDir,
 		batchBytes,
 		threadLimit,
-		&handler.PostgresDataHandler{
-			DB: db,
+		&methods.PostgresDataHandler{
+			DB:     db,
+			Params: params,
 		},
 	)
 	if err != nil {
@@ -87,7 +95,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool) {
+func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool, isTestnet bool) {
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
@@ -120,8 +128,9 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	readonlyUserPassword = viper.GetString("READONLY_USER_PASSWORD")
 	explorerStatistics = viper.GetBool("CALCULATE_EXPLORER_STATISTICS")
 	datadogProfiler = viper.GetBool("DATADOG_PROFILER")
+	isTestnet = viper.GetBool("IS_TESTNET")
 
-	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler
+	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet
 }
 
 func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {
@@ -149,7 +158,7 @@ func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPasswor
 	post_sync_migrations.SetCalculateExplorerStatistics(calculateExplorerStatistics)
 
 	// Apply db migrations.
-	err := handler.RunMigrations(db, false, handler.MigrationTypeInitial)
+	err := methods.RunMigrations(db, false, methods.MigrationTypeInitial)
 	if err != nil {
 		return nil, err
 	}

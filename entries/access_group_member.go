@@ -32,14 +32,14 @@ type PGAccessGroupMemberEntryUtxoOps struct {
 }
 
 // Convert the AccessGroupMember DeSo encoder to the PGAccessGroupMemberEntry struct used by bun.
-func AccessGroupMemberEncoderToPGStruct(accessGroupMemberEntry *lib.AccessGroupMemberEntry, keyBytes []byte) AccessGroupMemberEntry {
+func AccessGroupMemberEncoderToPGStruct(accessGroupMemberEntry *lib.AccessGroupMemberEntry, keyBytes []byte, params *lib.DeSoParams) AccessGroupMemberEntry {
 
 	_, accessGroupOwnerPublicKey, accessGroupKeyName, _ := consumer.GetAccessGroupMemberFieldsFromKey(keyBytes)
 
 	pgAccessGroupMemberEntry := AccessGroupMemberEntry{
 		EncryptedKey:              accessGroupMemberEntry.EncryptedKey,
 		ExtraData:                 consumer.ExtraDataBytesToString(accessGroupMemberEntry.ExtraData),
-		AccessGroupOwnerPublicKey: consumer.PublicKeyBytesToBase58Check(accessGroupOwnerPublicKey),
+		AccessGroupOwnerPublicKey: consumer.PublicKeyBytesToBase58Check(accessGroupOwnerPublicKey, params),
 		AccessGroupKeyName:        string(accessGroupKeyName),
 		BadgerKey:                 keyBytes,
 	}
@@ -49,15 +49,15 @@ func AccessGroupMemberEncoderToPGStruct(accessGroupMemberEntry *lib.AccessGroupM
 	}
 
 	if accessGroupMemberEntry.AccessGroupMemberPublicKey != nil {
-		pgAccessGroupMemberEntry.AccessGroupMemberPublicKey = consumer.PublicKeyBytesToBase58Check((*accessGroupMemberEntry.AccessGroupMemberPublicKey)[:])
+		pgAccessGroupMemberEntry.AccessGroupMemberPublicKey = consumer.PublicKeyBytesToBase58Check((*accessGroupMemberEntry.AccessGroupMemberPublicKey)[:], params)
 	}
 
 	return pgAccessGroupMemberEntry
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func AccessGroupMemberBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func AccessGroupMemberBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -65,7 +65,7 @@ func AccessGroupMemberBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteAccessGroupMemberEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertAccessGroupMemberEntry(entries, db, operationType)
+		err = bulkInsertAccessGroupMemberEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -74,7 +74,7 @@ func AccessGroupMemberBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB
 }
 
 // bulkInsertAccessGroupMemberEntry inserts a batch of access_group_member entries into the database.
-func bulkInsertAccessGroupMemberEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertAccessGroupMemberEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -82,7 +82,7 @@ func bulkInsertAccessGroupMemberEntry(entries []*lib.StateChangeEntry, db *bun.D
 
 	// Loop through the entries and convert them to PGEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGAccessGroupMemberEntry{AccessGroupMemberEntry: AccessGroupMemberEncoderToPGStruct(entry.Encoder.(*lib.AccessGroupMemberEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGAccessGroupMemberEntry{AccessGroupMemberEntry: AccessGroupMemberEncoderToPGStruct(entry.Encoder.(*lib.AccessGroupMemberEntry), entry.KeyBytes, params)}
 	}
 
 	// Execute the insert query.

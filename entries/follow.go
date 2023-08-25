@@ -26,17 +26,17 @@ type PGFollowEntryUtxoOps struct {
 }
 
 // Convert the follow DeSo encoder to the PG struct used by bun.
-func FollowEncoderToPGStruct(followEntry *lib.FollowEntry, keyBytes []byte) FollowEntry {
+func FollowEncoderToPGStruct(followEntry *lib.FollowEntry, keyBytes []byte, params *lib.DeSoParams) FollowEntry {
 	return FollowEntry{
-		FollowerPkid: consumer.PublicKeyBytesToBase58Check(followEntry.FollowerPKID[:]),
-		FollowedPkid: consumer.PublicKeyBytesToBase58Check(followEntry.FollowedPKID[:]),
+		FollowerPkid: consumer.PublicKeyBytesToBase58Check(followEntry.FollowerPKID[:], params),
+		FollowedPkid: consumer.PublicKeyBytesToBase58Check(followEntry.FollowedPKID[:], params),
 		BadgerKey:    keyBytes,
 	}
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func FollowBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func FollowBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -44,7 +44,7 @@ func FollowBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteFollowEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertFollowEntry(entries, db, operationType)
+		err = bulkInsertFollowEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -53,7 +53,7 @@ func FollowBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertFollowEntry inserts a batch of follow entries into the database.
-func bulkInsertFollowEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertFollowEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -61,7 +61,7 @@ func bulkInsertFollowEntry(entries []*lib.StateChangeEntry, db *bun.DB, operatio
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGFollowEntry{FollowEntry: FollowEncoderToPGStruct(entry.Encoder.(*lib.FollowEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGFollowEntry{FollowEntry: FollowEncoderToPGStruct(entry.Encoder.(*lib.FollowEntry), entry.KeyBytes, params)}
 	}
 
 	// Execute the insert query.

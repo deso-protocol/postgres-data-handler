@@ -38,7 +38,12 @@ func createProfileEntryTable(db *bun.DB, tableName string) error {
 			);
 			CREATE INDEX {tableName}_pkid_idx ON {tableName} (pkid);
 			CREATE INDEX {tableName}_username_idx ON {tableName} (username);
+			CREATE INDEX {tableName}_coin_price_idx ON {tableName} (coin_price_deso_nanos desc);
 			CREATE INDEX {tableName}_username_lower_idx ON {tableName} (LOWER(username));
+			CREATE INDEX {tableName}_username_ilike_idx ON {tableName} (LOWER("username"));
+			CREATE INDEX {tableName}_username_gin_idx ON {tableName} USING gin("username" gin_trgm_ops);
+
+
 			CREATE INDEX {tableName}_badger_key_idx ON {tableName} (badger_key);
 		`, "{tableName}", tableName, -1))
 	return err

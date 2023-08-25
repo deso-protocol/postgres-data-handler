@@ -29,19 +29,19 @@ type PGDiamondEntryUtxoOps struct {
 }
 
 // Convert the Diamond DeSo encoder to the PG struct used by bun.
-func DiamondEncoderToPGStruct(diamondEntry *lib.DiamondEntry, keyBytes []byte) DiamondEntry {
+func DiamondEncoderToPGStruct(diamondEntry *lib.DiamondEntry, keyBytes []byte, params *lib.DeSoParams) DiamondEntry {
 	return DiamondEntry{
-		SenderPkid:   consumer.PublicKeyBytesToBase58Check(diamondEntry.SenderPKID[:]),
-		ReceiverPkid: consumer.PublicKeyBytesToBase58Check(diamondEntry.ReceiverPKID[:]),
+		SenderPkid:   consumer.PublicKeyBytesToBase58Check(diamondEntry.SenderPKID[:], params),
+		ReceiverPkid: consumer.PublicKeyBytesToBase58Check(diamondEntry.ReceiverPKID[:], params),
 		DiamondLevel: diamondEntry.DiamondLevel,
 		PostHash:     hex.EncodeToString(diamondEntry.DiamondPostHash[:]),
 		BadgerKey:    keyBytes,
 	}
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func DiamondBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func DiamondBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -49,7 +49,7 @@ func DiamondBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteDiamondEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertDiamondEntry(entries, db, operationType)
+		err = bulkInsertDiamondEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -58,7 +58,7 @@ func DiamondBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertDiamondEntry inserts a batch of diamond entries into the database.
-func bulkInsertDiamondEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertDiamondEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -66,7 +66,7 @@ func bulkInsertDiamondEntry(entries []*lib.StateChangeEntry, db *bun.DB, operati
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGDiamondEntry{DiamondEntry: DiamondEncoderToPGStruct(entry.Encoder.(*lib.DiamondEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGDiamondEntry{DiamondEntry: DiamondEncoderToPGStruct(entry.Encoder.(*lib.DiamondEntry), entry.KeyBytes, params)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

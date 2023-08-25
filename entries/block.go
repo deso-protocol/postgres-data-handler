@@ -43,9 +43,9 @@ func BlockEncoderToPGStruct(block *lib.MsgDeSoBlock, keyBytes []byte) *PGBlockEn
 	}
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func BlockBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func BlockBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -53,7 +53,7 @@ func BlockBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteBlockEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertBlockEntry(entries, db, operationType)
+		err = bulkInsertBlockEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -62,7 +62,7 @@ func BlockBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertUtxoOperationsEntry inserts a batch of user_association entries into the database.
-func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueBlocks := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -74,7 +74,7 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 		blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes)
 		pgBlockEntrySlice = append(pgBlockEntrySlice, blockEntry)
 		for jj, transaction := range block.Txns {
-			pgTransactionEntry, err := TransactionEncoderToPGStruct(transaction, uint64(jj), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp)
+			pgTransactionEntry, err := TransactionEncoderToPGStruct(transaction, uint64(jj), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, params)
 			if err != nil {
 				return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Problem converting transaction to PG struct")
 			}

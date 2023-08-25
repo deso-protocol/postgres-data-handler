@@ -1,4 +1,4 @@
-package handler
+package methods
 
 import (
 	"PostgresDataHandler/migrations/initial_migrations"

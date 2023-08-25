@@ -17,7 +17,7 @@ func SetCalculateExplorerStatistics(calculate bool) {
 }
 
 func executeQuery(db *bun.DB, query string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 	_, err := db.Exec(query, ctx)
 	return err

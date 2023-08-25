@@ -37,10 +37,10 @@ type PGProfileEntryUtxoOps struct {
 	UtxoOperation
 }
 
-func ProfileEntryEncoderToPGStruct(profileEntry *lib.ProfileEntry, keyBytes []byte) ProfileEntry {
+func ProfileEntryEncoderToPGStruct(profileEntry *lib.ProfileEntry, keyBytes []byte, params *lib.DeSoParams) ProfileEntry {
 	return ProfileEntry{
-		PublicKey:                        consumer.PublicKeyBytesToBase58Check(profileEntry.PublicKey),
-		Pkid:                             consumer.PublicKeyBytesToBase58Check(consumer.GetPKIDBytesFromKey(keyBytes)),
+		PublicKey:                        consumer.PublicKeyBytesToBase58Check(profileEntry.PublicKey, params),
+		Pkid:                             consumer.PublicKeyBytesToBase58Check(consumer.GetPKIDBytesFromKey(keyBytes), params),
 		Username:                         string(profileEntry.Username),
 		Description:                      string(profileEntry.Description),
 		ProfilePic:                       profileEntry.ProfilePic,
@@ -58,9 +58,9 @@ func ProfileEntryEncoderToPGStruct(profileEntry *lib.ProfileEntry, keyBytes []by
 
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func ProfileBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func ProfileBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -68,7 +68,7 @@ func ProfileBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteProfileEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertProfileEntry(entries, db, operationType)
+		err = bulkInsertProfileEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -77,14 +77,14 @@ func ProfileBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertPostEntry inserts a batch of post entries into the database.
-func bulkInsertProfileEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertProfileEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
 	pgEntrySlice := make([]*PGProfileEntry, len(uniqueEntries))
 
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGProfileEntry{ProfileEntry: ProfileEntryEncoderToPGStruct(entry.Encoder.(*lib.ProfileEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGProfileEntry{ProfileEntry: ProfileEntryEncoderToPGStruct(entry.Encoder.(*lib.ProfileEntry), entry.KeyBytes, params)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

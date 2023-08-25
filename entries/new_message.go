@@ -37,7 +37,7 @@ type PGNewMessageEntryUtxoOps struct {
 }
 
 // Convert the NewMessage DeSo encoder to the PGNewMessageEntry struct used by bun.
-func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes []byte) NewMessageEntry {
+func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes []byte, params *lib.DeSoParams) NewMessageEntry {
 	isGroupChatMessage := false
 
 	if bytes.Equal(keyBytes[:1], lib.Prefixes.PrefixGroupChatMessagesIndex) {
@@ -53,7 +53,7 @@ func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes 
 	}
 
 	if newMessageEntry.SenderAccessGroupOwnerPublicKey != nil {
-		pgNewMessageEntry.SenderAccessGroupOwnerPublicKey = consumer.PublicKeyBytesToBase58Check(newMessageEntry.SenderAccessGroupOwnerPublicKey[:])
+		pgNewMessageEntry.SenderAccessGroupOwnerPublicKey = consumer.PublicKeyBytesToBase58Check(newMessageEntry.SenderAccessGroupOwnerPublicKey[:], params)
 	}
 
 	if newMessageEntry.SenderAccessGroupKeyName != nil {
@@ -61,11 +61,11 @@ func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes 
 	}
 
 	if newMessageEntry.SenderAccessGroupPublicKey != nil {
-		pgNewMessageEntry.SenderAccessGroupPublicKey = consumer.PublicKeyBytesToBase58Check(newMessageEntry.SenderAccessGroupPublicKey[:])
+		pgNewMessageEntry.SenderAccessGroupPublicKey = consumer.PublicKeyBytesToBase58Check(newMessageEntry.SenderAccessGroupPublicKey[:], params)
 	}
 
 	if newMessageEntry.RecipientAccessGroupOwnerPublicKey != nil {
-		pgNewMessageEntry.RecipientAccessGroupOwnerPublicKey = consumer.PublicKeyBytesToBase58Check(newMessageEntry.RecipientAccessGroupOwnerPublicKey[:])
+		pgNewMessageEntry.RecipientAccessGroupOwnerPublicKey = consumer.PublicKeyBytesToBase58Check(newMessageEntry.RecipientAccessGroupOwnerPublicKey[:], params)
 	}
 
 	if newMessageEntry.RecipientAccessGroupKeyName != nil {
@@ -73,15 +73,15 @@ func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes 
 	}
 
 	if newMessageEntry.RecipientAccessGroupPublicKey != nil {
-		pgNewMessageEntry.RecipientAccessGroupPublicKey = consumer.PublicKeyBytesToBase58Check(newMessageEntry.RecipientAccessGroupPublicKey[:])
+		pgNewMessageEntry.RecipientAccessGroupPublicKey = consumer.PublicKeyBytesToBase58Check(newMessageEntry.RecipientAccessGroupPublicKey[:], params)
 	}
 
 	return pgNewMessageEntry
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func NewMessageBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func NewMessageBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -89,7 +89,7 @@ func NewMessageBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteNewMessageEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertNewMessageEntry(entries, db, operationType)
+		err = bulkInsertNewMessageEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -98,7 +98,7 @@ func NewMessageBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error
 }
 
 // bulkInsertNewMessageEntry inserts a batch of new_message entries into the database.
-func bulkInsertNewMessageEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertNewMessageEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -106,7 +106,7 @@ func bulkInsertNewMessageEntry(entries []*lib.StateChangeEntry, db *bun.DB, oper
 
 	// Loop through the entries and convert them to PGEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGNewMessageEntry{NewMessageEntry: NewMessageEncoderToPGStruct(entry.Encoder.(*lib.NewMessageEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGNewMessageEntry{NewMessageEntry: NewMessageEncoderToPGStruct(entry.Encoder.(*lib.NewMessageEntry), entry.KeyBytes, params)}
 	}
 
 	// Execute the insert query.

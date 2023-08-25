@@ -37,15 +37,15 @@ type PGMessageEntryUtxoOps struct {
 }
 
 // Convert the Message DeSo encoder to the PGMessageEntry struct used by bun.
-func MessageEncoderToPGStruct(messageEntry *lib.MessageEntry, keyBytes []byte) MessageEntry {
+func MessageEncoderToPGStruct(messageEntry *lib.MessageEntry, keyBytes []byte, params *lib.DeSoParams) MessageEntry {
 	return MessageEntry{
-		SenderPublicKey:                consumer.PublicKeyBytesToBase58Check(messageEntry.SenderPublicKey[:]),
-		RecipientPublicKey:             consumer.PublicKeyBytesToBase58Check(messageEntry.RecipientPublicKey[:]),
+		SenderPublicKey:                consumer.PublicKeyBytesToBase58Check(messageEntry.SenderPublicKey[:], params),
+		RecipientPublicKey:             consumer.PublicKeyBytesToBase58Check(messageEntry.RecipientPublicKey[:], params),
 		EncryptedText:                  string(messageEntry.EncryptedText),
 		Timestamp:                      consumer.UnixNanoToTime(messageEntry.TstampNanos),
 		Version:                        messageEntry.Version,
-		SenderMessagingPublicKey:       consumer.PublicKeyBytesToBase58Check(messageEntry.SenderMessagingPublicKey[:]),
-		RecipientMessagingPublicKey:    consumer.PublicKeyBytesToBase58Check(messageEntry.RecipientMessagingPublicKey[:]),
+		SenderMessagingPublicKey:       consumer.PublicKeyBytesToBase58Check(messageEntry.SenderMessagingPublicKey[:], params),
+		RecipientMessagingPublicKey:    consumer.PublicKeyBytesToBase58Check(messageEntry.RecipientMessagingPublicKey[:], params),
 		SenderMessagingGroupKeyName:    string(messageEntry.SenderMessagingGroupKeyName[:]),
 		RecipientMessagingGroupKeyName: string(messageEntry.RecipientMessagingGroupKeyName[:]),
 		ExtraData:                      consumer.ExtraDataBytesToString(messageEntry.ExtraData),
@@ -53,9 +53,9 @@ func MessageEncoderToPGStruct(messageEntry *lib.MessageEntry, keyBytes []byte) M
 	}
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func MessageBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func MessageBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -63,7 +63,7 @@ func MessageBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteMessageEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertMessageEntry(entries, db, operationType)
+		err = bulkInsertMessageEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -72,7 +72,7 @@ func MessageBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertMessageEntry inserts a batch of message entries into the database.
-func bulkInsertMessageEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertMessageEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -80,7 +80,7 @@ func bulkInsertMessageEntry(entries []*lib.StateChangeEntry, db *bun.DB, operati
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGMessageEntry{MessageEntry: MessageEncoderToPGStruct(entry.Encoder.(*lib.MessageEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGMessageEntry{MessageEntry: MessageEncoderToPGStruct(entry.Encoder.(*lib.MessageEntry), entry.KeyBytes, params)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

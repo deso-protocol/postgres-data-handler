@@ -32,10 +32,10 @@ type PGBalanceEntryUtxoOps struct {
 }
 
 // Convert the DeSo encoder to the postgres struct used by bun.
-func BalanceEntryEncoderToPGStruct(balanceEntry *lib.BalanceEntry, keyBytes []byte) BalanceEntry {
+func BalanceEntryEncoderToPGStruct(balanceEntry *lib.BalanceEntry, keyBytes []byte, params *lib.DeSoParams) BalanceEntry {
 	return BalanceEntry{
-		HodlerPkid:   consumer.PublicKeyBytesToBase58Check(balanceEntry.HODLerPKID[:]),
-		CreatorPkid:  consumer.PublicKeyBytesToBase58Check(balanceEntry.CreatorPKID[:]),
+		HodlerPkid:   consumer.PublicKeyBytesToBase58Check(balanceEntry.HODLerPKID[:], params),
+		CreatorPkid:  consumer.PublicKeyBytesToBase58Check(balanceEntry.CreatorPKID[:], params),
 		BalanceNanos: bunbig.FromMathBig(balanceEntry.BalanceNanos.ToBig()),
 		HasPurchased: balanceEntry.HasPurchased,
 		// Check to see if the key has the prefix for a DAO coin.
@@ -44,9 +44,9 @@ func BalanceEntryEncoderToPGStruct(balanceEntry *lib.BalanceEntry, keyBytes []by
 	}
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func BalanceBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func BalanceBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -54,7 +54,7 @@ func BalanceBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteBalanceEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertBalanceEntry(entries, db, operationType)
+		err = bulkInsertBalanceEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -63,7 +63,7 @@ func BalanceBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertBalanceEntry inserts a batch of balance entries into the database.
-func bulkInsertBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -71,7 +71,7 @@ func bulkInsertBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, operati
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGBalanceEntry{BalanceEntry: BalanceEntryEncoderToPGStruct(entry.Encoder.(*lib.BalanceEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGBalanceEntry{BalanceEntry: BalanceEntryEncoderToPGStruct(entry.Encoder.(*lib.BalanceEntry), entry.KeyBytes, params)}
 	}
 
 	// Execute the insert query.

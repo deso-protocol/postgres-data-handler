@@ -47,11 +47,11 @@ type PGPostEntryUtxoOps struct {
 	UtxoOperation
 }
 
-func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte) (PostEntry, error) {
+func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte, params *lib.DeSoParams) (PostEntry, error) {
 
 	pgPostEntry := PostEntry{
 		PostHash:                                 hex.EncodeToString(postEntry.PostHash[:]),
-		PosterPublicKey:                          consumer.PublicKeyBytesToBase58Check(postEntry.PosterPublicKey),
+		PosterPublicKey:                          consumer.PublicKeyBytesToBase58Check(postEntry.PosterPublicKey, params),
 		ParentPostHash:                           hex.EncodeToString(postEntry.ParentStakeID),
 		IsQuotedRepost:                           postEntry.IsQuotedRepost,
 		Timestamp:                                consumer.UnixNanoToTime(postEntry.TimestampNanos),
@@ -87,9 +87,9 @@ func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte) (Post
 	return pgPostEntry, nil
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -97,7 +97,7 @@ func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeletePostEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertPostEntry(entries, db, operationType)
+		err = bulkInsertPostEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -106,7 +106,7 @@ func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertPostEntry inserts a batch of post entries into the database.
-func bulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -114,7 +114,7 @@ func bulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		if pgEntry, err := PostEntryEncoderToPGStruct(entry.Encoder.(*lib.PostEntry), entry.KeyBytes); err != nil {
+		if pgEntry, err := PostEntryEncoderToPGStruct(entry.Encoder.(*lib.PostEntry), entry.KeyBytes, params); err != nil {
 			return errors.Wrapf(err, "entries.bulkInsertPostEntry: Problem converting post entry to PG struct")
 		} else {
 			pgEntrySlice[ii] = &PGPostEntry{PostEntry: pgEntry}

@@ -36,14 +36,14 @@ var (
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_txn_count_social", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_follow_count", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_message_count", Ticker: time.NewTicker(15 * time.Minute)},
-		{Query: "SELECT refresh_public_key_first_transaction()", Ticker: time.NewTicker(5 * time.Minute)},
+		{Query: "SELECT refresh_public_key_first_transaction()", Ticker: time.NewTicker(10 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_social_leaderboard_likes", Ticker: time.NewTicker(30 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_social_leaderboard_reactions", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_social_leaderboard_diamonds", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_social_leaderboard_reposts", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_social_leaderboard_comments", Ticker: time.NewTicker(15 * time.Minute)},
-		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_social_leaderboard", Ticker: time.NewTicker(15 * time.Minute)},
-		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_nft_leaderboard", Ticker: time.NewTicker(15 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_social_leaderboard", Ticker: time.NewTicker(1 * time.Second)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_nft_leaderboard", Ticker: time.NewTicker(1 * time.Second)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_defi_leaderboard", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_txn_count_monthly", Ticker: time.NewTicker(30 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_wallet_count_monthly", Ticker: time.NewTicker(30 * time.Minute)},
@@ -60,6 +60,19 @@ var (
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_diamond_earnings", Ticker: time.NewTicker(30 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_nft_bid_royalty_earnings", Ticker: time.NewTicker(30 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_nft_buy_now_royalty_earnings", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_deso_token_buy_orders", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_deso_token_sell_orders", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_diamonds_given", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_diamonds_received", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_cc_buyers", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_cc_sellers", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_nft_bid_buys", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_nft_bid_sales", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_nft_buy_now_buys", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_nft_buy_now_sales", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_deso_token_buy_orders", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_deso_token_sell_orders", Ticker: time.NewTicker(30 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_profile_earnings_breakdown_counts", Ticker: time.NewTicker(30 * time.Minute)},
 	}
 )
 
@@ -72,7 +85,7 @@ func RunMigrationWithRetries(db *bun.DB, migrationQuery string) error {
 			return nil
 		}
 		waitTime := 5 * time.Duration(math.Pow(2, float64(ii))) * time.Second
-		fmt.Printf("Failed to migrate, retrying in %v: %v\n", waitTime, err)
+		fmt.Printf("Failed to migrate, retrying in %v. err: %v. Query: %v\n", waitTime, err, migrationQuery)
 		time.Sleep(waitTime)
 	}
 	return errors.New("Failed to migrate after 5 attempts")

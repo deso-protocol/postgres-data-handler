@@ -12,10 +12,12 @@ func init() {
 				public_key VARCHAR,
 				transaction_hash VARCHAR,
 				metadata VARCHAR,
+				timestamp timestamp,
 				PRIMARY KEY(public_key, transaction_hash)
 			);
 			CREATE INDEX affected_public_key_public_key_idx ON affected_public_key (public_key);
 			CREATE INDEX affected_public_key_metadata_key_idx ON affected_public_key (metadata);
+			CREATE INDEX affected_public_key_timestamp_idx ON affected_public_key (timestamp desc);
 			CREATE INDEX affected_public_key_transaction_hash_idx ON affected_public_key (transaction_hash);
 		`)
 		if err != nil {

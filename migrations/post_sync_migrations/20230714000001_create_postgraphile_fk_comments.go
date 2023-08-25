@@ -13,7 +13,7 @@ func init() {
 			comment on view account is E'@unique username\n@unique public_key\n@unique pkid\n@primaryKey public_key';
 			comment on table access_group_entry is E'@name access_group\n@foreignKey (access_group_owner_public_key) references account (public_key)|@foreignFieldName accessGroupsOwned|@fieldName owner';
 			comment on table access_group_member_entry is E'@name access_group_member\n@foreignKey (access_group_member_public_key) references account (public_key)|@foreignFieldName accessGroupMemberships|@fieldName member';
-			comment on table affected_public_key is E'@foreignKey (public_key) references account (public_key)|@foreignFieldName transactionHashes|@fieldName account\n@foreignKey (transaction_hash) references transaction (transaction_hash)|@fieldName transaction';
+			comment on table affected_public_key is E'@foreignKey (public_key) references account (public_key)|@foreignFieldName transactionHashes|@fieldName account\n@foreignKey (transaction_hash) references transaction (transaction_hash)|@fieldName transaction|@foreignFieldName affectedPublicKeys';
 			comment on table balance_entry is E'@name tokenBalance\n@foreignKey (hodler_pkid) references account (pkid)|@foreignFieldName tokenBalances|@fieldName holder\n@foreignKey (creator_pkid) references account (pkid)|@foreignFieldName tokenBalancesAsCreator|@fieldName creator';
 			comment on view creator_coin_balance is E'@primaryKey hodler_pkid,creator_pkid\n@name creatorCoinBalance\n@foreignKey (hodler_pkid) references account (pkid)|@foreignFieldName creatorCoinBalances|@fieldName holder\n@foreignKey (creator_pkid) references account (pkid)|@foreignFieldName creatorCoinBalancesAsCreator|@fieldName creator';
 			comment on table derived_key_entry is E'@name derived_key\n@foreignKey (owner_public_key) references account (public_key)|@foreignFieldName derivedKeys|@fieldName owner';
@@ -31,7 +31,7 @@ func init() {
 			comment on view transaction is E'@foreignKey (block_hash) references block (block_hash)|@foreignFieldName transactions|@fieldName block\n@foreignKey (public_key) references account (public_key)|@foreignFieldName transactions|@fieldName account\n@unique transaction_hash';
 			comment on table user_association_entry is E'@name user_association\n@foreignKey (transactor_pkid) references account (pkid)|@foreignFieldName userAssociationsAsTransactor|@fieldName transactor\n@foreignKey (app_pkid) references account (pkid)|@foreignFieldName userAssociationsAsAppOwner|@fieldName app\n@foreignKey (target_user_pkid) references account (pkid)|@foreignFieldName userAssociationsAsTarget|@fieldName target\n@foreignKey (block_height) references block (height)|@foreignFieldName userAssociations|@fieldName block';
 			comment on table utxo_operation is E'@foreignKey (block_hash, transaction_index) references transaction (block_hash, index_in_block)|@fieldName transaction';
-			comment on table dao_coin_limit_order_entry is E'@name desoTokenLimitOrder\n@foreignKey (transactor_pkid) references account (pkid)|@foreignFieldName desoTokenLimitOrderByTransactor|@fieldName transactorAccount\n@foreignKey (buying_dao_coin_creator_pkid) references account (pkid)|@foreignFieldName desoTokenLimitOrderByCreatorBought|@fieldName creatorBoughtAccount\n@foreignKey (selling_dao_coin_creator_pkid) references account (pkid)|@foreignFieldName desoTokenLimitOrderByCreatorSold|@fieldName creatorSoldAccount\n@unique order_id\n@foreignKey (selling_dao_coin_creator_pkid, transactor_pkid) references balance_entry (creator_pkid, hodler_pkid)|@foreignFieldName desoTokenLimitOrders|@fieldName transactorSellingTokenBalance';
+			comment on table dao_coin_limit_order_entry is E'@name desoTokenLimitOrder\n@foreignKey (transactor_pkid) references account (pkid)|@foreignFieldName desoTokenLimitOrderByTransactor|@fieldName transactorAccount\n@foreignKey (buying_dao_coin_creator_pkid) references account (pkid)|@foreignFieldName desoTokenLimitOrderByCreatorBought|@fieldName creatorBoughtAccount\n@foreignKey (selling_dao_coin_creator_pkid) references account (pkid)|@foreignFieldName desoTokenLimitOrderByCreatorSold|@fieldName creatorSoldAccount\n@unique order_id\n@foreignKey (selling_dao_coin_creator_pkid, transactor_pkid, is_dao_coin_const) references balance_entry (creator_pkid, hodler_pkid, is_dao_coin)|@foreignFieldName desoTokenSellingLimitOrders|@fieldName transactorSellingTokenBalance\n@foreignKey (buying_dao_coin_creator_pkid, transactor_pkid, is_dao_coin_const) references balance_entry (creator_pkid, hodler_pkid, is_dao_coin)|@foreignFieldName desoTokenBuyingLimitOrders|@fieldName transactorBuyingTokenBalance';
 			comment on table block is E'@unique block_hash\n@unique height';
 			comment on column access_group_entry.badger_key is E'@omit';
 			comment on column access_group_member_entry.badger_key is E'@omit';
@@ -132,7 +132,6 @@ func init() {
 			comment on materialized view statistic_social_leaderboard_comments is E'@omit';
 			comment on table public_key_first_transaction IS E'@omit';
 			comment on function get_transaction_count is E'@omit';
-			comment on function hex_to_decimal is E'@omit';
 			comment on function refresh_public_key_first_transaction is E'@omit';
 			comment on view statistic_dashboard is E'@name dashboardStat';
 			comment on materialized view statistic_social_leaderboard is E'@name socialLeaderboardStat';
@@ -143,7 +142,7 @@ func init() {
 			comment on materialized view statistic_txn_count_daily is E'@name dailyTxnCountStat';
 			comment on materialized view statistic_new_wallet_count_daily is E'@name dailyNewWalletCountStat';
 			comment on materialized view statistic_active_wallet_count_daily is E'@name dailyActiveWalletCountStat';
-			comment on materialized view statistic_profile_transactions is E'@name profileTransactionStat\n@unique public_key\n@omit all';
+			comment on materialized view statistic_profile_transactions is E'@name profileTransactionStat\n@unique public_key\n@foreignKey (public_key) references account (public_key)|@foreignFieldName transactionStats|@fieldName account';
 			comment on materialized view statistic_profile_top_nft_owners is E'@name profileNftTopOwners';
 			comment on function hex_to_numeric is E'@omit';
 			comment on function cc_nanos_total_sell_value is E'@omit';
@@ -154,6 +153,25 @@ func init() {
 			comment on materialized view statistic_nft_balance_totals is E'@omit';
 			comment on materialized view statistic_deso_token_balance_totals is E'@omit';
 			comment on materialized view statistic_portfolio_value is E'@name profilePortfolioValueStat\n@unique public_key\n@omit all';
+			comment on materialized view statistic_profile_cc_royalties is E'@omit';
+			comment on materialized view statistic_profile_diamond_earnings is E'@omit';
+			comment on materialized view statistic_profile_nft_bid_royalty_earnings is E'@omit';
+			comment on materialized view statistic_profile_nft_buy_now_royalty_earnings is E'@omit';
+			comment on materialized view statistic_profile_earnings is E'@name profileEarningsStats\n@unique public_key\n@omit all';
+			comment on materialized view statistic_profile_deso_token_buy_orders is E'@omit';
+			comment on materialized view statistic_profile_deso_token_sell_orders is E'@omit';
+			comment on materialized view statistic_profile_diamonds_given is E'@omit';
+			comment on materialized view statistic_profile_diamonds_received is E'@omit';
+			comment on materialized view statistic_profile_cc_buyers is E'@omit';
+			comment on materialized view statistic_profile_cc_sellers is E'@omit';
+			comment on materialized view statistic_profile_nft_bid_buys is E'@omit';
+			comment on materialized view statistic_profile_nft_bid_sales is E'@omit';
+			comment on materialized view statistic_profile_nft_buy_now_buys is E'@omit';
+			comment on materialized view statistic_profile_nft_buy_now_sales is E'@omit';
+			comment on materialized view statistic_profile_deso_token_buy_orders is E'@omit';
+			comment on materialized view statistic_profile_deso_token_sell_orders is E'@omit';
+			comment on materialized view statistic_profile_earnings_breakdown_counts is E'@name profileEarningsBreakdownStats\n@unique public_key\n@omit all';
+			comment on function jsonb_to_bytea is E'@omit';
 		`)
 		if err != nil {
 			return err
@@ -282,7 +300,6 @@ func init() {
 			comment on materialized view statistic_social_leaderboard_comments is NULL;
 			comment on table public_key_first_transaction IS NULL;
 			comment on function get_transaction_count is NULL;
-			comment on function hex_to_decimal is NULL;
 			comment on function refresh_public_key_first_transaction is NULL;
 			comment on view statistic_dashboard is NULL;
 			comment on materialized view statistic_social_leaderboard is NULL;
@@ -304,6 +321,20 @@ func init() {
 			comment on materialized view statistic_nft_balance_totals is NULL;
 			comment on materialized view statistic_deso_token_balance_totals is NULL;
 			comment on materialized view statistic_portfolio_value is NULL;
+			comment on materialized view statistic_profile_deso_token_buy_orders is NULL;
+			comment on materialized view statistic_profile_deso_token_sell_orders is NULL;
+			comment on materialized view statistic_profile_diamonds_given is NULL;
+			comment on materialized view statistic_profile_diamonds_received is NULL;
+			comment on materialized view statistic_profile_cc_buyers is NULL;
+			comment on materialized view statistic_profile_cc_sellers is NULL;
+			comment on materialized view statistic_profile_nft_bid_buys is NULL;
+			comment on materialized view statistic_profile_nft_bid_sales is NULL;
+			comment on materialized view statistic_profile_nft_buy_now_buys is NULL;
+			comment on materialized view statistic_profile_nft_buy_now_sales is NULL;
+			comment on materialized view statistic_profile_deso_token_buy_orders is NULL;
+			comment on materialized view statistic_profile_deso_token_sell_orders is NULL;
+			comment on materialized view statistic_profile_earnings_breakdown_counts is NULL;
+			comment on function jsonb_to_bytea is NULL;
 		`)
 		if err != nil {
 			return err

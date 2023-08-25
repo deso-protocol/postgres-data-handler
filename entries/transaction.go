@@ -13,6 +13,7 @@ import (
 
 type TransactionEntry struct {
 	TransactionHash              string `pg:",pk,use_zero"`
+	TransactionId                string `pg:",use_zero"`
 	BlockHash                    string
 	Version                      uint16
 	Inputs                       []map[string]string `bun:"type:jsonb"`
@@ -40,7 +41,7 @@ type PGTransactionEntry struct {
 	TransactionEntry
 }
 
-func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64, blockHash string, blockHeight uint64, timestamp time.Time) (*PGTransactionEntry, error) {
+func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64, blockHash string, blockHeight uint64, timestamp time.Time, params *lib.DeSoParams) (*PGTransactionEntry, error) {
 
 	var txInputs []map[string]string
 	for _, input := range transaction.TxInputs {
@@ -52,7 +53,7 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 	var txOutputs []map[string]string
 	for _, output := range transaction.TxOutputs {
 		txOutputs = append(txOutputs, map[string]string{
-			"public_key":   consumer.PublicKeyBytesToBase58Check(output.PublicKey[:]),
+			"public_key":   consumer.PublicKeyBytesToBase58Check(output.PublicKey[:], params),
 			"amount_nanos": fmt.Sprintf("%d", output.AmountNanos),
 		})
 	}
@@ -70,6 +71,7 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 	transactionEntry := &PGTransactionEntry{
 		TransactionEntry: TransactionEntry{
 			TransactionHash: hex.EncodeToString(transaction.Hash()[:]),
+			TransactionId:   consumer.PublicKeyBytesToBase58Check(transaction.Hash()[:], params),
 			BlockHash:       blockHash,
 			Version:         uint16(transaction.TxnVersion),
 			Inputs:          txInputs,
@@ -79,7 +81,7 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 			TxnMetaBytes:    txnMetaBytes,
 			TxnBytes:        txnBytes,
 			TxnType:         uint16(transaction.TxnMeta.GetTxnType()),
-			PublicKey:       consumer.PublicKeyBytesToBase58Check(transaction.PublicKey[:]),
+			PublicKey:       consumer.PublicKeyBytesToBase58Check(transaction.PublicKey[:], params),
 			ExtraData:       consumer.ExtraDataBytesToString(transaction.ExtraData),
 			IndexInBlock:    blockIndex,
 			BlockHeight:     blockHeight,
@@ -99,9 +101,9 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 	return transactionEntry, nil
 }
 
-// TransactionBatchOperation is the entry point for processing a batch of transaction entries. It determines the appropriate handler
+// TransactionBatchOperation is the entry point for processing a batch of transaction entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func TransactionBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func TransactionBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -109,7 +111,7 @@ func TransactionBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) erro
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteTransactionEntry(entries, db, operationType)
 	} else {
-		err = transformAndBulkInsertTransactionEntry(entries, db, operationType)
+		err = transformAndBulkInsertTransactionEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -117,7 +119,7 @@ func TransactionBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) erro
 	return nil
 }
 
-func transformTransactionEntry(entries []*lib.StateChangeEntry) ([]*PGTransactionEntry, error) {
+func transformTransactionEntry(entries []*lib.StateChangeEntry, params *lib.DeSoParams) ([]*PGTransactionEntry, error) {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueTransactions := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -125,7 +127,7 @@ func transformTransactionEntry(entries []*lib.StateChangeEntry) ([]*PGTransactio
 
 	for _, entry := range uniqueTransactions {
 		transaction := entry.Encoder.(*lib.MsgDeSoTxn)
-		transactionEntry, err := TransactionEncoderToPGStruct(transaction, 0, "", 0, time.Now())
+		transactionEntry, err := TransactionEncoderToPGStruct(transaction, 0, "", 0, time.Now(), params)
 		if err != nil {
 			return nil, errors.Wrapf(err, "entries.transformAndBulkInsertTransactionEntry: Problem converting transaction to PG struct")
 		}
@@ -149,8 +151,8 @@ func bulkInsertTransactionEntry(entries []*PGTransactionEntry, db *bun.DB, opera
 }
 
 // transformAndBulkInsertTransactionEntry inserts a batch of user_association entries into the database.
-func transformAndBulkInsertTransactionEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
-	pgTransactionEntrySlice, err := transformTransactionEntry(entries)
+func transformAndBulkInsertTransactionEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+	pgTransactionEntrySlice, err := transformTransactionEntry(entries, params)
 	if err != nil {
 		return errors.Wrapf(err, "entries.transformAndBulkInsertTransactionEntry: Problem transforming transaction entries")
 	}

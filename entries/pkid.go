@@ -26,17 +26,17 @@ type PGPkidEntryUtxoOps struct {
 }
 
 // Convert the Diamond DeSo encoder to the PG struct used by bun.
-func PkidEncoderToPGStruct(pkidEntry *lib.PKIDEntry, keyBytes []byte) PkidEntry {
+func PkidEncoderToPGStruct(pkidEntry *lib.PKIDEntry, keyBytes []byte, params *lib.DeSoParams) PkidEntry {
 	return PkidEntry{
-		Pkid:      consumer.PublicKeyBytesToBase58Check(pkidEntry.PKID[:]),
-		PublicKey: consumer.PublicKeyBytesToBase58Check(pkidEntry.PublicKey[:]),
+		Pkid:      consumer.PublicKeyBytesToBase58Check(pkidEntry.PKID[:], params),
+		PublicKey: consumer.PublicKeyBytesToBase58Check(pkidEntry.PublicKey[:], params),
 		BadgerKey: keyBytes,
 	}
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func PkidBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func PkidBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -44,7 +44,7 @@ func PkidBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeletePkidEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertPkidEntry(entries, db, operationType)
+		err = bulkInsertPkidEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -53,7 +53,7 @@ func PkidBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertDiamondEntry inserts a batch of diamond entries into the database.
-func bulkInsertPkidEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertPkidEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -61,7 +61,7 @@ func bulkInsertPkidEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGPkidEntry{PkidEntry: PkidEncoderToPGStruct(entry.Encoder.(*lib.PKIDEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGPkidEntry{PkidEntry: PkidEncoderToPGStruct(entry.Encoder.(*lib.PKIDEntry), entry.KeyBytes, params)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

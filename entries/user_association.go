@@ -34,7 +34,7 @@ type PGUserAssociationEntryUtxoOps struct {
 }
 
 // Convert the UserAssociation DeSo encoder to the PG struct used by bun.
-func UserAssociationEncoderToPGStruct(userAssociationEntry *lib.UserAssociationEntry, keyBytes []byte) UserAssociationEntry {
+func UserAssociationEncoderToPGStruct(userAssociationEntry *lib.UserAssociationEntry, keyBytes []byte, params *lib.DeSoParams) UserAssociationEntry {
 	pgEntry := UserAssociationEntry{
 		AssociationType:  string(userAssociationEntry.AssociationType[:]),
 		AssociationValue: string(userAssociationEntry.AssociationValue[:]),
@@ -45,22 +45,22 @@ func UserAssociationEncoderToPGStruct(userAssociationEntry *lib.UserAssociationE
 		pgEntry.AssociationID = hex.EncodeToString(userAssociationEntry.AssociationID[:])
 	}
 	if userAssociationEntry.TransactorPKID != nil {
-		pgEntry.TransactorPKID = consumer.PublicKeyBytesToBase58Check(userAssociationEntry.TransactorPKID[:])
+		pgEntry.TransactorPKID = consumer.PublicKeyBytesToBase58Check(userAssociationEntry.TransactorPKID[:], params)
 	}
 
 	if userAssociationEntry.TargetUserPKID != nil {
-		pgEntry.TargetUserPKID = consumer.PublicKeyBytesToBase58Check(userAssociationEntry.TargetUserPKID[:])
+		pgEntry.TargetUserPKID = consumer.PublicKeyBytesToBase58Check(userAssociationEntry.TargetUserPKID[:], params)
 	}
 
 	if userAssociationEntry.AppPKID != nil {
-		pgEntry.AppPKID = consumer.PublicKeyBytesToBase58Check(userAssociationEntry.AppPKID[:])
+		pgEntry.AppPKID = consumer.PublicKeyBytesToBase58Check(userAssociationEntry.AppPKID[:], params)
 	}
 	return pgEntry
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func UserAssociationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func UserAssociationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -68,7 +68,7 @@ func UserAssociationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) 
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteUserAssociationEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertUserAssociationEntry(entries, db, operationType)
+		err = bulkInsertUserAssociationEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -77,7 +77,7 @@ func UserAssociationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) 
 }
 
 // bulkInsertUserAssociationEntry inserts a batch of user_association entries into the database.
-func bulkInsertUserAssociationEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertUserAssociationEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -85,7 +85,7 @@ func bulkInsertUserAssociationEntry(entries []*lib.StateChangeEntry, db *bun.DB,
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGUserAssociationEntry{UserAssociationEntry: UserAssociationEncoderToPGStruct(entry.Encoder.(*lib.UserAssociationEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGUserAssociationEntry{UserAssociationEntry: UserAssociationEncoderToPGStruct(entry.Encoder.(*lib.UserAssociationEntry), entry.KeyBytes, params)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

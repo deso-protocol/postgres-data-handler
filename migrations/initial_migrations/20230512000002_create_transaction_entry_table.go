@@ -11,6 +11,7 @@ func init() {
 			CREATE TABLE transaction_partitioned
 			(
 				transaction_hash                 varchar  not null,
+				transaction_id	                 varchar  not null,
 				block_hash                       varchar  not null,
 				version                          smallint not null,
 				inputs                           jsonb,
@@ -34,6 +35,7 @@ func init() {
 				PRIMARY KEY (transaction_hash, txn_type)
 			) PARTITION BY LIST (txn_type);
 			CREATE INDEX transaction_hash_idx ON transaction_partitioned (transaction_hash);
+			CREATE INDEX transaction_id_idx ON transaction_partitioned (transaction_id);
 			CREATE INDEX transaction_block_height_idx ON transaction_partitioned (block_height desc);
 			CREATE INDEX transaction_timestamp_idx ON transaction_partitioned (timestamp desc);
 			CREATE INDEX transaction_index_in_block_idx ON transaction_partitioned (index_in_block);

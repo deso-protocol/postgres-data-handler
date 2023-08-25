@@ -43,6 +43,7 @@ func createDaoCoinLimitOrderEntryTable(db *bun.DB, tableName string) error {
 				fill_type INTEGER,
 				block_height BIGINT,
 				badger_key BYTEA PRIMARY KEY,
+				is_dao_coin_const BOOLEAN DEFAULT TRUE NOT NULL,
 				scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric NUMERIC
 				GENERATED ALWAYS AS (
 					hex_to_numeric(substring(scaled_exchange_rate_coins_to_sell_per_coin_to_buy_hex from 3))
@@ -58,6 +59,7 @@ func createDaoCoinLimitOrderEntryTable(db *bun.DB, tableName string) error {
 		CREATE INDEX {tableName}_buying_pkid_idx ON {tableName} (buying_dao_coin_creator_pkid);
 		CREATE INDEX {tableName}_selling_pkid_idx ON {tableName} (selling_dao_coin_creator_pkid);
 		CREATE INDEX {tableName}_operation_type_idx ON {tableName} (operation_type);
+		CREATE INDEX {tableName}_is_dao_coin_const_idx ON {tableName} (is_dao_coin_const);
 		CREATE INDEX {tableName}_fill_type_idx ON {tableName} (fill_type);
 		CREATE INDEX {tableName}_block_height_idx ON {tableName} (block_height desc);
 		CREATE INDEX {tableName}_scaled_exchange_rate_idx ON {tableName} (scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric desc);

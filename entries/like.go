@@ -27,17 +27,17 @@ type PGLikeEntryUtxoOps struct {
 }
 
 // Convert the like DeSo encoder to the PG struct used by bun.
-func LikeEncoderToPGStruct(likeEntry *lib.LikeEntry, keyBytes []byte) LikeEntry {
+func LikeEncoderToPGStruct(likeEntry *lib.LikeEntry, keyBytes []byte, params *lib.DeSoParams) LikeEntry {
 	return LikeEntry{
-		PublicKey: consumer.PublicKeyBytesToBase58Check(likeEntry.LikerPubKey[:]),
+		PublicKey: consumer.PublicKeyBytesToBase58Check(likeEntry.LikerPubKey[:], params),
 		PostHash:  hex.EncodeToString(likeEntry.LikedPostHash[:]),
 		BadgerKey: keyBytes,
 	}
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func LikeBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func LikeBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -45,7 +45,7 @@ func LikeBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteLikeEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertLikeEntry(entries, db, operationType)
+		err = bulkInsertLikeEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -54,7 +54,7 @@ func LikeBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertLikeEntry inserts a batch of like entries into the database.
-func bulkInsertLikeEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertLikeEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -62,7 +62,7 @@ func bulkInsertLikeEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGLikeEntry{LikeEntry: LikeEncoderToPGStruct(entry.Encoder.(*lib.LikeEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGLikeEntry{LikeEntry: LikeEncoderToPGStruct(entry.Encoder.(*lib.LikeEntry), entry.KeyBytes, params)}
 	}
 
 	// Execute the insert query.

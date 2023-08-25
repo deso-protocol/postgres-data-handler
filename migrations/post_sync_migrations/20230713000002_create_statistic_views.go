@@ -559,7 +559,7 @@ func init() {
 			select public_key, count(*) as count, sum(fee_nanos) as total_fees, min(timestamp) as first_transaction_timestamp, max(timestamp)  as latest_transaction_timestamp from transaction
 			group by public_key;
 			
-			CREATE UNIQUE INDEX statistic_profile_transaction_count_unique_index ON statistic_profile_transactions (public_key);`)
+			CREATE UNIQUE INDEX statistic_profile_transactions_unique_index ON statistic_profile_transactions (public_key);`)
 		if err != nil {
 			return err
 		}
@@ -834,6 +834,320 @@ func init() {
 		}
 
 		err = RunMigrationWithRetries(db, `
+			CREATE MATERIALIZED VIEW statistic_profile_earnings AS
+			select a.public_key, a.username, coalesce(cc.total_cc_royalty_nanos, 0) as total_cc_royalty_nanos, coalesce(d.total_diamond_nanos, 0) as total_diamond_nanos,
+				   coalesce(nftbid.total_additional_royalty, 0) + coalesce(nftbuy.total_additional_royalty, 0) + coalesce(nftbid.total_creator_royalty, 0) + coalesce(nftbuy.total_creator_royalty, 0) as total_nft_royalty_nanos,
+				   coalesce(nftbid.total_additional_royalty, 0) + coalesce(nftbuy.total_additional_royalty, 0) as total_nft_additional_royalty_nanos,
+				   coalesce(nftbid.total_creator_royalty, 0) + coalesce(nftbuy.total_creator_royalty, 0) as total_nft_creator_royalty_nanos
+				   from account a
+			left join statistic_profile_cc_royalties cc
+			on cc.public_key = a.public_key
+			left join statistic_profile_nft_bid_royalty_earnings nftbid
+			on a.public_key = nftbid.public_key
+			left join statistic_profile_nft_buy_now_royalty_earnings nftbuy
+			on a.public_key = nftbuy.public_key
+			left join statistic_profile_diamond_earnings d
+			on d.receiver_pkid = a.pkid;
+			
+			CREATE UNIQUE INDEX statistic_profile_earnings_unique_idx on statistic_profile_earnings (public_key);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_deso_token_buy_orders as
+			WITH market_orders as (
+				select hex_to_numeric((jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+									  'CoinQuantityInBaseUnitsSold') AS coin_quantity_in_base_units_sold,
+					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+					   'IsFulfilled'                                 AS is_fulfilled,
+					   transaction_hash
+				from transaction_partition_26
+			),
+				 cancelled_orders AS (
+					 select encode(jsonb_to_bytea(txn_meta -> 'CancelOrderID'), 'hex') as cancelled_order_txn_hash
+					 from transaction_partition_26
+					 where (txn_meta ->> 'CancelOrderID') is not null
+				 )
+			select t.public_key,
+				   sum(case
+						   when co.cancelled_order_txn_hash is not null then 0
+						   else (hex_to_numeric(tx_index_metadata ->> 'QuantityToFillInBaseUnits') *
+								 (hex_to_numeric(tx_index_metadata ->> 'ScaledExchangeRateCoinsToSellPerCoinToBuy') / 1e38)) -
+								(coalesce(d.quantity_to_fill_in_base_units_numeric, 0) *
+								 (coalesce(d.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric, 0) /
+								  1e38)) end)                          as total_limit_order_nanos_filled,
+				   sum(case
+						   when txn_meta ->> 'FillType' = '2' then m.coin_quantity_in_base_units_sold
+						   else 0 end)                                 as total_market_order_nanos_filled,
+				   count(co.cancelled_order_txn_hash)                  as cancelled_orders,
+				   sum(case
+						   when d.quantity_to_fill_in_base_units_hex = t.tx_index_metadata ->> 'QuantityToFillInBaseUnits' or
+								d.order_id is null then 0
+						   else 1 end)                                 as partially_filled_orders_count,
+				   sum(case
+						   when d.quantity_to_fill_in_base_units_hex = t.tx_index_metadata ->> 'QuantityToFillInBaseUnits' and
+								d.order_id is not null then 1
+						   else 0 end)                                 as unfilled_orders_count,
+				   count(d.order_id)                                   as total_open_orders_count,
+				   sum(case when d.order_id is null then 1 else 0 end) as total_filled_orders_count
+			from transaction_partition_26 t
+					 left join dao_coin_limit_order_entry d
+							   on t.transaction_hash = d.order_id
+					 left join market_orders m
+							   on m.transaction_hash = t.transaction_hash
+								   and m.is_fulfilled = 'true'
+					 left join cancelled_orders co
+							   on t.transaction_hash = co.cancelled_order_txn_hash
+			where tx_index_metadata ? 'ScaledExchangeRateCoinsToSellPerCoinToBuy'
+			  and tx_index_metadata ? 'QuantityToFillInBaseUnits'
+			  and tx_index_metadata ->> 'SellingDAOCoinCreatorPublicKey' = 'BC1YLbnP7rndL92x7DbLp6bkUpCgKmgoHgz7xEbwhgHTps3ZrXA6LtQ'
+			group by t.public_key;
+
+			CREATE UNIQUE INDEX statistic_profile_deso_token_buy_orders_unique_idx on statistic_profile_deso_token_buy_orders (public_key);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_deso_token_sell_orders as
+			WITH market_orders as (
+				select hex_to_numeric((jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+									  'CoinQuantityInBaseUnitsBought') AS coin_quantity_in_base_units_bought,
+					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+					   'IsFulfilled'                                   AS is_fulfilled,
+					   transaction_hash
+				from transaction_partition_26
+			),
+				 cancelled_orders AS (
+					 select encode(jsonb_to_bytea(txn_meta -> 'CancelOrderID'), 'hex') as cancelled_order_txn_hash
+					 from transaction_partition_26
+					 where (txn_meta ->> 'CancelOrderID') is not null
+				 )
+			select t.public_key,
+				   sum(case
+						   when hex_to_numeric(tx_index_metadata ->> 'ScaledExchangeRateCoinsToSellPerCoinToBuy') = 0 or
+								co.cancelled_order_txn_hash is not null then 0
+						   else (hex_to_numeric(tx_index_metadata ->> 'QuantityToFillInBaseUnits') *
+								 (1 / hex_to_numeric(tx_index_metadata ->> 'ScaledExchangeRateCoinsToSellPerCoinToBuy') *
+								  1e38)) end -
+					   case
+						   when coalesce(d.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric, 0) = 0 then 0
+						   else coalesce(d.quantity_to_fill_in_base_units_numeric, 0) *
+								((1 / coalesce(d.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric, 0)) *
+								 1e38) end)                            as total_limit_order_nanos_filled,
+				   sum(case
+						   when txn_meta ->> 'FillType' = '2' then m.coin_quantity_in_base_units_bought
+						   else 0 end)                                 as total_market_order_nanos_filled,
+				   count(co.cancelled_order_txn_hash)                  as cancelled_orders,
+				   sum(case
+						   when d.quantity_to_fill_in_base_units_hex = t.tx_index_metadata ->> 'QuantityToFillInBaseUnits' or
+								d.order_id is null then 0
+						   else 1 end)                                 as partially_filled_orders_count,
+				   sum(case
+						   when d.quantity_to_fill_in_base_units_hex = t.tx_index_metadata ->> 'QuantityToFillInBaseUnits' and
+								d.order_id is not null then 1
+						   else 0 end)                                 as unfilled_orders_count,
+				   count(d.order_id)                                   as total_open_orders_count,
+				   sum(case when d.order_id is null then 1 else 0 end) as total_filled_orders_count
+			from transaction_partition_26 t
+					 left join dao_coin_limit_order_entry d
+							   on t.transaction_hash = d.order_id
+					 left join market_orders m
+							   on m.transaction_hash = t.transaction_hash
+								   and m.is_fulfilled = 'true'
+					 left join cancelled_orders co
+							   on t.transaction_hash = co.cancelled_order_txn_hash
+			where tx_index_metadata ? 'ScaledExchangeRateCoinsToSellPerCoinToBuy'
+			  and tx_index_metadata ? 'QuantityToFillInBaseUnits'
+			  and tx_index_metadata ->> 'BuyingDAOCoinCreatorPublicKey' = 'BC1YLbnP7rndL92x7DbLp6bkUpCgKmgoHgz7xEbwhgHTps3ZrXA6LtQ'
+			group by t.public_key;
+
+			CREATE UNIQUE INDEX statistic_profile_deso_token_sell_orders_unique_idx on statistic_profile_deso_token_sell_orders (public_key);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_diamonds_given as
+			select sum(case
+						   when diamond_level = 1 then 50000
+						   when diamond_level = 2 then 500000
+						   when diamond_level = 3 then 5000000
+						   when diamond_level = 4 then 50000000
+						   when diamond_level = 5 then 500000000
+						   when diamond_level = 6 then 5000000000
+						   when diamond_level = 7 then 50000000000
+						   when diamond_level = 8 then 450000000000 END) as total_diamonds_given_nanos,
+				   sum(diamond_level) as diamonds_given_count,
+				   sender_pkid
+			from diamond_entry
+			group by sender_pkid;
+
+			CREATE UNIQUE INDEX statistic_profile_statistic_profile_diamonds_given_unique_idx on statistic_profile_diamonds_given (sender_pkid);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_diamonds_received as
+			select sum(case
+						   when diamond_level = 1 then 50000
+						   when diamond_level = 2 then 500000
+						   when diamond_level = 3 then 5000000
+						   when diamond_level = 4 then 50000000
+						   when diamond_level = 5 then 500000000
+						   when diamond_level = 6 then 5000000000
+						   when diamond_level = 7 then 50000000000
+						   when diamond_level = 8 then 450000000000 END) as total_diamonds_received_nanos,
+				   sum(diamond_level) as diamonds_received_count,
+				   receiver_pkid
+			from diamond_entry
+			group by receiver_pkid;
+			
+			CREATE UNIQUE INDEX statistic_profile_diamonds_received_unique_idx on statistic_profile_diamonds_received (receiver_pkid);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_cc_buyers as
+			select count(*) as buy_count,
+				   sum((tx_index_metadata ->> 'DeSoToSellNanos')::BIGINT) as total_buy_amount_nanos,
+				   base64_to_base58(txn_meta ->> 'ProfilePublicKey') as public_key
+			from transaction_partition_11
+			where tx_index_metadata ->> 'OperationType' = 'buy'
+			group by base64_to_base58(txn_meta ->> 'ProfilePublicKey');
+			
+			CREATE UNIQUE INDEX statistic_profile_cc_buyers_unique_idx on statistic_profile_cc_buyers (public_key);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_cc_sellers as
+			select count(*) as sell_count,
+					-1 * sum((tx_index_metadata ->> 'DESOLockedNanosDiff')::BIGINT) as total_sell_amount_nanos,
+					base64_to_base58(txn_meta ->> 'ProfilePublicKey') as public_key
+			 from transaction_partition_11
+			 where tx_index_metadata ->> 'OperationType' = 'sell'
+			 group by base64_to_base58(txn_meta ->> 'ProfilePublicKey');
+			
+			CREATE UNIQUE INDEX statistic_profile_cc_sellers_unique_idx on statistic_profile_cc_sellers (public_key);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_nft_bid_sales as
+			select public_key,
+				   sum((tx_index_metadata ->> 'BidAmountNanos')::BIGINT) as total_nft_sales_amount_nanos,
+				   count(*) as total_nft_sales_count
+			from transaction_partition_17
+			group by public_key;
+			
+			CREATE UNIQUE INDEX statistic_profile_nft_bid_sales_unique_idx on statistic_profile_nft_bid_sales (public_key);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_nft_buy_now_sales as
+			select tx_index_metadata ->> 'OwnerPublicKeyBase58Check' as public_key,
+				   sum((tx_index_metadata ->> 'BidAmountNanos')::BIGINT) as total_nft_sales_amount_nanos,
+				   count(*) as total_nft_sales_count
+			from transaction_partition_18
+			where tx_index_metadata ->> 'IsBuyNowBid' = 'true'
+			group by tx_index_metadata ->> 'OwnerPublicKeyBase58Check';
+			
+			CREATE UNIQUE INDEX statistic_profile_nft_buy_now_sales_unique_idx on statistic_profile_nft_buy_now_sales (public_key);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_nft_bid_buys as
+			select apk.public_key,
+				   sum((tx_index_metadata ->> 'BidAmountNanos')::BIGINT) as total_nft_buy_amount_nanos,
+				   count(*) as total_nft_buys_count
+			from transaction_partition_17 txn
+			join affected_public_key apk
+				on txn.transaction_hash = apk.transaction_hash
+			where apk.metadata = 'NFTBidderPublicKeyBase58Check'
+			group by apk.public_key;
+			
+			CREATE UNIQUE INDEX statistic_profile_nft_bid_buys_unique_idx on statistic_profile_nft_bid_buys (public_key);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_nft_buy_now_buys as
+			select public_key,
+				   sum((tx_index_metadata ->> 'BidAmountNanos')::BIGINT) as total_nft_buy_amount_nanos,
+				   count(*) as total_nft_buys_count
+			from transaction_partition_18
+			where tx_index_metadata ->> 'IsBuyNowBid' = 'true'
+			group by public_key;
+			
+			CREATE UNIQUE INDEX statistic_profile_nft_buy_now_buys_unique_idx on statistic_profile_nft_buy_now_buys (public_key);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
+			create materialized view statistic_profile_earnings_breakdown_counts as
+			select a.public_key, a.username, dg.diamonds_given_count, dr.diamonds_received_count,
+				   coalesce(ccb.buy_count, 0) as cc_buy_count, coalesce(ccb.total_buy_amount_nanos, 0) as cc_buy_amount_nanos,
+				   coalesce(ccs.sell_count, 0) as cc_sell_count, coalesce(ccs.total_sell_amount_nanos, 0) as cc_sell_amount_nanos,
+				   coalesce(nft_bid_buys.total_nft_buys_count, 0) + coalesce(nft_buy_now_buys.total_nft_buys_count, 0) as nft_buy_count,
+				   coalesce(nft_bid_buys.total_nft_buy_amount_nanos, 0) + coalesce(nft_buy_now_buys.total_nft_buy_amount_nanos, 0) as nft_buy_amount_nanos,
+				   coalesce(nft_bid_sales.total_nft_sales_count, 0) + coalesce(nft_buy_now_sales.total_nft_sales_count, 0) as nft_sell_count,
+				   coalesce(nft_bid_sales.total_nft_sales_amount_nanos, 0) + coalesce(nft_buy_now_sales.total_nft_sales_count, 0) as nft_sell_amount_nanos,
+				   coalesce(token_buys.total_filled_orders_count, 0) + coalesce(token_buys.partially_filled_orders_count, 0) as token_buy_trade_count,
+				   coalesce(token_buys.total_limit_order_nanos_filled, 0) + coalesce(token_buys.total_market_order_nanos_filled, 0) as token_buy_order_nanos_filled,
+				   coalesce(token_sells.total_filled_orders_count, 0) + coalesce(token_sells.partially_filled_orders_count, 0) as token_sell_trade_count,
+				   coalesce(token_sells.total_limit_order_nanos_filled, 0) + coalesce(token_sells.total_market_order_nanos_filled, 0) as token_sell_order_nanos_fillede
+			from account a
+			left join statistic_profile_diamonds_given dg
+			on a.pkid = dg.sender_pkid
+			left join statistic_profile_diamonds_received dr
+			on a.pkid = dr.receiver_pkid
+			left join statistic_profile_cc_buyers ccb
+			on a.public_key = ccb.public_key
+			left join statistic_profile_cc_sellers ccs
+			on a.public_key = ccs.public_key
+			left join statistic_profile_nft_bid_buys nft_bid_buys
+			on a.public_key = nft_bid_buys.public_key
+			left join statistic_profile_nft_bid_sales nft_bid_sales
+			on a.public_key = nft_bid_sales.public_key
+			left join statistic_profile_nft_buy_now_buys nft_buy_now_buys
+			on a.public_key = nft_buy_now_buys.public_key
+			left join statistic_profile_nft_buy_now_sales nft_buy_now_sales
+			on nft_buy_now_sales.public_key = a.public_key
+			left join statistic_profile_deso_token_buy_orders token_buys
+			on a.public_key = token_buys.public_key
+			left join statistic_profile_deso_token_sell_orders token_sells
+			on a.public_key = token_sells.public_key;
+			
+			CREATE UNIQUE INDEX statistic_profile_earnings_breakdown_counts_unique_idx on statistic_profile_earnings_breakdown_counts (public_key);
+		`)
+		if err != nil {
+			return err
+		}
+
+		err = RunMigrationWithRetries(db, `
 			CREATE VIEW statistic_dashboard AS
 			SELECT
 				statistic_txn_count_all.count as txn_count_all,
@@ -950,10 +1264,24 @@ func init() {
 			DROP TABLE IF EXISTS public_key_first_transaction;
 			DROP FUNCTION IF EXISTS refresh_public_key_first_transaction;
 			DROP FUNCTION IF EXISTS get_transaction_count;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_earnings;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_cc_royalties;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_diamond_earnings;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_nft_bid_royalty_earnings;
 			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_nft_buy_now_royalty_earnings;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_earnings_breakdown_counts;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_deso_token_buy_orders;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_deso_token_sell_orders;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_diamonds_given;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_diamonds_received;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_cc_buyers;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_cc_sellers;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_nft_bid_buys;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_nft_bid_sales;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_nft_buy_now_buys;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_nft_buy_now_sales;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_deso_token_buy_orders;
+			DROP MATERIALIZED VIEW IF EXISTS statistic_profile_deso_token_sell_orders;
 		`)
 		if err != nil {
 			return err

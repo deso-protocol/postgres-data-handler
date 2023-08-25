@@ -19,6 +19,7 @@ type DaoCoinLimitOrderEntry struct {
 	OperationType                                uint8  `bun:",nullzero"`
 	FillType                                     uint8  `bun:",nullzero"`
 	BlockHeight                                  uint32 `bun:",nullzero"`
+	IsDaoCoinConst                               bool   `bun:",nullzero"`
 	BadgerKey                                    []byte `pg:",pk,use_zero"`
 }
 
@@ -28,25 +29,26 @@ type PGDaoCoinLimitOrderEntry struct {
 }
 
 // Convert the PostAssociation DeSo encoder to the PG struct used by bun.
-func DaoCoinLimitOrderEncoderToPGStruct(daoCoinLimitOrder *lib.DAOCoinLimitOrderEntry, keyBytes []byte) DaoCoinLimitOrderEntry {
+func DaoCoinLimitOrderEncoderToPGStruct(daoCoinLimitOrder *lib.DAOCoinLimitOrderEntry, keyBytes []byte, params *lib.DeSoParams) DaoCoinLimitOrderEntry {
 	pgEntry := DaoCoinLimitOrderEntry{
 		OrderId:                   hex.EncodeToString(daoCoinLimitOrder.OrderID[:]),
-		TransactorPkid:            consumer.PublicKeyBytesToBase58Check(daoCoinLimitOrder.TransactorPKID[:]),
-		BuyingDaoCoinCreatorPkid:  consumer.PublicKeyBytesToBase58Check(daoCoinLimitOrder.BuyingDAOCoinCreatorPKID[:]),
-		SellingDaoCoinCreatorPkid: consumer.PublicKeyBytesToBase58Check(daoCoinLimitOrder.SellingDAOCoinCreatorPKID[:]),
+		TransactorPkid:            consumer.PublicKeyBytesToBase58Check(daoCoinLimitOrder.TransactorPKID[:], params),
+		BuyingDaoCoinCreatorPkid:  consumer.PublicKeyBytesToBase58Check(daoCoinLimitOrder.BuyingDAOCoinCreatorPKID[:], params),
+		SellingDaoCoinCreatorPkid: consumer.PublicKeyBytesToBase58Check(daoCoinLimitOrder.SellingDAOCoinCreatorPKID[:], params),
 		ScaledExchangeRateCoinsToSellPerCoinToBuyHex: daoCoinLimitOrder.ScaledExchangeRateCoinsToSellPerCoinToBuy.String(),
 		QuantityToFillInBaseUnitsHex:                 daoCoinLimitOrder.QuantityToFillInBaseUnits.String(),
 		OperationType:                                uint8(daoCoinLimitOrder.OperationType),
 		FillType:                                     uint8(daoCoinLimitOrder.FillType),
 		BlockHeight:                                  daoCoinLimitOrder.BlockHeight,
+		IsDaoCoinConst:                               true,
 		BadgerKey:                                    keyBytes,
 	}
 	return pgEntry
 }
 
-// DaoCoinLimitOrderBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// DaoCoinLimitOrderBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func DaoCoinLimitOrderBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func DaoCoinLimitOrderBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -54,7 +56,7 @@ func DaoCoinLimitOrderBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteDaoCoinLimitOrderEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertDaoCoinLimitOrderEntry(entries, db, operationType)
+		err = bulkInsertDaoCoinLimitOrderEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.DaoCoinLimitOrderBatchOperation: Problem with operation type %v", operationType)
@@ -63,7 +65,7 @@ func DaoCoinLimitOrderBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB
 }
 
 // bulkInsertDaoCoinLimitOrderEntry inserts a batch of post_association entries into the database.
-func bulkInsertDaoCoinLimitOrderEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertDaoCoinLimitOrderEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -71,7 +73,7 @@ func bulkInsertDaoCoinLimitOrderEntry(entries []*lib.StateChangeEntry, db *bun.D
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGDaoCoinLimitOrderEntry{DaoCoinLimitOrderEntry: DaoCoinLimitOrderEncoderToPGStruct(entry.Encoder.(*lib.DAOCoinLimitOrderEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGDaoCoinLimitOrderEntry{DaoCoinLimitOrderEntry: DaoCoinLimitOrderEncoderToPGStruct(entry.Encoder.(*lib.DAOCoinLimitOrderEntry), entry.KeyBytes, params)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

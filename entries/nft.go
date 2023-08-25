@@ -37,9 +37,9 @@ type PGNftEntryUtxoOps struct {
 }
 
 // Convert the NFT DeSo entry into a bun struct.
-func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte) NftEntry {
+func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte, params *lib.DeSoParams) NftEntry {
 	pgNFTEntry := NftEntry{
-		OwnerPkid:                  consumer.PublicKeyBytesToBase58Check(nftEntry.OwnerPKID[:]),
+		OwnerPkid:                  consumer.PublicKeyBytesToBase58Check(nftEntry.OwnerPKID[:], params),
 		NftPostHash:                hex.EncodeToString(nftEntry.NFTPostHash[:]),
 		SerialNumber:               nftEntry.SerialNumber,
 		IsForSale:                  nftEntry.IsForSale,
@@ -52,7 +52,7 @@ func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte) NftEntry {
 		BadgerKey:                  keyBytes,
 	}
 	if nftEntry.LastOwnerPKID != nil {
-		pgNFTEntry.LastOwnerPkid = consumer.PublicKeyBytesToBase58Check(nftEntry.LastOwnerPKID[:])
+		pgNFTEntry.LastOwnerPkid = consumer.PublicKeyBytesToBase58Check(nftEntry.LastOwnerPKID[:], params)
 	}
 	if nftEntry.UnlockableText != nil {
 		pgNFTEntry.UnlockableText = string(nftEntry.UnlockableText)
@@ -60,9 +60,9 @@ func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte) NftEntry {
 	return pgNFTEntry
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func NftBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func NftBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -70,7 +70,7 @@ func NftBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteNftEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertNftEntry(entries, db, operationType)
+		err = bulkInsertNftEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -79,7 +79,7 @@ func NftBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertNftEntry inserts a batch of nft entries into the database.
-func bulkInsertNftEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertNftEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -87,7 +87,7 @@ func bulkInsertNftEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationTy
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGNftEntry{NftEntry: NftEncoderToPGStruct(entry.Encoder.(*lib.NFTEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGNftEntry{NftEntry: NftEncoderToPGStruct(entry.Encoder.(*lib.NFTEntry), entry.KeyBytes, params)}
 	}
 
 	// Execute the insert query.

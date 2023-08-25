@@ -30,9 +30,9 @@ type PGNftBidEntryUtxoOps struct {
 }
 
 // Convert the NFT DeSo entry into a bun struct.
-func NftBidEncoderToPGStruct(nftBidEntry *lib.NFTBidEntry, keyBytes []byte) NftBidEntry {
+func NftBidEncoderToPGStruct(nftBidEntry *lib.NFTBidEntry, keyBytes []byte, params *lib.DeSoParams) NftBidEntry {
 	pgNftEntry := NftBidEntry{
-		BidderPkid:     consumer.PublicKeyBytesToBase58Check(nftBidEntry.BidderPKID[:]),
+		BidderPkid:     consumer.PublicKeyBytesToBase58Check(nftBidEntry.BidderPKID[:], params),
 		NftPostHash:    hex.EncodeToString(nftBidEntry.NFTPostHash[:]),
 		SerialNumber:   nftBidEntry.SerialNumber,
 		BidAmountNanos: nftBidEntry.BidAmountNanos,
@@ -45,9 +45,9 @@ func NftBidEncoderToPGStruct(nftBidEntry *lib.NFTBidEntry, keyBytes []byte) NftB
 	return pgNftEntry
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func NftBidBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func NftBidBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -55,7 +55,7 @@ func NftBidBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteNftBidEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertNftBidEntry(entries, db, operationType)
+		err = bulkInsertNftBidEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -64,7 +64,7 @@ func NftBidBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
 }
 
 // bulkInsertNftBidEntry inserts a batch of nft_bid entries into the database.
-func bulkInsertNftBidEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertNftBidEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -72,7 +72,7 @@ func bulkInsertNftBidEntry(entries []*lib.StateChangeEntry, db *bun.DB, operatio
 
 	// Loop through the entries and convert them to PGPostEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGNftBidEntry{NftBidEntry: NftBidEncoderToPGStruct(entry.Encoder.(*lib.NFTBidEntry), entry.KeyBytes)}
+		pgEntrySlice[ii] = &PGNftBidEntry{NftBidEntry: NftBidEncoderToPGStruct(entry.Encoder.(*lib.NFTBidEntry), entry.KeyBytes, params)}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)

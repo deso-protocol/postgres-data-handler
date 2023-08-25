@@ -17,7 +17,7 @@ func createDerivedKeyEntryTable(db *bun.DB, tableName string) error {
 			
 				global_deso_limit BIGINT,
 				is_unlimited BOOLEAN,
-				transaction_spending_limit_bytes BYTEA,
+				transaction_spending_limits jsonb,
 			
 				extra_data jsonb,
 				badger_key BYTEA PRIMARY KEY

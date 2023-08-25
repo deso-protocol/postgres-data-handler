@@ -2,6 +2,7 @@ package entries
 
 import (
 	"context"
+	"github.com/deso-protocol/backend/routes"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
@@ -14,11 +15,11 @@ type DerivedKeyEntry struct {
 	ExpirationBlock  uint64 `pg:",use_zero"`
 	OperationType    uint8  `pg:",use_zero"`
 
-	GlobalDESOLimit               uint64
-	IsUnlimited                   bool
-	TransactionSpendingLimitBytes []byte            `pg:",pk,use_zero"`
-	ExtraData                     map[string]string `bun:"type:jsonb"`
-	BadgerKey                     []byte            `pg:",pk,use_zero"`
+	GlobalDESOLimit           uint64
+	IsUnlimited               bool
+	TransactionSpendingLimits routes.TransactionSpendingLimitResponse `bun:"type:jsonb"`
+	ExtraData                 map[string]string                       `bun:"type:jsonb"`
+	BadgerKey                 []byte                                  `pg:",pk,use_zero"`
 }
 
 type PGDerivedKeyEntry struct {
@@ -33,10 +34,10 @@ type PGDerivedKeyEntryUtxoOps struct {
 }
 
 // Convert the derived key DeSo encoder to the PG struct used by bun.
-func DerivedKeyEncoderToPGStruct(derivedKeyEntry *lib.DerivedKeyEntry, keyBytes []byte) (DerivedKeyEntry, error) {
+func DerivedKeyEncoderToPGStruct(derivedKeyEntry *lib.DerivedKeyEntry, keyBytes []byte, params *lib.DeSoParams) (DerivedKeyEntry, error) {
 	pgDerivedKeyEntry := DerivedKeyEntry{
-		OwnerPublicKey:   consumer.PublicKeyBytesToBase58Check(derivedKeyEntry.OwnerPublicKey[:]),
-		DerivedPublicKey: consumer.PublicKeyBytesToBase58Check(derivedKeyEntry.DerivedPublicKey[:]),
+		OwnerPublicKey:   consumer.PublicKeyBytesToBase58Check(derivedKeyEntry.OwnerPublicKey[:], params),
+		DerivedPublicKey: consumer.PublicKeyBytesToBase58Check(derivedKeyEntry.DerivedPublicKey[:], params),
 		ExpirationBlock:  derivedKeyEntry.ExpirationBlock,
 		OperationType:    uint8(derivedKeyEntry.OperationType),
 
@@ -45,22 +46,17 @@ func DerivedKeyEncoderToPGStruct(derivedKeyEntry *lib.DerivedKeyEntry, keyBytes 
 	}
 
 	if derivedKeyEntry.TransactionSpendingLimitTracker != nil {
+		pgDerivedKeyEntry.TransactionSpendingLimits = *routes.TransactionSpendingLimitToResponse(derivedKeyEntry.TransactionSpendingLimitTracker, &lib.UtxoView{}, &lib.DeSoMainnetParams)
 		pgDerivedKeyEntry.GlobalDESOLimit = derivedKeyEntry.TransactionSpendingLimitTracker.GlobalDESOLimit
 		pgDerivedKeyEntry.IsUnlimited = derivedKeyEntry.TransactionSpendingLimitTracker.IsUnlimited
-		// TODO: Figure out how to get block height in here.
-		if tslBytes, err := derivedKeyEntry.TransactionSpendingLimitTracker.ToBytes(0); err != nil {
-			return DerivedKeyEntry{}, err
-		} else {
-			pgDerivedKeyEntry.TransactionSpendingLimitBytes = tslBytes
-		}
 	}
 
 	return pgDerivedKeyEntry, nil
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate methods
 // based on the operation type and executes it.
-func DerivedKeyBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error {
+func DerivedKeyBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -68,7 +64,7 @@ func DerivedKeyBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteDerivedKeyEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertDerivedKeyEntry(entries, db, operationType)
+		err = bulkInsertDerivedKeyEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -77,7 +73,7 @@ func DerivedKeyBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB) error
 }
 
 // bulkInsertDerivedKeyEntry inserts a batch of derived_key entries into the database.
-func bulkInsertDerivedKeyEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertDerivedKeyEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -85,7 +81,7 @@ func bulkInsertDerivedKeyEntry(entries []*lib.StateChangeEntry, db *bun.DB, oper
 
 	// Loop through the entries and convert them to PGEntry.
 	for ii, entry := range uniqueEntries {
-		if pgEntry, err := DerivedKeyEncoderToPGStruct(entry.Encoder.(*lib.DerivedKeyEntry), entry.KeyBytes); err != nil {
+		if pgEntry, err := DerivedKeyEncoderToPGStruct(entry.Encoder.(*lib.DerivedKeyEntry), entry.KeyBytes, params); err != nil {
 			return errors.Wrapf(err, "entries.bulkInsertDerivedKeyEntry: Problem converting entry to PGEntry")
 		} else {
 			pgEntrySlice[ii] = &PGDerivedKeyEntry{DerivedKeyEntry: pgEntry}
