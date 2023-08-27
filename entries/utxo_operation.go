@@ -127,7 +127,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		}
 
 		// Limit the number of concurrent txindex threads to avoid overloading the CPU
-		const maxConcurrency = 300
+		const maxConcurrency = 50
 		maxConcurrencySemaphore := make(chan bool, maxConcurrency)
 
 		// Create a wait group to wait for all the goroutines to finish.
