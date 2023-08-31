@@ -581,40 +581,49 @@ func init() {
 		}
 
 		err = RunMigrationWithRetries(db, `
-			CREATE view dao_coin_limit_order_max_bids AS
-			select buying_dao_coin_creator_pkid, max(scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric)/1e29 as bid from dao_coin_limit_order_entry dcloe
-			-- DESO
-			where selling_dao_coin_creator_pkid = 'BC1YLbnP7rndL92x7DbLp6bkUpCgKmgoHgz7xEbwhgHTps3ZrXA6LtQ'
-			and operation_type = 2
-			group by buying_dao_coin_creator_pkid;
+			create view dao_coin_limit_order_max_bids as
+			SELECT dcloe.buying_dao_coin_creator_pkid,
+				   dcloe.selling_dao_coin_creator_pkid,
+				   max(dcloe.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric) /
+				   '100000000000000000000000000000'::numeric AS bid
+			FROM dao_coin_limit_order_entry dcloe
+			WHERE dcloe.operation_type = 2
+			GROUP BY dcloe.buying_dao_coin_creator_pkid, dcloe.selling_dao_coin_creator_pkid;
 		`)
 		if err != nil {
 			return err
 		}
 
 		err = RunMigrationWithRetries(db, `
-			CREATE VIEW dao_coin_limit_order_min_asks AS
-			select selling_dao_coin_creator_pkid, 1/max(scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric) * 1e47 as ask from dao_coin_limit_order_entry
-			-- DESO
-			where buying_dao_coin_creator_pkid = 'BC1YLbnP7rndL92x7DbLp6bkUpCgKmgoHgz7xEbwhgHTps3ZrXA6LtQ'
-			and operation_type = 1
-			group by selling_dao_coin_creator_pkid;
+			create view dao_coin_limit_order_min_asks as
+			SELECT dao_coin_limit_order_entry.selling_dao_coin_creator_pkid,
+				   dao_coin_limit_order_entry.buying_dao_coin_creator_pkid,
+				   1::numeric / max(dao_coin_limit_order_entry.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric) *
+				   '100000000000000000000000000000000000000000000000'::numeric AS ask
+			FROM dao_coin_limit_order_entry
+			WHERE dao_coin_limit_order_entry.operation_type = 1
+			GROUP BY dao_coin_limit_order_entry.selling_dao_coin_creator_pkid, dao_coin_limit_order_entry.buying_dao_coin_creator_pkid;
 		`)
 		if err != nil {
 			return err
 		}
 
 		err = RunMigrationWithRetries(db, `
-			CREATE VIEW dao_coin_limit_order_bid_asks AS
-			select bids.bid, asks.ask, ((bids.bid + asks.ask) / 2) as market_price, asks.selling_dao_coin_creator_pkid as creator_pkid
-			from dao_coin_limit_order_max_bids bids
-			join dao_coin_limit_order_min_asks asks
-			on bids.buying_dao_coin_creator_pkid = asks.selling_dao_coin_creator_pkid;
+			create view dao_coin_limit_order_bid_asks as
+			SELECT bids.bid,
+				   asks.ask,
+				   (bids.bid + asks.ask) / 2::numeric AS market_price,
+				   asks.selling_dao_coin_creator_pkid AS selling_creator_pkid,
+				   asks.buying_dao_coin_creator_pkid as buying_dao_coin_creator_pkid
+			FROM dao_coin_limit_order_max_bids bids
+			JOIN dao_coin_limit_order_min_asks asks
+			ON bids.buying_dao_coin_creator_pkid = asks.selling_dao_coin_creator_pkid
+			AND bids.selling_dao_coin_creator_pkid = asks.buying_dao_coin_creator_pkid;
 		`)
 		if err != nil {
 			return err
 		}
-
+		
 		err = RunMigrationWithRetries(db, `
 			CREATE OR REPLACE FUNCTION cc_nanos_total_sell_value(
 				creator_coin_amount_nanos NUMERIC,
@@ -682,8 +691,10 @@ func init() {
 
 		err = RunMigrationWithRetries(db, `
 			CREATE MATERIALIZED VIEW statistic_deso_token_balance_totals AS
-			select be.hodler_pkid, coalesce(sum(be.balance_nanos * dcloba.market_price / 1e9), 0) as token_value_nanos from balance_entry be
-			join dao_coin_limit_order_bid_asks dcloba on be.creator_pkid = dcloba.creator_pkid
+			select be.hodler_pkid, coalesce(sum(be.balance_nanos * bid_asks.market_price / 1e9), 0) as token_value_nanos from balance_entry be
+			join dao_coin_limit_order_bid_asks bid_asks
+			on be.creator_pkid = bid_asks.selling_creator_pkid
+			and bid_asks.buying_creator_pkid = 'BC1YLbnP7rndL92x7DbLp6bkUpCgKmgoHgz7xEbwhgHTps3ZrXA6LtQ'
 			where be.is_dao_coin = true
 			group by be.hodler_pkid;
 

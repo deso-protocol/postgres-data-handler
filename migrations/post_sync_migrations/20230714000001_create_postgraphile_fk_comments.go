@@ -149,7 +149,7 @@ func init() {
 			comment on function cc_nanos_total_sell_value is E'@omit';
 			comment on view dao_coin_limit_order_max_bids is E'@omit';
 			comment on view dao_coin_limit_order_min_asks is E'@omit';
-			comment on view dao_coin_limit_order_bid_asks is E'@omit';
+			comment on view dao_coin_limit_order_bid_asks is E'@unique selling_creator_pkid,buying_creator_pkid\n@foreignKey (selling_creator_pkid) references account (pkid)|@foreignFieldName bidAskAsSellingToken|@fieldName sellingTokenAccount\n@foreignKey (buying_creator_pkid) references account (pkid)|@foreignFieldName bidAskAsBuyingToken|@fieldName buyingTokenAccount\n@name deso_token_limit_order_bid_asks';
 			comment on materialized view statistic_cc_balance_totals is E'@omit';
 			comment on materialized view statistic_nft_balance_totals is E'@omit';
 			comment on materialized view statistic_deso_token_balance_totals is E'@omit';

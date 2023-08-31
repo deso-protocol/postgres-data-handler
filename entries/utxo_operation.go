@@ -182,6 +182,8 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 						affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
 					}
 
+					fmt.Printf("Here's transaction %d: %+v\n", jj, transactions[jj])
+
 					transactionUpdates = append(transactionUpdates, transactions[jj])
 				}
 			}(jj)

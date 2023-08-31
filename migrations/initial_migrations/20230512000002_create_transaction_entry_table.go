@@ -45,6 +45,8 @@ func init() {
 			CREATE INDEX transaction_block_hash_idx ON transaction_partitioned (block_hash);
 			CREATE INDEX transaction_type_idx ON transaction_partitioned (txn_type);
 			CREATE INDEX transaction_public_key_idx ON transaction_partitioned (public_key);
+			CREATE INDEX transaction_public_key_timestamp_idx ON transaction_partitioned (public_key, timestamp desc);
+			CREATE INDEX transaction_public_key_timestamp_index_in_block_idx ON transaction_partitioned (public_key, timestamp desc, index_in_block asc);
 		`)
 		if err != nil {
 			return err
