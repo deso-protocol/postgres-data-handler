@@ -182,8 +182,6 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 						affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
 					}
 
-					fmt.Printf("Here's transaction %d: %+v\n", jj, transactions[jj])
-
 					transactionUpdates = append(transactionUpdates, transactions[jj])
 				}
 			}(jj)
@@ -209,6 +207,8 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 
 	// Insert affected public keys into db
 	if len(affectedPublicKeys) > 0 {
+		fmt.Printf("\n****Inserting %d affected public keys\n", len(affectedPublicKeys))
+		fmt.Printf("\n****Affected Public Keys: %+v\n", affectedPublicKeys)
 		_, err := db.NewInsert().Model(&affectedPublicKeys).On("CONFLICT (public_key, transaction_hash) DO UPDATE").Exec(context.Background())
 		if err != nil {
 			return errors.Wrapf(err, "InsertAffectedPublicKeys: Problem inserting affectedPublicKeys")

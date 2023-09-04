@@ -431,57 +431,64 @@ func init() {
 
 		err = RunMigrationWithRetries(db, `
 			CREATE MATERIALIZED VIEW statistic_defi_leaderboard AS
-			select top_tokens.*, pe.*, row_number() OVER () AS id from (
-				WITH buying AS (
-					SELECT
-						value ->> 'BuyingDAOCoinCreatorPublicKey' AS buying_public_key,
-						SUM(hex_to_numeric((value ->> 'CoinQuantityInBaseUnitsSold'))) as quantity_sold
-					FROM
-						transaction_partition_26 t
-					INNER JOIN
-						block b
-					ON
-						t.block_hash = b.block_hash
-					, jsonb_array_elements(t.tx_index_metadata->'FilledDAOCoinLimitOrdersMetadata') as value
-					WHERE
-						value ->> 'SellingDAOCoinCreatorPublicKey' = 'BC1YLbnP7rndL92x7DbLp6bkUpCgKmgoHgz7xEbwhgHTps3ZrXA6LtQ'
-					AND
-						b.timestamp > (NOW() - INTERVAL '30 days')
-					GROUP BY
-						buying_public_key
-				), selling AS (
-					SELECT
-						value ->> 'SellingDAOCoinCreatorPublicKey' AS selling_public_key,
-						SUM(hex_to_numeric((value ->> 'CoinQuantityInBaseUnitsSold'))) as quantity_sold
-					FROM
-						transaction_partition_26 t
-					INNER JOIN
-						block b
-					ON
-						t.block_hash = b.block_hash
-					, jsonb_array_elements(t.tx_index_metadata->'FilledDAOCoinLimitOrdersMetadata') as value
-					WHERE
-						value ->> 'BuyingDAOCoinCreatorPublicKey' = 'BC1YLbnP7rndL92x7DbLp6bkUpCgKmgoHgz7xEbwhgHTps3ZrXA6LtQ'
-					AND
-						b.timestamp > (NOW() - INTERVAL '30 days')
-					GROUP BY
-						selling_public_key
-				)
-				SELECT
-					buying.buying_public_key,
-					(buying.quantity_sold - COALESCE(selling.quantity_sold, 0)) AS net_quantity
-				FROM
-					buying
-				LEFT JOIN
-					selling
-				ON
-					buying.buying_public_key = selling.selling_public_key
-			) top_tokens
-			join profile_entry pe on top_tokens.buying_public_key = pe.public_key
-			order by top_tokens.net_quantity desc
+			WITH market_orders as (
+				select hex_to_numeric((jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+									  'CoinQuantityInBaseUnitsSold') AS coin_quantity_in_base_units_sold,
+					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+					   'BuyingDAOCoinCreatorPublicKey'                                 AS buying_dao_coin_creator_public_key,
+					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+					   'SellingDAOCoinCreatorPublicKey'                                 AS selling_dao_coin_creator_public_key,
+					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+					   'IsFulfilled'                                 AS is_fulfilled,
+					   transaction_hash
+				from transaction_partition_26
+			),
+				 cancelled_orders AS (
+					 select encode(jsonb_to_bytea(txn_meta -> 'CancelOrderID'), 'hex') as cancelled_order_txn_hash
+					 from transaction_partition_26
+					 where (txn_meta ->> 'CancelOrderID') is not null
+				 )
+			select t.tx_index_metadata ->> 'BuyingDAOCoinCreatorPublicKey' as buying_public_key, pe.username, pe.public_key, pe.pkid,
+				   sum(case
+						   when co.cancelled_order_txn_hash is not null then 0
+						   else (hex_to_numeric(tx_index_metadata ->> 'QuantityToFillInBaseUnits') *
+								 (hex_to_numeric(tx_index_metadata ->> 'ScaledExchangeRateCoinsToSellPerCoinToBuy') / 1e38)) -
+								(coalesce(d.quantity_to_fill_in_base_units_numeric, 0) *
+								 (coalesce(d.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric, 0) /
+								  1e38)) end) +
+				   sum(case
+						   when txn_meta ->> 'FillType' = '2' then m.coin_quantity_in_base_units_sold
+						   else 0 end)                                 as net_quantity
+			from transaction_partition_26 t
+					 left join dao_coin_limit_order_entry d
+							   on t.transaction_hash = d.order_id
+					 left join market_orders m
+							   on m.transaction_hash = t.transaction_hash
+							   and m.buying_dao_coin_creator_public_key = t.tx_index_metadata ->> 'BuyingDAOCoinCreatorPublicKey'
+							   and m.selling_dao_coin_creator_public_key = t.tx_index_metadata ->> 'SellingDAOCoinCreatorPublicKey'
+							   and m.is_fulfilled = 'true'
+					 left join cancelled_orders co
+							   on t.transaction_hash = co.cancelled_order_txn_hash
+			join profile_entry pe
+			on t.tx_index_metadata ->> 'BuyingDAOCoinCreatorPublicKey' = pe.public_key
+			where tx_index_metadata ? 'ScaledExchangeRateCoinsToSellPerCoinToBuy'
+			  and tx_index_metadata ? 'QuantityToFillInBaseUnits'
+			  and tx_index_metadata ->> 'SellingDAOCoinCreatorPublicKey' = 'BC1YLbnP7rndL92x7DbLp6bkUpCgKmgoHgz7xEbwhgHTps3ZrXA6LtQ'
+			  and t.timestamp > NOW() - INTERVAL '30 days'
+			group by t.tx_index_metadata ->> 'BuyingDAOCoinCreatorPublicKey', pe.username, pe.public_key, pe.pkid
+			order by sum(case
+						   when co.cancelled_order_txn_hash is not null then 0
+						   else (hex_to_numeric(tx_index_metadata ->> 'QuantityToFillInBaseUnits') *
+								 (hex_to_numeric(tx_index_metadata ->> 'ScaledExchangeRateCoinsToSellPerCoinToBuy') / 1e38)) -
+								(coalesce(d.quantity_to_fill_in_base_units_numeric, 0) *
+								 (coalesce(d.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric, 0) /
+								  1e38)) end) +
+				   sum(case
+						   when txn_meta ->> 'FillType' = '2' then m.coin_quantity_in_base_units_sold
+						   else 0 end) desc
 			limit 10;
-
-            CREATE UNIQUE INDEX statistic_defi_leaderboard_unique_index ON statistic_defi_leaderboard (id);`)
+			
+			CREATE UNIQUE INDEX statistic_defi_leaderboard_unique_index ON statistic_defi_leaderboard (buying_public_key);`)
 		if err != nil {
 			return err
 		}
@@ -623,7 +630,7 @@ func init() {
 		if err != nil {
 			return err
 		}
-		
+
 		err = RunMigrationWithRetries(db, `
 			CREATE OR REPLACE FUNCTION cc_nanos_total_sell_value(
 				creator_coin_amount_nanos NUMERIC,
@@ -872,6 +879,10 @@ func init() {
 				select hex_to_numeric((jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
 									  'CoinQuantityInBaseUnitsSold') AS coin_quantity_in_base_units_sold,
 					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+					   'BuyingDAOCoinCreatorPublicKey'                                 AS buying_dao_coin_creator_public_key,
+					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+					   'SellingDAOCoinCreatorPublicKey'                                 AS selling_dao_coin_creator_public_key,
+					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
 					   'IsFulfilled'                                 AS is_fulfilled,
 					   transaction_hash
 				from transaction_partition_26
@@ -908,14 +919,16 @@ func init() {
 							   on t.transaction_hash = d.order_id
 					 left join market_orders m
 							   on m.transaction_hash = t.transaction_hash
-								   and m.is_fulfilled = 'true'
+							   and m.buying_dao_coin_creator_public_key = t.tx_index_metadata ->> 'BuyingDAOCoinCreatorPublicKey'
+							   and m.selling_dao_coin_creator_public_key = t.tx_index_metadata ->> 'SellingDAOCoinCreatorPublicKey'
+							   and m.is_fulfilled = 'true'
 					 left join cancelled_orders co
 							   on t.transaction_hash = co.cancelled_order_txn_hash
 			where tx_index_metadata ? 'ScaledExchangeRateCoinsToSellPerCoinToBuy'
 			  and tx_index_metadata ? 'QuantityToFillInBaseUnits'
 			  and tx_index_metadata ->> 'SellingDAOCoinCreatorPublicKey' = 'BC1YLbnP7rndL92x7DbLp6bkUpCgKmgoHgz7xEbwhgHTps3ZrXA6LtQ'
 			group by t.public_key;
-
+			
 			CREATE UNIQUE INDEX statistic_profile_deso_token_buy_orders_unique_idx on statistic_profile_deso_token_buy_orders (public_key);
 		`)
 		if err != nil {
@@ -927,6 +940,10 @@ func init() {
 			WITH market_orders as (
 				select hex_to_numeric((jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
 									  'CoinQuantityInBaseUnitsBought') AS coin_quantity_in_base_units_bought,
+					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+					   'BuyingDAOCoinCreatorPublicKey'                                 AS buying_dao_coin_creator_public_key,
+					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
+					   'SellingDAOCoinCreatorPublicKey'                                 AS selling_dao_coin_creator_public_key,
 					   (jsonb_array_elements(tx_index_metadata -> 'FilledDAOCoinLimitOrdersMetadata')) ->>
 					   'IsFulfilled'                                   AS is_fulfilled,
 					   transaction_hash
@@ -968,7 +985,9 @@ func init() {
 							   on t.transaction_hash = d.order_id
 					 left join market_orders m
 							   on m.transaction_hash = t.transaction_hash
-								   and m.is_fulfilled = 'true'
+							   and m.buying_dao_coin_creator_public_key = t.tx_index_metadata ->> 'BuyingDAOCoinCreatorPublicKey'
+							   and m.selling_dao_coin_creator_public_key = t.tx_index_metadata ->> 'SellingDAOCoinCreatorPublicKey'
+							   and m.is_fulfilled = 'true'
 					 left join cancelled_orders co
 							   on t.transaction_hash = co.cancelled_order_txn_hash
 			where tx_index_metadata ? 'ScaledExchangeRateCoinsToSellPerCoinToBuy'

@@ -90,6 +90,10 @@ func init() {
 			CREATE INDEX transaction_partition_27_tx_meta_app_pub_key_idx ON transaction_partition_27 ((tx_index_metadata ->> 'AppPublicKeyBase58Check'));
 			CREATE INDEX transaction_partition_27_tx_meta_target_pub_key_idx ON transaction_partition_27 ((tx_index_metadata ->> 'TargetUserPublicKeyBase58Check'));
 			
+			CREATE INDEX transaction_partition_26_tx_meta_buying_dao_coin_pub_key_idx ON transaction_partition_29 ((tx_index_metadata ->> 'BuyingDAOCoinCreatorPublicKey'));
+			CREATE INDEX transaction_partition_26_tx_meta_selling_dao_coin_pub_key_idx ON transaction_partition_29 ((tx_index_metadata ->> 'SellingDAOCoinCreatorPublicKey'));
+
+
 			CREATE INDEX transaction_partition_29_tx_meta_assoc_type_idx ON transaction_partition_29 ((tx_index_metadata ->> 'AssociationType'));
 			CREATE INDEX transaction_partition_29_tx_meta_assoc_value_idx ON transaction_partition_29 ((tx_index_metadata ->> 'AssociationValue'));
 			CREATE INDEX transaction_partition_29_tx_meta_app_pub_key_idx ON transaction_partition_29 ((tx_index_metadata ->> 'AppPublicKeyBase58Check'));
