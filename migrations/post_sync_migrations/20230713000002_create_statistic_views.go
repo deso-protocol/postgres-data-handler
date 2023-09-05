@@ -592,7 +592,10 @@ func init() {
 			SELECT dcloe.buying_dao_coin_creator_pkid,
 				   dcloe.selling_dao_coin_creator_pkid,
 				   max(dcloe.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric) /
-				   '100000000000000000000000000000'::numeric AS bid
+				   '100000000000000000000000000000'::numeric AS bid,
+			       sum(dcloe.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric / '100000000000000000000000000000'::numeric) as sum_scaled_exchange_rate_coins_to_sell_per_coin_to_buy,
+			       sum(dcloe.quantity_to_fill_in_base_units_numeric) as sum_quantity_to_fill_in_base_units,
+			       count(*) as order_count
 			FROM dao_coin_limit_order_entry dcloe
 			WHERE dcloe.operation_type = 2
 			GROUP BY dcloe.buying_dao_coin_creator_pkid, dcloe.selling_dao_coin_creator_pkid;
@@ -621,7 +624,13 @@ func init() {
 				   asks.ask,
 				   (bids.bid + asks.ask) / 2::numeric AS market_price,
 				   asks.selling_dao_coin_creator_pkid AS selling_creator_pkid,
-				   asks.buying_dao_coin_creator_pkid as buying_dao_coin_creator_pkid
+				   asks.buying_dao_coin_creator_pkid as buying_creator_pkid,
+			       bids.sum_scaled_exchange_rate_coins_to_sell_per_coin_to_buy as bid_sum_scaled_exchange_rate_coins_to_sell_per_coin_to_buy,
+			       bids.sum_quantity_to_fill_in_base_units as bid_sum_quantity_to_fill_in_base_units,
+			       bids.order_count as bid_order_count,
+			       asks.sum_scaled_exchange_rate_coins_to_sell_per_coin_to_buy as ask_sum_scaled_exchange_rate_coins_to_sell_per_coin_to_buy,
+			       asks.sum_quantity_to_fill_in_base_units as ask_sum_quantity_to_fill_in_base_units,
+			       asks.order_count as ask_order_count
 			FROM dao_coin_limit_order_max_bids bids
 			JOIN dao_coin_limit_order_min_asks asks
 			ON bids.buying_dao_coin_creator_pkid = asks.selling_dao_coin_creator_pkid
