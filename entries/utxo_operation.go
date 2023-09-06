@@ -179,7 +179,9 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 								TransactionHash: transactions[jj].TransactionHash,
 							},
 						}
-						affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
+						if affectedPublicKeyEntry != nil {
+							affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
+						}
 					}
 
 					transactionUpdates = append(transactionUpdates, transactions[jj])
