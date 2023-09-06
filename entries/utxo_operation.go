@@ -165,12 +165,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 
 					transactions[jj].TxIndexBasicTransferMetadata = txIndexMetadata.GetEncoderForTxType(lib.TxnTypeBasicTransfer)
 
-					affectedPublicKeySet := make(map[string]bool)
 					for _, affectedPublicKey := range txIndexMetadata.AffectedPublicKeys {
-						if _, ok := affectedPublicKeySet[affectedPublicKey.PublicKeyBase58Check]; ok {
-							continue
-						}
-						affectedPublicKeySet[affectedPublicKey.PublicKeyBase58Check] = true
 						affectedPublicKeyEntry := &PGAffectedPublicKeyEntry{
 							AffectedPublicKeyEntry: AffectedPublicKeyEntry{
 								PublicKey:       affectedPublicKey.PublicKeyBase58Check,
