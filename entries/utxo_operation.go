@@ -133,6 +133,10 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		// Create a wait group to wait for all the goroutines to finish.
 		var wg sync.WaitGroup
 		wg.Add(len(utxoOperations.UtxoOpBundle))
+		// Mutex to protect the affected public keys slice.
+		var affectedPublicKeysMutex sync.Mutex
+		// Mutex to protect the transaction updates slice.
+		var transactionUpdatesMutex sync.Mutex
 
 		for jj := range utxoOperations.UtxoOpBundle {
 			maxConcurrencySemaphore <- true
@@ -174,12 +178,13 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 								TransactionHash: transactions[jj].TransactionHash,
 							},
 						}
-						if affectedPublicKeyEntry != nil {
-							affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
-						}
+						affectedPublicKeysMutex.Lock()
+						affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
+						affectedPublicKeysMutex.Unlock()
 					}
-
+					transactionUpdatesMutex.Lock()
 					transactionUpdates = append(transactionUpdates, transactions[jj])
+					transactionUpdatesMutex.Unlock()
 				}
 			}(jj)
 		}

@@ -13,7 +13,7 @@ func init() {
 				transaction_hash VARCHAR,
 				metadata VARCHAR,
 				timestamp timestamp,
-				PRIMARY KEY(public_key, transaction_hash)
+				PRIMARY KEY(public_key, transaction_hash, metadata)
 			);
 			CREATE INDEX affected_public_key_public_key_idx ON affected_public_key (public_key);
 			CREATE INDEX affected_public_key_metadata_key_idx ON affected_public_key (metadata);
