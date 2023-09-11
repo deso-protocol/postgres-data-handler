@@ -169,7 +169,18 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 
 					transactions[jj].TxIndexBasicTransferMetadata = txIndexMetadata.GetEncoderForTxType(lib.TxnTypeBasicTransfer)
 
+					// Track which public keys have already been added to the affected public keys slice, to avoid duplicates.
+					affectedPublicKeySet := make(map[string]bool)
+
+					// Loop through the affected public keys and add them to the affected public keys slice.
 					for _, affectedPublicKey := range txIndexMetadata.AffectedPublicKeys {
+						// Skip if we've already added this public key/metadata.
+						apkDuplicateKey := fmt.Sprintf("%v:%v", affectedPublicKey.PublicKeyBase58Check, affectedPublicKey.Metadata)
+						if _, ok := affectedPublicKeySet[apkDuplicateKey]; ok {
+							continue
+						}
+						affectedPublicKeySet[apkDuplicateKey] = true
+
 						affectedPublicKeyEntry := &PGAffectedPublicKeyEntry{
 							AffectedPublicKeyEntry: AffectedPublicKeyEntry{
 								PublicKey:       affectedPublicKey.PublicKeyBase58Check,
@@ -209,10 +220,6 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 
 	// Insert affected public keys into db
 	if len(affectedPublicKeys) > 0 {
-		fmt.Printf("\n****Inserting %d affected public keys\n", len(affectedPublicKeys))
-		for ii, affectedPublicKey := range affectedPublicKeys {
-			fmt.Printf("\n****Affected Public Key %d: %+v\n", ii, affectedPublicKey)
-		}
 		_, err := db.NewInsert().Model(&affectedPublicKeys).On("CONFLICT (public_key, transaction_hash, metadata) DO UPDATE").Exec(context.Background())
 		if err != nil {
 			return errors.Wrapf(err, "InsertAffectedPublicKeys: Problem inserting affectedPublicKeys")
