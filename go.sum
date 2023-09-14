@@ -143,8 +143,6 @@ github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1/go.mod h1:hyedUtir6IdtD/7lIxGeC
 github.com/decred/dcrd/lru v1.0.0/go.mod h1:mxKOwFd7lFjN2GZYsiz/ecgqR6kkYAl+0pz0tEMk218=
 github.com/decred/dcrd/lru v1.1.1 h1:kWFDaW0OWx6AD6Ki342c+JPmHbiVdE6rK81pT3fuo/Y=
 github.com/decred/dcrd/lru v1.1.1/go.mod h1:mxKOwFd7lFjN2GZYsiz/ecgqR6kkYAl+0pz0tEMk218=
-github.com/deso-protocol/backend v1.2.10-0.20230727205436-dba653dc043c h1:OK+OYVDLhaP0wUqOpWO0Q11ijc3kwnkEpi4EqqdV9m8=
-github.com/deso-protocol/backend v1.2.10-0.20230727205436-dba653dc043c/go.mod h1:BnxywYGwEBoGuJRVfq6QIJKfRNRhydeFm9EQ1/ibUak=
 github.com/deso-protocol/go-deadlock v1.0.0 h1:mw0pHy/19zgC+JFBStuQt1+1Ehv5OKA5NxXqecnL5ic=
 github.com/deso-protocol/go-deadlock v1.0.0/go.mod h1:K0Wd2OV2x7ck7SMYDraWerpKjFKUeBqaFcwz21tmkb8=
 github.com/deso-protocol/go-merkle-tree v1.0.0 h1:9zkI5dQsITYy77s4kbTGPQmZnhQ+LsH/kRdL5l/Yzvg=

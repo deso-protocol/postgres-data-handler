@@ -609,10 +609,15 @@ func init() {
 			SELECT dao_coin_limit_order_entry.selling_dao_coin_creator_pkid,
 				   dao_coin_limit_order_entry.buying_dao_coin_creator_pkid,
 				   1::numeric / max(dao_coin_limit_order_entry.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric) *
-				   '100000000000000000000000000000000000000000000000'::numeric AS ask
+				   '100000000000000000000000000000000000000000000000'::numeric            AS ask,
+				   sum(1::numeric / dao_coin_limit_order_entry.scaled_exchange_rate_coins_to_sell_per_coin_to_buy_numeric *
+					   '100000000000000000000000000000000000000000000000'::numeric)       AS sum_scaled_exchange_rate_coins_to_sell_per_coin_to_buy,
+				   sum(dao_coin_limit_order_entry.quantity_to_fill_in_base_units_numeric) AS sum_quantity_to_fill_in_base_units,
+				   count(*)                                                               AS order_count
 			FROM dao_coin_limit_order_entry
 			WHERE dao_coin_limit_order_entry.operation_type = 1
-			GROUP BY dao_coin_limit_order_entry.selling_dao_coin_creator_pkid, dao_coin_limit_order_entry.buying_dao_coin_creator_pkid;
+			GROUP BY dao_coin_limit_order_entry.selling_dao_coin_creator_pkid,
+					 dao_coin_limit_order_entry.buying_dao_coin_creator_pkid;
 		`)
 		if err != nil {
 			return err

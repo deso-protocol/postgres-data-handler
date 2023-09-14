@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/deso-protocol/backend/routes"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
-	"sync"
 	"time"
 )
 
@@ -126,78 +126,61 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem with entry %v", entry)
 		}
 
-		// Limit the number of concurrent txindex threads to avoid overloading the CPU
-		const maxConcurrency = 50
-		maxConcurrencySemaphore := make(chan bool, maxConcurrency)
-
 		// Create a wait group to wait for all the goroutines to finish.
-		var wg sync.WaitGroup
-		wg.Add(len(utxoOperations.UtxoOpBundle))
-		// Mutex to protect the affected public keys slice.
-		var affectedPublicKeysMutex sync.Mutex
-		// Mutex to protect the transaction updates slice.
-		var transactionUpdatesMutex sync.Mutex
-
 		for jj := range utxoOperations.UtxoOpBundle {
-			maxConcurrencySemaphore <- true
-			go func(idx int) {
-				// Defer the wait group so we can track when this goroutine is done.
-				defer wg.Done()
-				defer func() { <-maxConcurrencySemaphore }() // Release from the semaphore when done.
-
-				utxoOps := utxoOperations.UtxoOpBundle[idx]
-				jj := idx
-				// Update the transaction metadata for this transaction.
-				if jj < len(transactions) {
-					transaction := &lib.MsgDeSoTxn{}
-					err = transaction.FromBytes(transactions[jj].TxnBytes)
-					if err != nil {
-						fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Problem decoding transaction for entry %+v at block height %v", entry, entry.BlockHeight)
-						return
-					}
-					txIndexMetadata, err := consumer.ComputeTransactionMetadata(transaction, blockHash, &lib.DeSoMainnetParams, transaction.TxnFeeNanos, uint64(jj), utxoOps)
-					if err != nil {
-						fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Problem computing transaction metadata for entry %+v at block height %v", entry, entry.BlockHeight)
-						return
-					}
-
-					metadata := txIndexMetadata.GetEncoderForTxType(transaction.TxnMeta.GetTxnType())
-					basicTransferMetadata := txIndexMetadata.BasicTransferTxindexMetadata
-					basicTransferMetadata.UtxoOps = nil
-
-					transactions[jj].TxIndexMetadata = metadata
-
-					transactions[jj].TxIndexBasicTransferMetadata = txIndexMetadata.GetEncoderForTxType(lib.TxnTypeBasicTransfer)
-
-					// Track which public keys have already been added to the affected public keys slice, to avoid duplicates.
-					affectedPublicKeySet := make(map[string]bool)
-
-					// Loop through the affected public keys and add them to the affected public keys slice.
-					for _, affectedPublicKey := range txIndexMetadata.AffectedPublicKeys {
-						// Skip if we've already added this public key/metadata.
-						apkDuplicateKey := fmt.Sprintf("%v:%v", affectedPublicKey.PublicKeyBase58Check, affectedPublicKey.Metadata)
-						if _, ok := affectedPublicKeySet[apkDuplicateKey]; ok {
-							continue
-						}
-						affectedPublicKeySet[apkDuplicateKey] = true
-
-						affectedPublicKeyEntry := &PGAffectedPublicKeyEntry{
-							AffectedPublicKeyEntry: AffectedPublicKeyEntry{
-								PublicKey:       affectedPublicKey.PublicKeyBase58Check,
-								Metadata:        affectedPublicKey.Metadata,
-								Timestamp:       transactions[jj].Timestamp,
-								TransactionHash: transactions[jj].TransactionHash,
-							},
-						}
-						affectedPublicKeysMutex.Lock()
-						affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
-						affectedPublicKeysMutex.Unlock()
-					}
-					transactionUpdatesMutex.Lock()
-					transactionUpdates = append(transactionUpdates, transactions[jj])
-					transactionUpdatesMutex.Unlock()
+			utxoOps := utxoOperations.UtxoOpBundle[jj]
+			// Update the transaction metadata for this transaction.
+			if jj < len(transactions) {
+				transaction := &lib.MsgDeSoTxn{}
+				err = transaction.FromBytes(transactions[jj].TxnBytes)
+				if err != nil {
+					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem decoding transaction for entry %+v at block height %v", entry, entry.BlockHeight)
 				}
-			}(jj)
+				txIndexMetadata, err := consumer.ComputeTransactionMetadata(transaction, blockHash, &lib.DeSoMainnetParams, transaction.TxnFeeNanos, uint64(jj), utxoOps)
+				if err != nil {
+					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem computing transaction metadata for entry %+v at block height %v", entry, entry.BlockHeight)
+				}
+
+				utxoView := &lib.UtxoView{
+					Params: &lib.DeSoMainnetParams,
+				}
+
+				transactionResponse := routes.APITransactionToResponse(transaction, txIndexMetadata, utxoView, &lib.DeSoMainnetParams)
+				//fmt.Printf("entries.bulkInsertUtxoOperationsEntry: transactionResponse: %+v\n", transactionResponse)
+				transactions[jj].TxnMetaResponse = *transactionResponse
+
+				metadata := txIndexMetadata.GetEncoderForTxType(transaction.TxnMeta.GetTxnType())
+				basicTransferMetadata := txIndexMetadata.BasicTransferTxindexMetadata
+				basicTransferMetadata.UtxoOps = nil
+
+				transactions[jj].TxIndexMetadata = metadata
+
+				transactions[jj].TxIndexBasicTransferMetadata = txIndexMetadata.GetEncoderForTxType(lib.TxnTypeBasicTransfer)
+
+				// Track which public keys have already been added to the affected public keys slice, to avoid duplicates.
+				affectedPublicKeySet := make(map[string]bool)
+
+				// Loop through the affected public keys and add them to the affected public keys slice.
+				for _, affectedPublicKey := range txIndexMetadata.AffectedPublicKeys {
+					// Skip if we've already added this public key/metadata.
+					apkDuplicateKey := fmt.Sprintf("%v:%v", affectedPublicKey.PublicKeyBase58Check, affectedPublicKey.Metadata)
+					if _, ok := affectedPublicKeySet[apkDuplicateKey]; ok {
+						continue
+					}
+					affectedPublicKeySet[apkDuplicateKey] = true
+
+					affectedPublicKeyEntry := &PGAffectedPublicKeyEntry{
+						AffectedPublicKeyEntry: AffectedPublicKeyEntry{
+							PublicKey:       affectedPublicKey.PublicKeyBase58Check,
+							Metadata:        affectedPublicKey.Metadata,
+							Timestamp:       transactions[jj].Timestamp,
+							TransactionHash: transactions[jj].TransactionHash,
+						},
+					}
+					affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
+				}
+				transactionUpdates = append(transactionUpdates, transactions[jj])
+			}
 		}
 	}
 
@@ -210,6 +193,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			TableExpr("_data").
 			Set("tx_index_metadata = _data.tx_index_metadata").
 			Set("tx_index_basic_transfer_metadata = _data.tx_index_basic_transfer_metadata").
+			Set("txn_meta_response = _data.txn_meta_response").
 			// Add Set for all the fields that you need to update.
 			Where("pg_transaction_entry.transaction_hash = _data.transaction_hash").
 			Exec(context.Background())

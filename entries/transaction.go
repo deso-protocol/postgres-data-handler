@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/deso-protocol/backend/routes"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
@@ -21,9 +22,10 @@ type TransactionEntry struct {
 	FeeNanos                     uint64
 	NonceExpirationBlockHeight   uint64
 	NoncePartialId               uint64
-	TxnMeta                      lib.DeSoTxnMetadata `bun:"type:jsonb"`
-	TxIndexMetadata              lib.DeSoEncoder     `bun:"type:jsonb"`
-	TxIndexBasicTransferMetadata lib.DeSoEncoder     `bun:"type:jsonb"`
+	TxnMeta                      lib.DeSoTxnMetadata        `bun:"type:jsonb"`
+	TxnMetaResponse              routes.TransactionResponse `bun:"type:jsonb"`
+	TxIndexMetadata              lib.DeSoEncoder            `bun:"type:jsonb"`
+	TxIndexBasicTransferMetadata lib.DeSoEncoder            `bun:"type:jsonb"`
 	TxnMetaBytes                 []byte
 	TxnBytes                     []byte
 	TxnType                      uint16

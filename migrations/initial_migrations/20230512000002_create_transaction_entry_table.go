@@ -20,6 +20,7 @@ func init() {
 				nonce_expiration_block_height    bigint,
 				nonce_partial_id                 bigint,
 				txn_meta                         jsonb,
+				txn_meta_response                jsonb,
 				txn_meta_bytes                   bytea,
 				tx_index_metadata                jsonb,
 				tx_index_basic_transfer_metadata jsonb,
@@ -147,6 +148,23 @@ func init() {
 				RETURN val;
 			END;
 			$$ LANGUAGE plpgsql IMMUTABLE;
+
+
+			create or replace function jsonb_to_bytea(j jsonb) returns bytea
+				language plpgsql
+			as
+			$$
+			DECLARE
+				res bytea := E'';
+				val text;
+			BEGIN
+				FOR val IN SELECT jsonb_array_elements_text(j)
+				LOOP
+					res := res || int_to_bytea(val::int);
+				END LOOP;
+				RETURN res;
+			END;
+			$$;
 			
 			CREATE OR REPLACE FUNCTION base58_encode(num NUMERIC)
 			  RETURNS VARCHAR(255) AS $encoded$
@@ -228,6 +246,7 @@ func init() {
 			DROP function IF EXISTS base58_encode;
 			DROP function IF EXISTS bytes_to_bigint;
 			DROP function IF EXISTS checksum;
+			DROP function IF EXISTS jsonb_to_bytea;
 			DROP EXTENSION IF EXISTS pgcrypto;
 			DROP EXTENSION IF EXISTS btree_gin;
 		`)
