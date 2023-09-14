@@ -10,6 +10,8 @@ COPY postgres-data-handler/go.mod postgres-data-handler/
 COPY postgres-data-handler/go.sum postgres-data-handler/
 COPY core/go.mod core/
 COPY core/go.sum core/
+COPY backend/go.mod backend/
+COPY backend/go.sum backend/
 
 WORKDIR /postgres-data-handler/src/postgres-data-handler
 
@@ -21,11 +23,20 @@ COPY postgres-data-handler/migrations    migrations
 COPY postgres-data-handler/handler    handler
 COPY postgres-data-handler/main.go       .
 
-## include core src
+# include core src
 COPY core/desohash ../core/desohash
 COPY core/cmd       ../core/cmd
 COPY core/lib       ../core/lib
 COPY core/migrate   ../core/migrate
+
+# include backend src
+COPY backend/apis      ../backend/apis
+COPY backend/config    ../backend/config
+COPY backend/cmd       ../backend/cmd
+COPY backend/miner     ../backend/miner
+COPY backend/routes    ../backend/routes
+COPY backend/countries ../backend/countries
+
 
 RUN go mod tidy
 
