@@ -116,7 +116,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		// Note: it's normally considered bad practice to use string formatting to insert values into a query. However,
 		// in this case, the filterField is a constant and the value is clearly only block hash or transaction hash -
 		// so there is no risk of SQL injection.
-		err := db.NewSelect().Model(&transactions).Column("txn_bytes", "transaction_hash").Where(fmt.Sprintf("%s = ?", filterField), blockHash).Order("index_in_block ASC").Scan(context.Background())
+		err := db.NewSelect().Model(&transactions).Column("txn_bytes", "transaction_hash", "timestamp").Where(fmt.Sprintf("%s = ?", filterField), blockHash).Order("index_in_block ASC").Scan(context.Background())
 		if err != nil {
 			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem getting transactions for entry %+v at block height %v", entry, entry.BlockHeight)
 		}
