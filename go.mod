@@ -9,7 +9,7 @@ replace github.com/deso-protocol/backend => ../backend/
 require (
 	github.com/deso-protocol/backend v0.0.0-00010101000000-000000000000
 	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
-	github.com/deso-protocol/state-consumer v1.0.4-0.20230825182059-fe2ff9c233f8
+	github.com/deso-protocol/state-consumer v1.0.4-0.20230915153810-81be6a7ec25f
 	github.com/golang/glog v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.7.1
