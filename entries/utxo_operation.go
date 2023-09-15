@@ -118,7 +118,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		// so there is no risk of SQL injection.
 		err := db.NewSelect().Model(&transactions).Column("txn_bytes", "transaction_hash", "timestamp").Where(fmt.Sprintf("%s = ?", filterField), blockHash).Order("index_in_block ASC").Scan(context.Background())
 		if err != nil {
-			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem getting transactions for entry %+v at block height %v", entry, entry.BlockHeight)
+			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem getting transactions at block height %v: %v", entry.BlockHeight, err)
 		}
 
 		utxoOperations, ok := entry.Encoder.(*lib.UtxoOperationBundle)
