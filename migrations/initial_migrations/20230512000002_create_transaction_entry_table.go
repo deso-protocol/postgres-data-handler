@@ -148,7 +148,15 @@ func init() {
 			END;
 			$$ LANGUAGE plpgsql IMMUTABLE;
 
-
+			create or replace function int_to_bytea(i integer) returns bytea
+				language plpgsql
+			as
+			$$
+			BEGIN
+				RETURN decode(lpad(to_hex(i),2,'0'), 'hex');
+			END;
+			$$;
+			    
 			create or replace function jsonb_to_bytea(j jsonb) returns bytea
 				language plpgsql
 			as
