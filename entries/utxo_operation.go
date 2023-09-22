@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/deso-protocol/backend/routes"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
@@ -91,6 +90,11 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	transactionUpdates := make([]*PGTransactionEntry, 0)
 	affectedPublicKeys := make([]*PGAffectedPublicKeyEntry, 0)
 
+	// Start timer to track how long it takes to insert the entries.
+	start := time.Now()
+
+	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserting %v entries\n", len(uniqueEntries))
+	transactionCount := 0;
 	// Loop through the utxo op bundles and extract the utxo operation entries from them.
 	for _, entry := range uniqueEntries {
 
@@ -126,8 +130,10 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem with entry %v", entry)
 		}
 
+		transactionCount += len(utxoOperations.UtxoOpBundle)
 		// Create a wait group to wait for all the goroutines to finish.
 		for jj := range utxoOperations.UtxoOpBundle {
+
 			utxoOps := utxoOperations.UtxoOpBundle[jj]
 			// Update the transaction metadata for this transaction.
 			if jj < len(transactions) {
@@ -140,14 +146,6 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				if err != nil {
 					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem computing transaction metadata for entry %+v at block height %v", entry, entry.BlockHeight)
 				}
-
-				utxoView := &lib.UtxoView{
-					Params: &lib.DeSoMainnetParams,
-				}
-
-				transactionResponse := routes.APITransactionToResponse(transaction, txIndexMetadata, utxoView, &lib.DeSoMainnetParams)
-				//fmt.Printf("entries.bulkInsertUtxoOperationsEntry: transactionResponse: %+v\n", transactionResponse)
-				transactions[jj].TxnMetaResponse = *transactionResponse
 
 				metadata := txIndexMetadata.GetEncoderForTxType(transaction.TxnMeta.GetTxnType())
 				basicTransferMetadata := txIndexMetadata.BasicTransferTxindexMetadata
@@ -182,7 +180,11 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				transactionUpdates = append(transactionUpdates, transactions[jj])
 			}
 		}
+		// Print how long it took to insert the entries.
 	}
+	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Processed %v txns in %v s\n", transactionCount, time.Since(start))
+
+	start = time.Now()
 
 	if len(transactionUpdates) > 0 {
 		values := db.NewValues(&transactionUpdates)
@@ -202,6 +204,10 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		}
 	}
 
+	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Updated %v txns in %v s\n", len(transactionUpdates), time.Since(start))
+
+	start = time.Now()
+
 	// Insert affected public keys into db
 	if len(affectedPublicKeys) > 0 {
 		_, err := db.NewInsert().Model(&affectedPublicKeys).On("CONFLICT (public_key, transaction_hash, metadata) DO UPDATE").Exec(context.Background())
@@ -209,6 +215,8 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			return errors.Wrapf(err, "InsertAffectedPublicKeys: Problem inserting affectedPublicKeys")
 		}
 	}
+
+	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserted %v affected public keys in %v s\n", len(affectedPublicKeys), time.Since(start))
 	return nil
 }
 

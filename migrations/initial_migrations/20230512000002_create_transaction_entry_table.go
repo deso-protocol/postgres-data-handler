@@ -20,7 +20,6 @@ func init() {
 				nonce_expiration_block_height    bigint,
 				nonce_partial_id                 bigint,
 				txn_meta                         jsonb,
-				txn_meta_response                jsonb,
 				txn_meta_bytes                   bytea,
 				tx_index_metadata                jsonb,
 				tx_index_basic_transfer_metadata jsonb,
