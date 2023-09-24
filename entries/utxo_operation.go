@@ -120,7 +120,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		// Note: it's normally considered bad practice to use string formatting to insert values into a query. However,
 		// in this case, the filterField is a constant and the value is clearly only block hash or transaction hash -
 		// so there is no risk of SQL injection.
-		err := db.NewSelect().Model(&transactions).Column("txn_bytes", "transaction_hash", "timestamp").Where(fmt.Sprintf("%s = ?", filterField), blockHash).Order("index_in_block ASC").Scan(context.Background())
+		err := db.NewSelect().Model(&transactions).Column("txn_bytes", "transaction_hash", "timestamp", "txn_type").Where(fmt.Sprintf("%s = ?", filterField), blockHash).Order("index_in_block ASC").Scan(context.Background())
 		if err != nil {
 			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem getting transactions at block height %v: %v", entry.BlockHeight, err)
 		}
@@ -197,6 +197,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			Set("tx_index_basic_transfer_metadata = _data.tx_index_basic_transfer_metadata").
 			// Add Set for all the fields that you need to update.
 			Where("pg_transaction_entry.transaction_hash = _data.transaction_hash").
+			Where("pg_transaction_entry.txn_type = _data.txn_type").
 			Exec(context.Background())
 		if err != nil {
 			return errors.Wrapf(err, "InsertTransactionEntryUtxoOps: Problem updating transactionEntryUtxoOps")
