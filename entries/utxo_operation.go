@@ -94,7 +94,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	start := time.Now()
 
 	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserting %v entries\n", len(uniqueEntries))
-	transactionCount := 0;
+	transactionCount := 0
 	// Loop through the utxo op bundles and extract the utxo operation entries from them.
 	for _, entry := range uniqueEntries {
 
@@ -195,7 +195,6 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			TableExpr("_data").
 			Set("tx_index_metadata = _data.tx_index_metadata").
 			Set("tx_index_basic_transfer_metadata = _data.tx_index_basic_transfer_metadata").
-			Set("txn_meta_response = _data.txn_meta_response").
 			// Add Set for all the fields that you need to update.
 			Where("pg_transaction_entry.transaction_hash = _data.transaction_hash").
 			Exec(context.Background())
