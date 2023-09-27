@@ -37,6 +37,7 @@ type AffectedPublicKeyEntry struct {
 	PublicKey       string    `pg:",pk,use_zero"`
 	Metadata        string    `pg:",pk,use_zero"`
 	Timestamp       time.Time `pg:",use_zero"`
+	TxnType         uint16    `pg:",use_zero"`
 	TransactionHash string    `pg:",pk,use_zero"`
 }
 
@@ -172,6 +173,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 							PublicKey:       affectedPublicKey.PublicKeyBase58Check,
 							Metadata:        affectedPublicKey.Metadata,
 							Timestamp:       transactions[jj].Timestamp,
+							TxnType:         transactions[jj].TxnType,
 							TransactionHash: transactions[jj].TransactionHash,
 						},
 					}

@@ -302,7 +302,7 @@ func init() {
 			FROM transaction_partitioned t
 			JOIN filtered_block fb ON t.block_hash = fb.block_hash;
 
-            CREATE UNIQUE INDEX statistic_active_wallet_count_30_d_unique_index ON statistic_active_wallet_count_30_d (id);`)
+            CREATE UNIQUE INDEX statistic_active_wallet_count_30_d_unique_index ON statistic_active_wallet_count_30_d (poster_public_key);`)
 		if err != nil {
 			return err
 		}
@@ -311,12 +311,11 @@ func init() {
 			CREATE MATERIALIZED VIEW statistic_social_leaderboard_likes AS
 			select count(*) as count, pe.poster_public_key, row_number() OVER () AS id from transaction_partition_10 t
 			join post_entry pe on t.tx_index_metadata ->> 'PostHashHex' = pe.post_hash
-			join block b on t.block_hash = b.block_hash
-			where b.timestamp > NOW() - INTERVAL '30 days'
+			where t.timestamp > NOW() - INTERVAL '30 days'
 			and t.tx_index_metadata ->> 'IsUnlike' = 'false'
 			group by pe.poster_public_key;
 
-            CREATE UNIQUE INDEX statistic_social_leaderboard_likes_unique_index ON statistic_social_leaderboard_likes (id);`)
+			CREATE UNIQUE INDEX statistic_social_leaderboard_likes_unique_index ON statistic_social_leaderboard_likes (poster_public_key);`)
 		if err != nil {
 			return err
 		}
@@ -325,12 +324,11 @@ func init() {
 			CREATE MATERIALIZED VIEW statistic_social_leaderboard_reactions AS
 			select count(*) as count, pe.poster_public_key, row_number() OVER () AS id from transaction_partition_29 t
 			join post_entry pe on t.tx_index_metadata ->> 'PostHashHex' = pe.post_hash
-			join block b on t.block_hash = b.block_hash
-			where b.timestamp > NOW() - INTERVAL '30 days'
+			where t.timestamp > NOW() - INTERVAL '30 days'
 			and t.tx_index_metadata ->> 'AssociationType' = 'REACTION'
 			group by pe.poster_public_key;
 
-            CREATE UNIQUE INDEX statistic_social_leaderboard_reactions_unique_index ON statistic_social_leaderboard_reactions (id);`)
+            CREATE UNIQUE INDEX statistic_social_leaderboard_reactions_unique_index ON statistic_social_leaderboard_reactions (poster_public_key);`)
 		if err != nil {
 			return err
 		}
@@ -339,11 +337,10 @@ func init() {
 			CREATE MATERIALIZED VIEW statistic_social_leaderboard_diamonds AS
 			select count(*), pe.poster_public_key, row_number() OVER () AS id from transaction_partition_02 t
 			join post_entry pe on t.tx_index_metadata ->> 'PostHashHex' = pe.post_hash
-			join block b on t.block_hash = b.block_hash
-			where b.timestamp > NOW() - INTERVAL '30 days'
+			where t.timestamp > NOW() - INTERVAL '30 days'
 			group by pe.poster_public_key;
 
-            CREATE UNIQUE INDEX statistic_social_leaderboard_diamonds_unique_index ON statistic_social_leaderboard_diamonds (id);`)
+            CREATE UNIQUE INDEX statistic_social_leaderboard_diamonds_unique_index ON statistic_social_leaderboard_diamonds (poster_public_key);`)
 		if err != nil {
 			return err
 		}
@@ -356,7 +353,7 @@ func init() {
 			and pe.timestamp > NOW() - INTERVAL '30 days'
 			group by pe.poster_public_key;
 
-            CREATE UNIQUE INDEX statistic_social_leaderboard_reposts_unique_index ON statistic_social_leaderboard_reposts (id);`)
+            CREATE UNIQUE INDEX statistic_social_leaderboard_reposts_unique_index ON statistic_social_leaderboard_reposts (poster_public_key);`)
 		if err != nil {
 			return err
 		}
@@ -369,7 +366,7 @@ func init() {
 			and pe.timestamp > NOW() - INTERVAL '30 days'
 			group by pe.poster_public_key;
 
-            CREATE UNIQUE INDEX statistic_social_leaderboard_comments_unique_index ON statistic_social_leaderboard_comments (id);`)
+            CREATE UNIQUE INDEX statistic_social_leaderboard_comments_unique_index ON statistic_social_leaderboard_comments (poster_public_key);`)
 		if err != nil {
 			return err
 		}
@@ -405,7 +402,7 @@ func init() {
 			on social_leaderboard.poster_public_key = pe.public_key
 			order by social_leaderboard.count desc;
 
-            CREATE UNIQUE INDEX statistic_social_leaderboard_unique_index ON statistic_social_leaderboard (id);`)
+            CREATE UNIQUE INDEX statistic_social_leaderboard_unique_index ON statistic_social_leaderboard (public_key);`)
 		if err != nil {
 			return err
 		}
@@ -416,15 +413,13 @@ func init() {
 			join nft_entry ne
 				on tx_index_metadata ->> 'NFTPostHashHex' = ne.nft_post_hash
 				and tx_index_metadata ->> 'SerialNumber' = text(ne.serial_number)
-			join block b
-			on b.block_hash = t.block_hash
 			left join profile_entry pe on t.public_key = pe.public_key
-			where b.timestamp > NOW() - INTERVAL '30 days'
+			where t.timestamp > NOW() - INTERVAL '30 days'
 			group by t.public_key, pe.username
 			order by sum(COALESCE(CAST(tx_index_metadata ->> 'BidAmountNanos' AS BIGINT), 0)) desc
 			limit 10;
 
-            CREATE UNIQUE INDEX statistic_nft_leaderboard_unique_index ON statistic_nft_leaderboard (id);`)
+			CREATE UNIQUE INDEX statistic_nft_leaderboard_unique_index ON statistic_nft_leaderboard (public_key, username);`)
 		if err != nil {
 			return err
 		}
@@ -495,13 +490,12 @@ func init() {
 
 		err = RunMigrationWithRetries(db, `
 			CREATE MATERIALIZED VIEW statistic_txn_count_monthly AS
-			SELECT date_trunc('month', b.timestamp) AS month, COUNT(*) AS transaction_count, row_number() OVER () AS id
+			SELECT date_trunc('month', t.timestamp) AS month, COUNT(*) AS transaction_count, row_number() OVER () AS id
 			FROM transaction t
-			JOIN block b ON t.block_hash = b.block_hash
-			WHERE b.timestamp > NOW() - INTERVAL '1 year'
+			WHERE t.timestamp > NOW() - INTERVAL '1 year'
 			GROUP BY month;
 
-            CREATE UNIQUE INDEX statistic_txn_count_monthly_unique_index ON statistic_txn_count_monthly (id);`)
+            CREATE UNIQUE INDEX statistic_txn_count_monthly_unique_index ON statistic_txn_count_monthly (month);`)
 		if err != nil {
 			return err
 		}
@@ -513,20 +507,19 @@ func init() {
 			WHERE timestamp > NOW() - INTERVAL '1 year'
 			GROUP BY month;
 
-            CREATE UNIQUE INDEX statistic_wallet_count_monthly_unique_index ON statistic_wallet_count_monthly (id);`)
+            CREATE UNIQUE INDEX statistic_wallet_count_monthly_unique_index ON statistic_wallet_count_monthly (month);`)
 		if err != nil {
 			return err
 		}
 
 		err = RunMigrationWithRetries(db, `
 			CREATE MATERIALIZED VIEW statistic_txn_count_daily AS
-			SELECT DATE(b.timestamp) AS day, COUNT(*) AS transaction_count, row_number() OVER () AS id
+			SELECT DATE(t.timestamp) AS day, COUNT(*) AS transaction_count, row_number() OVER () AS id
 			FROM transaction t
-			JOIN block b ON t.block_hash = b.block_hash
-			WHERE b.timestamp > NOW() - INTERVAL '1 month'
+			WHERE t.timestamp > NOW() - INTERVAL '1 month'
 			GROUP BY day;
 
-            CREATE UNIQUE INDEX statistic_txn_count_daily_unique_index ON statistic_txn_count_daily (id);`)
+            CREATE UNIQUE INDEX statistic_txn_count_daily_unique_index ON statistic_txn_count_daily (day);`)
 		if err != nil {
 			return err
 		}
@@ -538,25 +531,20 @@ func init() {
 			WHERE timestamp > NOW() - INTERVAL '1 month'
 			GROUP BY day;
 
-            CREATE UNIQUE INDEX statistic_new_wallet_count_daily_unique_index ON statistic_new_wallet_count_daily (id);`)
+            CREATE UNIQUE INDEX statistic_new_wallet_count_daily_unique_index ON statistic_new_wallet_count_daily (day);`)
 		if err != nil {
 			return err
 		}
 
 		err = RunMigrationWithRetries(db, `
 			CREATE MATERIALIZED VIEW statistic_active_wallet_count_daily AS
-			WITH filtered_block AS (
-			  SELECT block_hash, DATE(timestamp) as day
-			  FROM block
-			  WHERE timestamp > current_date - interval '1 month'
-			)
-			SELECT fb.day, COUNT(DISTINCT t.public_key), row_number() OVER () AS id
+			SELECT DATE(t.timestamp) as day, COUNT(DISTINCT t.public_key), row_number() OVER () AS id
 			FROM transaction_partitioned t
-			JOIN filtered_block fb ON t.block_hash = fb.block_hash
-			GROUP BY fb.day
-			ORDER BY fb.day;
+			WHERE t.timestamp > current_date - interval '1 month'
+			GROUP BY DATE(t.timestamp)
+			ORDER BY DATE(t.timestamp);
 
-            CREATE UNIQUE INDEX statistic_active_wallet_count_daily_unique_index ON statistic_active_wallet_count_daily (id);`)
+            CREATE UNIQUE INDEX statistic_active_wallet_count_daily_unique_index ON statistic_active_wallet_count_daily (day);`)
 		if err != nil {
 			return err
 		}

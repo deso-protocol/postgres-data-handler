@@ -17,11 +17,6 @@ import (
 	"github.com/uptrace/bun/extra/bundebug"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
-	"time"
-)
-
-const (
-	maxRetries = 10
 )
 
 func main() {
@@ -139,20 +134,10 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 }
 
 func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {
-	// Attempt to connect to the DB, retrying every 5 seconds until it's up, up to maxRetry times.
-	var pgdb *sql.DB
-	retryCount := 0
-	for retryCount < maxRetries {
-		pgdb = sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
-		if pgdb == nil {
-			retryCount++
-			glog.Infof("Error connecting to postgres db at URI: %v. Retrying in 5 seconds...", pgURI)
-			time.Sleep(5 * time.Second)
-		}
-	}
-
+	// Open a PostgreSQL database.
+	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
 	if pgdb == nil {
-		glog.Fatalf("Error connecting to postgres db at URI: %v after %v retries", pgURI, maxRetries)
+		glog.Fatalf("Error connecting to postgres db at URI: %v", pgURI)
 	}
 
 	// Create a Bun db on top of postgres for querying.
