@@ -63,6 +63,11 @@ func BlockBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *li
 
 // bulkInsertUtxoOperationsEntry inserts a batch of user_association entries into the database.
 func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+	// If this block is a part of the initial sync, skip it - it will be handled by the utxo operations.
+	if len(entries) > 0 && operationType == lib.DbOperationTypeInsert {
+		return nil
+	}
+
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueBlocks := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.

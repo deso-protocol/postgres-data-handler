@@ -293,16 +293,11 @@ func init() {
 
 		err = RunMigrationWithRetries(db, `
 			CREATE MATERIALIZED VIEW statistic_active_wallet_count_30_d AS
-			WITH filtered_block AS (
-			  SELECT block_hash
-			  FROM block
-			  WHERE timestamp > current_date - interval '1 month'
-			)
 			SELECT COUNT(DISTINCT t.public_key), 0 as id
 			FROM transaction_partitioned t
-			JOIN filtered_block fb ON t.block_hash = fb.block_hash;
+			WHERE timestamp > NOW() - INTERVAL '30 days';
 
-            CREATE UNIQUE INDEX statistic_active_wallet_count_30_d_unique_index ON statistic_active_wallet_count_30_d (poster_public_key);`)
+            CREATE UNIQUE INDEX statistic_active_wallet_count_30_d_unique_index ON statistic_active_wallet_count_30_d (id);`)
 		if err != nil {
 			return err
 		}

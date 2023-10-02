@@ -73,7 +73,7 @@ func UtxoOperationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, pa
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteUtxoOperationEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertUtxoOperationsEntry(entries, db, operationType)
+		err = bulkInsertUtxoOperationsEntry(entries, db, operationType, params)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -82,7 +82,7 @@ func UtxoOperationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, pa
 }
 
 // bulkInsertUtxoOperationsEntry inserts a batch of utxo operation entries into the database.
-func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
@@ -90,40 +90,65 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	// Transactions added to this slice will have their txindex metadata updated.
 	transactionUpdates := make([]*PGTransactionEntry, 0)
 	affectedPublicKeys := make([]*PGAffectedPublicKeyEntry, 0)
+	blockEntries := make([]*PGBlockEntry, 0)
 
 	// Start timer to track how long it takes to insert the entries.
 	start := time.Now()
 
 	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserting %v entries\n", len(uniqueEntries))
 	transactionCount := 0
+
+	// Whether we are inserting transactions for the first time, or just updating them.
+	// On initial sync it will be inserting, otherwise it will be a bulk update.
+	insertTransactions := false
+
 	// Loop through the utxo op bundles and extract the utxo operation entries from them.
 	for _, entry := range uniqueEntries {
 
-		// Check if the entry is a bundle with multiple utxo operations, or a single transaction.
-		// If bundle, get a list of transactions based on the block hash extracted from the key.
-		// If single transaction, get the transaction based on the transaction hash, extracted from the key.
-
 		transactions := []*PGTransactionEntry{}
+
 		// We can use this function regardless of the db prefix, because both block_hash and transaction_hash
 		// are stored in the same blockHashHex format in the key.
 		blockHash := ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes)
-		filterField := ""
 
-		// Determine how the transactions should be filtered based on the entry key prefix.
-		if bytes.Equal(entry.KeyBytes[:1], lib.Prefixes.PrefixTxnHashToUtxoOps) {
-			filterField = "transaction_hash"
-		} else if bytes.Equal(entry.KeyBytes[:1], lib.Prefixes.PrefixBlockHashToUtxoOperations) {
-			filterField = "block_hash"
+		// Check to see if the attached ancestral record is a block. If so, we can extract the transactions from it.
+		// Note that this only happens during the iniltial sync, in order to speed up the sync process.
+		if entry.AncestralRecord != nil && entry.AncestralRecord.GetEncoderType() == lib.EncoderTypeBlock {
+			insertTransactions = true
+			block := entry.AncestralRecord.(*lib.MsgDeSoBlock)
+			blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes)
+			blockEntries = append(blockEntries, blockEntry)
+			for ii, txn := range block.Txns {
+				pgTxn, err := TransactionEncoderToPGStruct(txn, uint64(ii), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, params)
+				if err != nil {
+					return errors.Wrapf(err, "entries.bulkInsertUtxoOperationsEntry: Problem converting transaction to PG struct")
+				}
+				transactions = append(transactions, pgTxn)
+			}
 		} else {
-			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Unrecognized prefix %v", entry.KeyBytes[:1])
-		}
+			// If the block isn't available on the entry itself, we can retrieve it from the database.
+			filterField := ""
 
-		// Note: it's normally considered bad practice to use string formatting to insert values into a query. However,
-		// in this case, the filterField is a constant and the value is clearly only block hash or transaction hash -
-		// so there is no risk of SQL injection.
-		err := db.NewSelect().Model(&transactions).Column("txn_bytes", "transaction_hash", "timestamp", "txn_type").Where(fmt.Sprintf("%s = ?", filterField), blockHash).Order("index_in_block ASC").Scan(context.Background())
-		if err != nil {
-			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem getting transactions at block height %v: %v", entry.BlockHeight, err)
+			// Check if the entry is a bundle with multiple utxo operations, or a single transaction.
+			// If bundle, get a list of transactions based on the block hash extracted from the key.
+			// If single transaction, get the transaction based on the transaction hash, extracted from the key.
+
+			// Determine how the transactions should be filtered based on the entry key prefix.
+			if bytes.Equal(entry.KeyBytes[:1], lib.Prefixes.PrefixTxnHashToUtxoOps) {
+				filterField = "transaction_hash"
+			} else if bytes.Equal(entry.KeyBytes[:1], lib.Prefixes.PrefixBlockHashToUtxoOperations) {
+				filterField = "block_hash"
+			} else {
+				return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Unrecognized prefix %v", entry.KeyBytes[:1])
+			}
+
+			// Note: it's normally considered bad practice to use string formatting to insert values into a query. However,
+			// in this case, the filterField is a constant and the value is clearly only block hash or transaction hash -
+			// so there is no risk of SQL injection.
+			err := db.NewSelect().Model(&transactions).Column("txn_bytes", "transaction_hash", "timestamp", "txn_type").Where(fmt.Sprintf("%s = ?", filterField), blockHash).Order("index_in_block ASC").Scan(context.Background())
+			if err != nil {
+				return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem getting transactions at block height %v: %v", entry.BlockHeight, err)
+			}
 		}
 
 		utxoOperations, ok := entry.Encoder.(*lib.UtxoOperationBundle)
@@ -139,7 +164,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			// Update the transaction metadata for this transaction.
 			if jj < len(transactions) {
 				transaction := &lib.MsgDeSoTxn{}
-				err = transaction.FromBytes(transactions[jj].TxnBytes)
+				err := transaction.FromBytes(transactions[jj].TxnBytes)
 				if err != nil {
 					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem decoding transaction for entry %+v at block height %v", entry, entry.BlockHeight)
 				}
@@ -189,20 +214,38 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	start = time.Now()
 
 	if len(transactionUpdates) > 0 {
-		values := db.NewValues(&transactionUpdates)
 
-		_, err := db.NewUpdate().
-			With("_data", values).
-			Model((*PGTransactionEntry)(nil)).
-			TableExpr("_data").
-			Set("tx_index_metadata = _data.tx_index_metadata").
-			Set("tx_index_basic_transfer_metadata = _data.tx_index_basic_transfer_metadata").
-			// Add Set for all the fields that you need to update.
-			Where("pg_transaction_entry.transaction_hash = _data.transaction_hash").
-			Where("pg_transaction_entry.txn_type = _data.txn_type").
-			Exec(context.Background())
-		if err != nil {
-			return errors.Wrapf(err, "InsertTransactionEntryUtxoOps: Problem updating transactionEntryUtxoOps")
+		if insertTransactions {
+			err := bulkInsertTransactionEntry(transactionUpdates, db, operationType)
+			if err != nil {
+				return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem inserting transaction entries: %v", err)
+			}
+
+			blockQuery := db.NewInsert().Model(&blockEntries)
+
+			if operationType == lib.DbOperationTypeUpsert {
+				blockQuery = blockQuery.On("CONFLICT (block_hash) DO UPDATE")
+			}
+
+			if _, err := blockQuery.Exec(context.Background()); err != nil {
+				return errors.Wrapf(err, "entries.bulkInsertBlock: Error inserting entries")
+			}
+
+		} else {
+			values := db.NewValues(&transactionUpdates)
+			_, err := db.NewUpdate().
+				With("_data", values).
+				Model((*PGTransactionEntry)(nil)).
+				TableExpr("_data").
+				Set("tx_index_metadata = _data.tx_index_metadata").
+				Set("tx_index_basic_transfer_metadata = _data.tx_index_basic_transfer_metadata").
+				// Add Set for all the fields that you need to update.
+				Where("pg_transaction_entry.transaction_hash = _data.transaction_hash").
+				Where("pg_transaction_entry.txn_type = _data.txn_type").
+				Exec(context.Background())
+			if err != nil {
+				return errors.Wrapf(err, "InsertTransactionEntryUtxoOps: Problem updating transactionEntryUtxoOps")
+			}
 		}
 	}
 
@@ -220,6 +263,19 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 
 	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserted %v affected public keys in %v s\n", len(affectedPublicKeys), time.Since(start))
 	return nil
+}
+
+// hasBlocksForAllEntries checks to see if all utxo operation entries have an attached block in the ancestral record field.
+func hasBlocksForAllEntries(entries []*lib.StateChangeEntry) bool {
+	for _, entry := range entries {
+		if entry.Encoder == nil {
+			return false
+		}
+		if entry.AncestralRecord.GetEncoderType() != lib.EncoderTypeBlock {
+			return false
+		}
+	}
+	return true
 }
 
 // bulkDeletePostEntry deletes a batch of utxo_operation entries from the database.
