@@ -40,6 +40,8 @@ func init() {
 			CREATE INDEX transaction_timestamp_idx ON transaction_partitioned (timestamp desc);
 			CREATE INDEX transaction_index_in_block_idx ON transaction_partitioned (index_in_block);
 			CREATE INDEX transaction_block_height_idx_in_block_idx ON transaction_partitioned (block_height desc, index_in_block asc);
+			CREATE INDEX transaction_timestamp_idx_in_block_idx ON transaction_partitioned (timestamp desc, index_in_block asc);
+			CREATE INDEX transaction_timestamp_idx_in_block_desc_idx ON transaction_partitioned (timestamp desc, index_in_block desc);
 			CREATE INDEX transaction_index_badger_key_idx ON transaction_partitioned (badger_key);
 			CREATE INDEX transaction_block_hash_index_idx ON transaction_partitioned (block_hash, index_in_block);
 			CREATE INDEX transaction_block_hash_idx ON transaction_partitioned (block_hash);
