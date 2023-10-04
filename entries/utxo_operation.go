@@ -111,11 +111,11 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		// are stored in the same blockHashHex format in the key.
 		blockHash := ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes)
 
-		// Check to see if the attached ancestral record is a block. If so, we can extract the transactions from it.
+		// Check to see if the state change entry has an attached block.
 		// Note that this only happens during the iniltial sync, in order to speed up the sync process.
-		if entry.AncestralRecord != nil && entry.AncestralRecord.GetEncoderType() == lib.EncoderTypeBlock {
+		if entry.Block != nil {
 			insertTransactions = true
-			block := entry.AncestralRecord.(*lib.MsgDeSoBlock)
+			block := entry.Block
 			blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes)
 			blockEntries = append(blockEntries, blockEntry)
 			for ii, txn := range block.Txns {
@@ -263,19 +263,6 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 
 	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserted %v affected public keys in %v s\n", len(affectedPublicKeys), time.Since(start))
 	return nil
-}
-
-// hasBlocksForAllEntries checks to see if all utxo operation entries have an attached block in the ancestral record field.
-func hasBlocksForAllEntries(entries []*lib.StateChangeEntry) bool {
-	for _, entry := range entries {
-		if entry.Encoder == nil {
-			return false
-		}
-		if entry.AncestralRecord.GetEncoderType() != lib.EncoderTypeBlock {
-			return false
-		}
-	}
-	return true
 }
 
 // bulkDeletePostEntry deletes a batch of utxo_operation entries from the database.
