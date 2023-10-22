@@ -12,6 +12,7 @@ func init() {
 				public_key VARCHAR,
 				transaction_hash VARCHAR,
 				txn_type smallint not null,
+				is_duplicate boolean not null,
 				metadata VARCHAR,
 				timestamp timestamp,
 				PRIMARY KEY(public_key, transaction_hash, metadata)

@@ -44,6 +44,7 @@ func createPostEntryTable(db *bun.DB, tableName string) error {
 			CREATE INDEX {tableName}_parent_post_hash_idx ON {tableName} (parent_post_hash);
 			CREATE INDEX {tableName}_poster_public_key_timestamp_idx ON {tableName} (poster_public_key, timestamp DESC);
 			CREATE INDEX {tableName}_poster_public_key_nft_timestamp_idx ON {tableName} (poster_public_key, timestamp, is_nft DESC);
+			CREATE INDEX {tableName}_poster_parent_repost_timestamp_idx ON {tableName} (poster_public_key, parent_post_hash, reposted_post_hash, timestamp desc);
 			CREATE INDEX {tableName}_nft_timestamp_idx ON {tableName} (timestamp, is_nft DESC);
 			CREATE INDEX {tableName}_post_extra_data_node_id_idx
 			ON {tableName} ((extra_data ->> 'Node'));

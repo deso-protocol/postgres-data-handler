@@ -36,6 +36,7 @@ type PGUtxoOperationEntry struct {
 type AffectedPublicKeyEntry struct {
 	PublicKey       string    `pg:",pk,use_zero"`
 	Metadata        string    `pg:",pk,use_zero"`
+	IsDuplicate     bool      `pg:",pk,use_zero"`
 	Timestamp       time.Time `pg:",use_zero"`
 	TxnType         uint16    `pg:",use_zero"`
 	TransactionHash string    `pg:",pk,use_zero"`
@@ -182,21 +183,31 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				transactions[jj].TxIndexBasicTransferMetadata = txIndexMetadata.GetEncoderForTxType(lib.TxnTypeBasicTransfer)
 
 				// Track which public keys have already been added to the affected public keys slice, to avoid duplicates.
+				affectedPublicKeyMetadataSet := make(map[string]bool)
 				affectedPublicKeySet := make(map[string]bool)
 
 				// Loop through the affected public keys and add them to the affected public keys slice.
 				for _, affectedPublicKey := range txIndexMetadata.AffectedPublicKeys {
 					// Skip if we've already added this public key/metadata.
-					apkDuplicateKey := fmt.Sprintf("%v:%v", affectedPublicKey.PublicKeyBase58Check, affectedPublicKey.Metadata)
-					if _, ok := affectedPublicKeySet[apkDuplicateKey]; ok {
+					apkmDuplicateKey := fmt.Sprintf("%v:%v", affectedPublicKey.PublicKeyBase58Check, affectedPublicKey.Metadata)
+					if _, ok := affectedPublicKeyMetadataSet[apkmDuplicateKey]; ok {
 						continue
 					}
-					affectedPublicKeySet[apkDuplicateKey] = true
+					affectedPublicKeyMetadataSet[apkmDuplicateKey] = true
+
+					// Track which public keys have already been added to the affected public keys slice. If they have,
+					// mark this record as a duplicate to make it easier to filter out.
+					apkIsDuplicate := false
+					if _, ok := affectedPublicKeySet[affectedPublicKey.PublicKeyBase58Check]; ok {
+						apkIsDuplicate = true
+					}
+					affectedPublicKeySet[affectedPublicKey.PublicKeyBase58Check] = true
 
 					affectedPublicKeyEntry := &PGAffectedPublicKeyEntry{
 						AffectedPublicKeyEntry: AffectedPublicKeyEntry{
 							PublicKey:       affectedPublicKey.PublicKeyBase58Check,
 							Metadata:        affectedPublicKey.Metadata,
+							IsDuplicate:     apkIsDuplicate,
 							Timestamp:       transactions[jj].Timestamp,
 							TxnType:         transactions[jj].TxnType,
 							TransactionHash: transactions[jj].TransactionHash,
