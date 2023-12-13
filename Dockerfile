@@ -22,15 +22,21 @@ COPY postgres-data-handler/handler    handler
 COPY postgres-data-handler/main.go       .
 
 # include core src
-COPY core/desohash ../core/desohash
-COPY core/cmd       ../core/cmd
-COPY core/lib       ../core/lib
-COPY core/migrate   ../core/migrate
+COPY core/bls         ../core/bls
+COPY core/cmd         ../core/cmd
+COPY core/collections ../core/collections
+COPY core/consensus   ../core/consensus
+COPY core/desohash    ../core/desohash
+COPY core/lib         ../core/lib
+COPY core/migrate     ../core/migrate
+COPY core/scripts     ../core/scripts
+
+RUN ../core/scripts/install-relic.sh
 
 RUN go mod tidy
 
 ## build postgres data handler backend
-RUN GOOS=linux go build -mod=mod -a -installsuffix cgo -o bin/postgres-data-handler main.go
+RUN GOOS=linux go build -mod=mod -a -installsuffix cgo -o bin/postgres-data-handler -tags=relic main.go
 #
 ## create tiny image
 #FROM alpine:latest
