@@ -74,6 +74,18 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 		err = entries.BlockBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	case lib.EncoderTypeTxn:
 		err = entries.TransactionBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeStakeEntry:
+		err = entries.StakeBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeValidatorEntry:
+		err = entries.ValidatorBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeLockedStakeEntry:
+		err = entries.LockedStakeBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeLockedBalanceEntry:
+		err = entries.LockedBalanceEntryBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeLockupYieldCurvePoint:
+		err = entries.LockupYieldCurvePointBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeEpochEntry:
+		err = entries.EpochEntryBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	}
 
 	if err != nil {
