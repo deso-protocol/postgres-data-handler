@@ -146,6 +146,7 @@ func init() {
 			comment on materialized view statistic_profile_transactions is E'@name profileTransactionStat\n@unique public_key\n@foreignKey (public_key) references account (public_key)|@foreignFieldName transactionStats|@fieldName account';
 			comment on materialized view statistic_profile_top_nft_owners is E'@name profileNftTopOwners';
 			comment on function hex_to_numeric is E'@omit';
+			comment on function int_to_bytea is E'@omit';
 			comment on function cc_nanos_total_sell_value is E'@omit';
 			comment on view dao_coin_limit_order_max_bids is E'@omit';
 			comment on view dao_coin_limit_order_min_asks is E'@omit';
