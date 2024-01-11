@@ -58,12 +58,12 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 		})
 	}
 
-	txnMetaBytes, err := transaction.TxnMeta.ToBytes(true)
+	txnMetaBytes, err := transaction.TxnMeta.ToBytes(false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "TransactionEncoderToPGStruct: Problem converting txn meta to bytes")
 	}
 
-	txnBytes, err := transaction.ToBytes(true)
+	txnBytes, err := transaction.ToBytes(false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "TransactionEncoderToPGStruct: Problem converting txn to bytes")
 	}
