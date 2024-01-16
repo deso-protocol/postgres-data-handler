@@ -60,6 +60,7 @@ func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte, param
 		IsNFT:                                    postEntry.IsNFT,
 		NumNFTCopies:                             postEntry.NumNFTCopies,
 		NumNFTCopiesForSale:                      postEntry.NumNFTCopiesForSale,
+		NumNFTCopiesBurned:						  postEntry.NumNFTCopiesBurned,
 		HasUnlockable:                            postEntry.HasUnlockable,
 		NFTRoyaltyToCreatorBasisPoints:           postEntry.NFTRoyaltyToCreatorBasisPoints,
 		NFTRoyaltyToCoinBasisPoints:              postEntry.NFTRoyaltyToCoinBasisPoints,
