@@ -9,12 +9,11 @@ import (
 	"github.com/uptrace/bun/extra/bunbig"
 )
 
-// TODO: when to use nullzero vs use_zero?
 type LockedBalanceEntry struct {
-	HODLerPKID                  string `bun:",nullzero"`
-	ProfilePKID                 string `bun:",nullzero"`
-	UnlockTimestampNanoSecs     int64
-	VestingEndTimestampNanoSecs int64
+	HODLerPKID                  string      `pg:",use_zero"`
+	ProfilePKID                 string      `pg:",use_zero"`
+	UnlockTimestampNanoSecs     int64       `pg:",null_zero"`
+	VestingEndTimestampNanoSecs int64       `pg:",null_zero"`
 	BalanceBaseUnits            *bunbig.Int `pg:",use_zero"`
 
 	BadgerKey []byte `pg:",pk,use_zero"`
@@ -25,25 +24,24 @@ type PGLockedBalanceEntry struct {
 	LockedBalanceEntry
 }
 
-// TODO: Do I need this?
-type PGLockedBalanceEntryUtxoOps struct {
-	bun.BaseModel `bun:"table:locked_balance_entry_utxo_ops"`
-	LockedBalanceEntry
-	UtxoOperation
-}
-
 // Convert the LockedBalanceEntry DeSo encoder to the PGLockedBalnceEntry struct used by bun.
-func LockedBalanceEntryEncoderToPGStruct(lockedBalanceEntry *lib.LockedBalanceEntry, keyBytes []byte, params *lib.DeSoParams) LockedBalanceEntry {
+func LockedBalanceEntryEncoderToPGStruct(
+	lockedBalanceEntry *lib.LockedBalanceEntry,
+	keyBytes []byte,
+	params *lib.DeSoParams,
+) LockedBalanceEntry {
 	pgLockedBalanceEntry := LockedBalanceEntry{
 		BadgerKey: keyBytes,
 	}
 
 	if lockedBalanceEntry.HODLerPKID != nil {
-		pgLockedBalanceEntry.HODLerPKID = consumer.PublicKeyBytesToBase58Check((*lockedBalanceEntry.HODLerPKID)[:], params)
+		pgLockedBalanceEntry.HODLerPKID =
+			consumer.PublicKeyBytesToBase58Check((*lockedBalanceEntry.HODLerPKID)[:], params)
 	}
 
 	if lockedBalanceEntry.ProfilePKID != nil {
-		pgLockedBalanceEntry.ProfilePKID = consumer.PublicKeyBytesToBase58Check((*lockedBalanceEntry.ProfilePKID)[:], params)
+		pgLockedBalanceEntry.ProfilePKID =
+			consumer.PublicKeyBytesToBase58Check((*lockedBalanceEntry.ProfilePKID)[:], params)
 	}
 
 	pgLockedBalanceEntry.UnlockTimestampNanoSecs = lockedBalanceEntry.UnlockTimestampNanoSecs
@@ -55,7 +53,11 @@ func LockedBalanceEntryEncoderToPGStruct(lockedBalanceEntry *lib.LockedBalanceEn
 
 // LockedBalanceEntryBatchOperation is the entry point for processing a batch of LockedBalance entries.
 // It determines the appropriate handler based on the operation type and executes it.
-func LockedBalanceEntryBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func LockedBalanceEntryBatchOperation(
+	entries []*lib.StateChangeEntry,
+	db *bun.DB,
+	params *lib.DeSoParams,
+) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -66,13 +68,19 @@ func LockedBalanceEntryBatchOperation(entries []*lib.StateChangeEntry, db *bun.D
 		err = bulkInsertLockedBalanceEntry(entries, db, operationType, params)
 	}
 	if err != nil {
-		return errors.Wrapf(err, "entries.LockedBalanceEntryBatchOperation: Problem with operation type %v", operationType)
+		return errors.Wrapf(err,
+			"entries.LockedBalanceEntryBatchOperation: Problem with operation type %v", operationType)
 	}
 	return nil
 }
 
 // bulkInsertLockedBalanceEntry inserts a batch of locked stake entries into the database.
-func bulkInsertLockedBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertLockedBalanceEntry(
+	entries []*lib.StateChangeEntry,
+	db *bun.DB,
+	operationType lib.StateSyncerOperationType,
+	params *lib.DeSoParams,
+) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -80,7 +88,12 @@ func bulkInsertLockedBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, o
 
 	// Loop through the entries and convert them to PGEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGLockedBalanceEntry{LockedBalanceEntry: LockedBalanceEntryEncoderToPGStruct(entry.Encoder.(*lib.LockedBalanceEntry), entry.KeyBytes, params)}
+		pgEntrySlice[ii] = &PGLockedBalanceEntry{
+			LockedBalanceEntry: LockedBalanceEntryEncoderToPGStruct(
+				entry.Encoder.(*lib.LockedBalanceEntry),
+				entry.KeyBytes,
+				params),
+		}
 	}
 
 	// Execute the insert query.
@@ -97,7 +110,11 @@ func bulkInsertLockedBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, o
 }
 
 // bulkDeleteLockedBalanceEntry deletes a batch of locked stake entries from the database.
-func bulkDeleteLockedBalanceEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteLockedBalanceEntry(
+	entries []*lib.StateChangeEntry,
+	db *bun.DB,
+	operationType lib.StateSyncerOperationType,
+) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
