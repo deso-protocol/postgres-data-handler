@@ -24,12 +24,6 @@ type PGLockedBalanceEntry struct {
 	LockedBalanceEntry
 }
 
-type PGLockedBalanceEntryUtxoOps struct {
-	bun.BaseModel `bun:"table:locked_balance_entry_utxo_ops"`
-	LockedBalanceEntry
-	UtxoOperation
-}
-
 // Convert the LockedBalanceEntry DeSo encoder to the PGLockedBalnceEntry struct used by bun.
 func LockedBalanceEntryEncoderToPGStruct(
 	lockedBalanceEntry *lib.LockedBalanceEntry,

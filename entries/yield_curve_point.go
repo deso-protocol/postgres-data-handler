@@ -8,35 +8,32 @@ import (
 	"github.com/uptrace/bun"
 )
 
-// TODO: when to use nullzero vs use_zero?
 type LockupYieldCurvePoint struct {
-	ProfilePKID               string `bun:",nullzero"`
-	LockupDurationNanoSecs    int64
-	LockupYieldAPYBasisPoints uint64
+	ProfilePKID               string `pg:",null_zero"`
+	LockupDurationNanoSecs    int64  `pg:",null_zero"`
+	LockupYieldAPYBasisPoints uint64 `pg:",null_zero"`
 
 	BadgerKey []byte `pg:",pk,use_zero"`
 }
 
 type PGLockupYieldCurvePoint struct {
-	bun.BaseModel `bun:"table:locked_balance_entry"`
+	bun.BaseModel `bun:"table:lockup_yield_curve_points"`
 	LockupYieldCurvePoint
-}
-
-// TODO: Do I need this?
-type PGLockupYieldCurvePointUtxoOps struct {
-	bun.BaseModel `bun:"table:locked_balance_entry_utxo_ops"`
-	LockupYieldCurvePoint
-	UtxoOperation
 }
 
 // Convert the LockupYieldCurvePoint DeSo encoder to the PGLockedBalnceEntry struct used by bun.
-func LockupYieldCurvePointEncoderToPGStruct(lockupYieldCurvePoint *lib.LockupYieldCurvePoint, keyBytes []byte, params *lib.DeSoParams) LockupYieldCurvePoint {
+func LockupYieldCurvePointEncoderToPGStruct(
+	lockupYieldCurvePoint *lib.LockupYieldCurvePoint,
+	keyBytes []byte,
+	params *lib.DeSoParams,
+) LockupYieldCurvePoint {
 	pgLockupYieldCurvePoint := LockupYieldCurvePoint{
 		BadgerKey: keyBytes,
 	}
 
 	if lockupYieldCurvePoint.ProfilePKID != nil {
-		pgLockupYieldCurvePoint.ProfilePKID = consumer.PublicKeyBytesToBase58Check((*lockupYieldCurvePoint.ProfilePKID)[:], params)
+		pgLockupYieldCurvePoint.ProfilePKID =
+			consumer.PublicKeyBytesToBase58Check((*lockupYieldCurvePoint.ProfilePKID)[:], params)
 	}
 
 	pgLockupYieldCurvePoint.LockupDurationNanoSecs = lockupYieldCurvePoint.LockupDurationNanoSecs
@@ -47,7 +44,11 @@ func LockupYieldCurvePointEncoderToPGStruct(lockupYieldCurvePoint *lib.LockupYie
 
 // LockupYieldCurvePointBatchOperation is the entry point for processing a batch of LockedBalance entries.
 // It determines the appropriate handler based on the operation type and executes it.
-func LockupYieldCurvePointBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func LockupYieldCurvePointBatchOperation(
+	entries []*lib.StateChangeEntry,
+	db *bun.DB,
+	params *lib.DeSoParams,
+) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -64,7 +65,12 @@ func LockupYieldCurvePointBatchOperation(entries []*lib.StateChangeEntry, db *bu
 }
 
 // bulkInsertLockupYieldCurvePoint inserts a batch of locked stake entries into the database.
-func bulkInsertLockupYieldCurvePoint(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertLockupYieldCurvePoint(
+	entries []*lib.StateChangeEntry,
+	db *bun.DB,
+	operationType lib.StateSyncerOperationType,
+	params *lib.DeSoParams,
+) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -72,7 +78,12 @@ func bulkInsertLockupYieldCurvePoint(entries []*lib.StateChangeEntry, db *bun.DB
 
 	// Loop through the entries and convert them to PGEntry.
 	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGLockupYieldCurvePoint{LockupYieldCurvePoint: LockupYieldCurvePointEncoderToPGStruct(entry.Encoder.(*lib.LockupYieldCurvePoint), entry.KeyBytes, params)}
+		pgEntrySlice[ii] = &PGLockupYieldCurvePoint{
+			LockupYieldCurvePoint: LockupYieldCurvePointEncoderToPGStruct(
+				entry.Encoder.(*lib.LockupYieldCurvePoint),
+				entry.KeyBytes,
+				params),
+		}
 	}
 
 	// Execute the insert query.
@@ -89,7 +100,11 @@ func bulkInsertLockupYieldCurvePoint(entries []*lib.StateChangeEntry, db *bun.DB
 }
 
 // bulkDeleteLockupYieldCurvePoint deletes a batch of locked stake entries from the database.
-func bulkDeleteLockupYieldCurvePoint(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteLockupYieldCurvePoint(
+	entries []*lib.StateChangeEntry,
+	db *bun.DB,
+	operationType lib.StateSyncerOperationType,
+) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
