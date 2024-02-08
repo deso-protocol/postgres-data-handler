@@ -12,7 +12,7 @@ func init() {
 		_, err := db.Exec(`
 			comment on view account is E'@unique username\n@unique public_key\n@unique pkid\n@primaryKey public_key';
 			comment on table access_group_entry is E'@name access_group\n@unique access_group_owner_public_key,access_group_key_name\n@unique access_group_public_key\n@foreignKey (access_group_owner_public_key) references account (public_key)|@foreignFieldName accessGroupsOwned|@fieldName owner';
-			comment on table access_group_member_entry is E'@name access_group_member\n@unique access_group_owner_public_key, access_group_member_public_key, access_group_key_name, access_group_member_key_name\n@foreignKey (access_group_member_public_key) references account (public_key)|@foreignFieldName accessGroupMemberships|@fieldName member';
+			comment on table access_group_member_entry is E'@name access_group_member\n@unique access_group_owner_public_key, access_group_member_public_key, access_group_key_name, access_group_member_key_name\n@foreignKey (access_group_member_public_key) references account (public_key)|@foreignFieldName accessGroupMemberships|@fieldName member\n@foreignKey (access_group_owner_public_key, access_group_key_name) references access_group_entry (access_group_owner_public_key, access_group_key_name)|@foreignFieldName accessGroupMembers|@fieldName accessGroup';
 			comment on table affected_public_key is E'@foreignKey (public_key) references account (public_key)|@foreignFieldName transactionHashes|@fieldName account\n@foreignKey (transaction_hash, txn_type) references transaction (transaction_hash, txn_type)|@fieldName transaction|@foreignFieldName affectedPublicKeys';
 			comment on table balance_entry is E'@name tokenBalance\n@foreignKey (hodler_pkid) references account (pkid)|@foreignFieldName tokenBalances|@fieldName holder\n@foreignKey (creator_pkid) references account (pkid)|@foreignFieldName tokenBalancesAsCreator|@fieldName creator';
 			comment on view creator_coin_balance is E'@primaryKey hodler_pkid,creator_pkid\n@name creatorCoinBalance\n@foreignKey (hodler_pkid) references account (pkid)|@foreignFieldName creatorCoinBalances|@fieldName holder\n@foreignKey (creator_pkid) references account (pkid)|@foreignFieldName creatorCoinBalancesAsCreator|@fieldName creator';
@@ -52,6 +52,8 @@ func init() {
 			comment on column post_entry.badger_key is E'@omit';
 			comment on column profile_entry.badger_key is E'@omit';
 			comment on column transaction.badger_key is E'@omit';
+			comment on column account.token_balance_join_field is E'@omit';
+			comment on column account.cc_balance_join_field is E'@omit';
 			comment on column user_association_entry.badger_key is E'@omit';
 			comment on table bun_migrations is E'@omit';
 			comment on table bun_migration_locks is E'@omit';
@@ -202,6 +204,8 @@ func init() {
 			comment on view transaction is NULL;
 			comment on table user_association_entry is NULL;
 			comment on table utxo_operation is NULL;
+			comment on column account.token_balance_join_field is NULL;
+			comment on column account.cc_balance_join_field is NULL;
 			comment on column access_group_entry.badger_key is NULL;
 			comment on column access_group_member_entry.badger_key is NULL;
 			comment on column balance_entry.badger_key is NULL;
