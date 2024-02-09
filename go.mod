@@ -4,10 +4,14 @@ go 1.18
 
 replace github.com/deso-protocol/core => ../core/
 
+replace github.com/deso-protocol/backend => ../backend/
+
+replace github.com/deso-protocol/state-consumer => ../state-consumer/
+
 require (
-	github.com/deso-protocol/backend v1.2.10-0.20230727205436-dba653dc043c
-	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
-	github.com/deso-protocol/state-consumer v1.0.4-0.20240117002702-0f75e8691905
+	github.com/deso-protocol/backend v0.0.0-00010101000000-000000000000
+	github.com/deso-protocol/core v0.0.0-00010101000000-000000000000
+	github.com/deso-protocol/state-consumer v0.0.0-00010101000000-000000000000
 	github.com/golang/glog v1.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.7.1
@@ -25,6 +29,7 @@ require (
 	github.com/DataDog/datadog-go v4.5.0+incompatible // indirect
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/btcsuite/btcutil v1.0.2 // indirect
 	github.com/bwesterb/go-ristretto v1.2.0 // indirect
@@ -40,6 +45,7 @@ require (
 	github.com/dgraph-io/badger/v3 v3.2103.5 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/ethereum/go-ethereum v1.9.25 // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
@@ -81,6 +87,7 @@ require (
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/nyaruka/phonenumbers v1.0.69 // indirect
 	github.com/oleiade/lane v1.0.1 // indirect
+	github.com/onflow/flow-go/crypto v0.24.7 // indirect
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
@@ -97,6 +104,7 @@ require (
 	github.com/spf13/cobra v1.1.3 // indirect
 	github.com/spf13/jwalterweatherman v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect

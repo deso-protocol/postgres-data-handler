@@ -3,11 +3,12 @@ package entries
 import (
 	"context"
 	"encoding/hex"
+	"time"
+
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
-	"time"
 )
 
 type BlockEntry struct {
@@ -34,7 +35,7 @@ func BlockEncoderToPGStruct(block *lib.MsgDeSoBlock, keyBytes []byte) *PGBlockEn
 			BlockHash:     hex.EncodeToString(blockHash[:]),
 			PrevBlockHash: hex.EncodeToString(block.Header.PrevBlockHash[:]),
 			TxnMerkleRoot: hex.EncodeToString(block.Header.TransactionMerkleRoot[:]),
-			Timestamp:     consumer.UnixNanoToTime(block.Header.TstampSecs * 1e9),
+			Timestamp:     consumer.UnixNanoToTime(uint64(block.Header.TstampNanoSecs)),
 			Height:        block.Header.Height,
 			Nonce:         block.Header.Nonce,
 			ExtraNonce:    block.Header.ExtraNonce,
