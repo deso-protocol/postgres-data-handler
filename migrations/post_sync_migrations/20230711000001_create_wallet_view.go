@@ -13,7 +13,8 @@ func init() {
 			UNION ALL
 			SELECT public_key AS pkid, public_key
 			FROM public_key
-			WHERE public_key NOT IN (SELECT public_key FROM pkid_entry);
+			WHERE public_key NOT IN (SELECT public_key FROM pkid_entry)
+			AND public_key NOT IN (SELECT pkid FROM pkid_entry);
 		`)
 		if err != nil {
 			return err

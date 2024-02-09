@@ -24,7 +24,9 @@ func init() {
 				profile_entry.coin_price_deso_nanos,
 				profile_entry.deso_locked_nanos,
 				profile_entry.cc_coins_in_circulation_nanos,
-        profile_entry.dao_coins_in_circulation_nanos_hex
+        		profile_entry.dao_coins_in_circulation_nanos_hex,
+				true as token_balance_join_field,
+                false as cc_balance_join_field
 			FROM
 				wallet
 			LEFT JOIN
