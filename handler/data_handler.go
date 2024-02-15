@@ -63,7 +63,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypePostAssociationEntry:
 		err = entries.PostAssociationBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	case lib.EncoderTypePKIDEntry:
-		err = entries.PkidBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+		err = entries.PkidEntryBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	case lib.EncoderTypeDeSoBalanceEntry:
 		err = entries.DesoBalanceBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	case lib.EncoderTypeDAOCoinLimitOrderEntry:
@@ -86,6 +86,8 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 		err = entries.LockupYieldCurvePointBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	case lib.EncoderTypeEpochEntry:
 		err = entries.EpochEntryBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypePKID:
+		err = entries.PkidBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	}
 
 	if err != nil {
