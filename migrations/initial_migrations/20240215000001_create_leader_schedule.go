@@ -19,7 +19,6 @@ func createLeaderScheduleTable(db *bun.DB, tableName string) error {
 			CREATE INDEX {tableName}_snapshot_at_epoch_number_idx ON {tableName} (snapshot_at_epoch_number);
 			CREATE INDEX {tableName}_snapshot_at_epoch_number_leader_index_idx ON {tableName} (snapshot_at_epoch_number, leader_index);
 		`, "{tableName}", tableName, -1))
-	// TODO: What other fields do we need indexed?
 	return err
 }
 

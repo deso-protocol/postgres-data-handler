@@ -1,7 +1,6 @@
 package entries
 
 import (
-	"bytes"
 	"context"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
@@ -131,7 +130,6 @@ func bulkDeletePkidEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 func PkidBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
-	glog.Infof("PkidBatchOperation: Putting %d entries into the database", len(entries))
 	operationType := entries[0].OperationType
 	var err error
 	if operationType == lib.DbOperationTypeDelete {
@@ -149,21 +147,23 @@ func PkidBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib
 func bulkInsertPkid(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
+
+	uniqueLeaderScheduleEntries := consumer.FilterEntriesByPrefix(
+		uniqueEntries, lib.Prefixes.PrefixSnapshotLeaderSchedule)
 	// NOTE: if we need to support parsing other indexes for PKIDs beyond LeaderSchedule,
-	// we will need to create an
+	// we will need to filter the uniqueEntries by the appropriate prefix and then convert
+	// the entries to the appropriate PG struct.
 	// Create a new array to hold the bun struct.
-	pgEntrySlice := make([]*PGLeaderScheduleEntry, len(uniqueEntries))
+	pgEntrySlice := make([]*PGLeaderScheduleEntry, len(uniqueLeaderScheduleEntries))
 
 	// Loop through the entries and convert them to PGPostEntry.
-	for ii, entry := range uniqueEntries {
-		if bytes.Equal(entry.KeyBytes[0:1], lib.Prefixes.PrefixSnapshotLeaderSchedule) {
-			leaderScheduleEntry := LeaderScheduleEncoderToPGStruct(entry.Encoder.(*lib.PKID), entry.KeyBytes, params)
-			if leaderScheduleEntry == nil {
-				glog.Errorf("bulkInsertPkid: Error converting LeaderScheduleEntry to PG struct")
-				continue
-			}
-			pgEntrySlice[ii] = &PGLeaderScheduleEntry{LeaderScheduleEntry: *leaderScheduleEntry}
+	for ii, entry := range uniqueLeaderScheduleEntries {
+		leaderScheduleEntry := LeaderScheduleEncoderToPGStruct(entry.Encoder.(*lib.PKID), entry.KeyBytes, params)
+		if leaderScheduleEntry == nil {
+			glog.Errorf("bulkInsertPkid: Error converting LeaderScheduleEntry to PG struct")
+			continue
 		}
+		pgEntrySlice[ii] = &PGLeaderScheduleEntry{LeaderScheduleEntry: *leaderScheduleEntry}
 	}
 
 	query := db.NewInsert().Model(&pgEntrySlice)
@@ -185,12 +185,12 @@ func bulkDeletePkid(entries []*lib.StateChangeEntry, db *bun.DB, operationType l
 
 	// Transform the entries into a list of keys to delete.
 	keysToDelete := consumer.KeysToDelete(uniqueEntries)
-	keysToDelete = consumer.FilterKeysByPrefix(keysToDelete, lib.Prefixes.PrefixSnapshotLeaderSchedule)
+	leaderSchedKeysToDelete := consumer.FilterKeysByPrefix(keysToDelete, lib.Prefixes.PrefixSnapshotLeaderSchedule)
 
 	// Execute the delete query.
 	if _, err := db.NewDelete().
 		Model(&LeaderScheduleEntry{}).
-		Where("badger_key IN (?)", bun.In(keysToDelete)).
+		Where("badger_key IN (?)", bun.In(leaderSchedKeysToDelete)).
 		Returning("").
 		Exec(context.Background()); err != nil {
 		return errors.Wrapf(err, "entries.bulkDeletePkid: Error deleting entries")
