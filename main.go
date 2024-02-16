@@ -108,6 +108,8 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	if stateChangeDir == "" {
 		stateChangeDir = "/tmp/state-changes"
 	}
+	// Set the state change dir flag that core uses, so DeSoEncoders properly encode and decode state change metadata.
+	viper.Set("state-change-dir", stateChangeDir)
 
 	consumerProgressDir = viper.GetString("CONSUMER_PROGRESS_DIR")
 	if consumerProgressDir == "" {
