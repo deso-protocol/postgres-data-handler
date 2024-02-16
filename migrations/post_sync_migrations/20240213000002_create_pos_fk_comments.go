@@ -22,7 +22,6 @@ func init() {
                 comment on column locked_stake_entry.badger_key is E'@omit';
                 comment on column yield_curve_point.badger_key is E'@omit';
                 comment on column locked_balance_entry.badger_key is E'@omit';
-                comment on column epoch_entry.badger_key is E'@omit';
                 comment on table transaction_partition_34 is E'@omit';
                 comment on table transaction_partition_35 is E'@omit';
                 comment on table transaction_partition_36 is E'@omit';

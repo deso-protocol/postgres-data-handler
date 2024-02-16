@@ -14,9 +14,8 @@ type EpochEntry struct {
 	InitialBlockHeight              uint64
 	InitialView                     uint64
 	FinalBlockHeight                uint64
-	CreatedAtBlockTimestampNanoSecs uint64
-
-	BadgerKey []byte `pg:",pk,use_zero"`
+	CreatedAtBlockTimestampNanoSecs int64
+	SnapshotAtEpochNumber           uint64
 }
 
 type PGEpochEntry struct {
@@ -33,12 +32,19 @@ type PGEpochUtxoOps struct {
 
 // Convert the EpochEntry DeSo encoder to the PGEpochEntry struct used by bun.
 func EpochEntryEncoderToPGStruct(epochEntry *lib.EpochEntry, keyBytes []byte, params *lib.DeSoParams) EpochEntry {
+
+	var snapshotAtEpochNumber uint64
+	// Epochs use data snapshotted from two epochs ago. Epochs 0 and 1 use data from epoch 0.
+	if epochEntry.EpochNumber >= 2 {
+		snapshotAtEpochNumber = epochEntry.EpochNumber - 2
+	}
 	return EpochEntry{
-		EpochNumber:        epochEntry.EpochNumber,
-		InitialBlockHeight: epochEntry.InitialBlockHeight,
-		InitialView:        epochEntry.InitialView,
-		FinalBlockHeight:   epochEntry.FinalBlockHeight,
-		BadgerKey:          keyBytes,
+		EpochNumber:                     epochEntry.EpochNumber,
+		InitialBlockHeight:              epochEntry.InitialBlockHeight,
+		InitialView:                     epochEntry.InitialView,
+		FinalBlockHeight:                epochEntry.FinalBlockHeight,
+		CreatedAtBlockTimestampNanoSecs: epochEntry.CreatedAtBlockTimestampNanoSecs,
+		SnapshotAtEpochNumber:           snapshotAtEpochNumber,
 	}
 }
 
@@ -49,8 +55,11 @@ func EpochEntryBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, param
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
 	var err error
+	// Core only tracks the current epoch entry and never deletes them.
+	// In order to track all historical epoch entries, we don't use the badger
+	// key to uniquely identify them, but rather the epoch number.
 	if operationType == lib.DbOperationTypeDelete {
-		err = bulkDeleteEpochEntry(entries, db, operationType)
+		return errors.Wrapf(err, "entries.EpochEntryBatchOperation: Delete operation type not supported")
 	} else {
 		err = bulkInsertEpochEntry(entries, db, operationType, params)
 	}
@@ -76,31 +85,11 @@ func bulkInsertEpochEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 	query := db.NewInsert().Model(&pgEntrySlice)
 
 	if operationType == lib.DbOperationTypeUpsert {
-		query = query.On("CONFLICT (badger_key) DO UPDATE")
+		query = query.On("CONFLICT (epoch_number) DO UPDATE")
 	}
 
 	if _, err := query.Returning("").Exec(context.Background()); err != nil {
 		return errors.Wrapf(err, "entries.bulkInsertEpochEntry: Error inserting entries")
 	}
-	return nil
-}
-
-// bulkDeleteEpochEntry deletes a batch of locked stake entries from the database.
-func bulkDeleteEpochEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
-	// Track the unique entries we've inserted so we don't insert the same entry twice.
-	uniqueEntries := consumer.UniqueEntries(entries)
-
-	// Transform the entries into a list of keys to delete.
-	keysToDelete := consumer.KeysToDelete(uniqueEntries)
-
-	// Execute the delete query.
-	if _, err := db.NewDelete().
-		Model(&PGEpochEntry{}).
-		Where("badger_key IN (?)", bun.In(keysToDelete)).
-		Returning("").
-		Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.bulkDeleteEpochEntry: Error deleting entries")
-	}
-
 	return nil
 }
