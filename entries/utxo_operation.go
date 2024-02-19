@@ -94,6 +94,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	affectedPublicKeys := make([]*PGAffectedPublicKeyEntry, 0)
 	blockEntries := make([]*PGBlockEntry, 0)
 	stakeRewardEntries := make([]*PGStakeReward, 0)
+	jailedHistoryEntries := make([]*PGJailedHistoryEvent, 0)
 
 	// Start timer to track how long it takes to insert the entries.
 	start := time.Now()
@@ -191,6 +192,33 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				// Track which public keys have already been added to the affected public keys slice, to avoid duplicates.
 				affectedPublicKeyMetadataSet := make(map[string]bool)
 				affectedPublicKeySet := make(map[string]bool)
+
+				switch transaction.TxnMeta.GetTxnType() {
+				case lib.TxnTypeUnjailValidator:
+					// Find the unjail utxo op
+					var unjailUtxoOp *lib.UtxoOperation
+					for _, utxoOp := range utxoOps {
+						if utxoOp.Type == lib.OperationTypeUnjailValidator {
+							unjailUtxoOp = utxoOp
+							break
+						}
+					}
+					if unjailUtxoOp == nil {
+						glog.Error("bulkInsertUtxoOperationsEntry: Problem finding unjail utxo op")
+						continue
+					}
+					scm, ok := unjailUtxoOp.StateChangeMetadata.(*lib.UnjailValidatorStateChangeMetadata)
+					if !ok {
+						glog.Error("bulkInsertUtxoOperationsEntry: Problem with state change metadata for unjail")
+						continue
+					}
+					// Parse the jailed history event and add it to the slice.
+					jailedHistoryEntries = append(jailedHistoryEntries,
+						&PGJailedHistoryEvent{
+							JailedHistoryEntry: UnjailValidatorStateChangeMetadataEncoderToPGStruct(scm, params),
+						},
+					)
+				}
 
 				// Loop through the affected public keys and add them to the affected public keys slice.
 				for _, affectedPublicKey := range txIndexMetadata.AffectedPublicKeys {
@@ -311,6 +339,13 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		}
 	}
 	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserted %v stake rewards in %v s\n", len(stakeRewardEntries), time.Since(start))
+
+	if len(jailedHistoryEntries) > 0 {
+		_, err := db.NewInsert().Model(&jailedHistoryEntries).On("CONFLICT (validator_pkid, jailed_at_epoch_number, unjailed_at_epoch_number) DO NOTHING").Exec(context.Background())
+		if err != nil {
+			return errors.Wrapf(err, "InsertJailedHistory: Problem inserting jailed history")
+		}
+	}
 
 	return nil
 }
