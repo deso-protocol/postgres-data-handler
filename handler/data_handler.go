@@ -88,6 +88,8 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 		err = entries.EpochEntryBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	case lib.EncoderTypePKID:
 		err = entries.PkidBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeGlobalParamsEntry:
+		err = entries.GlobalParamsBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	}
 
 	if err != nil {
