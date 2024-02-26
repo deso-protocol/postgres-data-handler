@@ -16,7 +16,6 @@ func init() {
                 comment on table locked_stake_entry is E'@foreignKey (staker_pkid) references account (pkid)|@foreignFieldName lockedStakeEntries|@fieldName staker\n@foreignKey (validator_pkid) references account (pkid)|@foreignFieldName validatorLockedStakeEntries|@fieldName validatorAccount\n@foreignKey (validator_pkid) references validator_entry(validator_pkid)|@foreignFieldName validatorLockedStakeEntries|@fieldName validatorEntry';
                 comment on table yield_curve_point is E'@foreignKey (profile_pkid) references account (pkid)|@foreignFieldName yieldCurvePoints|@fieldName account';
                 comment on table locked_balance_entry is E'@foreignKey (profile_pkid) references account (pkid)|@foreignFieldName profileLockedBalanceEntries|@fieldName profileAccount\n@foreignKey (hodler_pkid) references account (pkid)|@foreignFieldName hodlerLockedBalanceEntries|@fieldName hodlerAccount';
-                comment on table block is E'@unique block_hash\n@unique height\n@foreignKey (proposer_public_key) references account (public_key)|@foreignFieldName blocksProposed|@fieldName blockProposer';
                 comment on column stake_entry.badger_key is E'@omit';
                 comment on column validator_entry.badger_key is E'@omit';
                 comment on column locked_stake_entry.badger_key is E'@omit';

@@ -123,7 +123,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			blockEntries = append(blockEntries, blockEntry)
 			for ii, txn := range block.Txns {
 				// Check if the transaction connects or not.
-				txnConnects := blockEntry.Height < uint64(params.ForkHeights.ProofOfStake2ConsensusCutoverBlockHeight) ||
+				txnConnects := params.IsPoWBlockHeight(blockEntry.Height) ||
 					ii == 0 || block.TxnConnectStatusByIndex.Get(ii-1)
 				pgTxn, err := TransactionEncoderToPGStruct(
 					txn, uint64(ii), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, txnConnects, params)

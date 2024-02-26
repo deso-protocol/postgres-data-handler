@@ -23,7 +23,6 @@ type BlockEntry struct {
 	ExtraNonce                   uint64
 	BlockVersion                 uint32
 	TxnConnectStatusByIndexHash  string `pg:",use_zero"`
-	ProposerPublicKey            string `pg:",use_zero"`
 	ProposerVotingPublicKey      string `pg:",use_zero"`
 	ProposerRandomSeedSignature  string `pg:",use_zero"`
 	ProposedInView               uint64
@@ -45,11 +44,6 @@ func BlockEncoderToPGStruct(block *lib.MsgDeSoBlock, keyBytes []byte, params *li
 	if block.Header.TxnConnectStatusByIndexHash != nil {
 		txnConnectStatusByIndexHash = hex.EncodeToString(block.Header.TxnConnectStatusByIndexHash.ToBytes())
 	}
-	var proposerPublicKey string
-	if block.Header.ProposerPublicKey != nil {
-		proposerPublicKey = consumer.PublicKeyBytesToBase58Check(
-			block.Header.ProposerPublicKey.ToBytes(), params)
-	}
 	return &PGBlockEntry{
 		BlockEntry: BlockEntry{
 			BlockHash:                    hex.EncodeToString(blockHash[:]),
@@ -61,7 +55,6 @@ func BlockEncoderToPGStruct(block *lib.MsgDeSoBlock, keyBytes []byte, params *li
 			ExtraNonce:                   block.Header.ExtraNonce,
 			BlockVersion:                 block.Header.Version,
 			TxnConnectStatusByIndexHash:  txnConnectStatusByIndexHash,
-			ProposerPublicKey:            proposerPublicKey,
 			ProposerVotingPublicKey:      block.Header.ProposerVotingPublicKey.ToString(),
 			ProposerRandomSeedSignature:  block.Header.ProposerRandomSeedSignature.ToString(),
 			ProposedInView:               block.Header.ProposedInView,

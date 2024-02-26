@@ -189,7 +189,7 @@ func bulkDeletePkid(entries []*lib.StateChangeEntry, db *bun.DB, operationType l
 
 	// Execute the delete query.
 	if _, err := db.NewDelete().
-		Model(&LeaderScheduleEntry{}).
+		Model(&PGLeaderScheduleEntry{}).
 		Where("badger_key IN (?)", bun.In(leaderSchedKeysToDelete)).
 		Returning("").
 		Exec(context.Background()); err != nil {
