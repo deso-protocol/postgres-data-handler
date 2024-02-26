@@ -21,6 +21,19 @@ type PGBLSPkidPairEntry struct {
 	BLSPublicKeyPKIDPairEntry
 }
 
+type BLSPublicKeyPKIDPairSnapshotEntry struct {
+	PKID                  string `bun:",nullzero"`
+	BLSPublicKey          string `bun:",nullzero"`
+	SnapshotAtEpochNumber uint64 `bun:",use_zero"`
+
+	BadgerKey []byte `pg:",pk,use_zero"`
+}
+
+type PGBLSPublicKeyPKIDPairSnapshotEntry struct {
+	bun.BaseModel `bun:"table:bls_public_key_pkid_pair_snapshot_entry"`
+	BLSPublicKeyPKIDPairSnapshotEntry
+}
+
 // Convert the BLSPublicKeyPKIDPairEntry DeSo encoder to the PGBLSPkidPairEntry struct used by bun.
 func BLSPublicKeyPKIDPairEncoderToPGStruct(blsPublicKeyPKIDPairEntry *lib.BLSPublicKeyPKIDPairEntry, keyBytes []byte, params *lib.DeSoParams) BLSPublicKeyPKIDPairEntry {
 	pgBLSPkidPairEntry := BLSPublicKeyPKIDPairEntry{
@@ -36,6 +49,30 @@ func BLSPublicKeyPKIDPairEncoderToPGStruct(blsPublicKeyPKIDPairEntry *lib.BLSPub
 	}
 
 	return pgBLSPkidPairEntry
+}
+
+// BLSPublicKeyPKIDPairSnapshotEncoderToPGStruct converts the BLSPublicKeyPKIDPairSnapshotEntry DeSo encoder to the
+// PGBLSPublicKeyPKIDPairSnapshotEntry struct used by bun.
+func BLSPublicKeyPKIDPairSnapshotEncoderToPGStruct(
+	blsPublicKeyPKIDPairEntry *lib.BLSPublicKeyPKIDPairEntry, keyBytes []byte, params *lib.DeSoParams,
+) BLSPublicKeyPKIDPairSnapshotEntry {
+	prefixRemovedKeyBytes := keyBytes[1:]
+	epochNumber := lib.DecodeUint64(prefixRemovedKeyBytes[:8])
+
+	pgBLSPkidPairSnapshotEntry := BLSPublicKeyPKIDPairSnapshotEntry{
+		SnapshotAtEpochNumber: epochNumber,
+		BadgerKey:             keyBytes,
+	}
+
+	if blsPublicKeyPKIDPairEntry.PKID != nil {
+		pgBLSPkidPairSnapshotEntry.PKID = consumer.PublicKeyBytesToBase58Check((*blsPublicKeyPKIDPairEntry.PKID)[:], params)
+	}
+
+	if !blsPublicKeyPKIDPairEntry.BLSPublicKey.IsEmpty() {
+		pgBLSPkidPairSnapshotEntry.BLSPublicKey = blsPublicKeyPKIDPairEntry.BLSPublicKey.ToString()
+	}
+
+	return pgBLSPkidPairSnapshotEntry
 }
 
 // BLSPublicKeyPKIDPairBatchOperation is the entry point for processing a batch of BLSPublicKeyPKIDPair entries.
@@ -62,25 +99,52 @@ func bulkInsertBLSPkidPairEntry(
 ) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
+	uniqueBLSPkidPairEntries := consumer.FilterEntriesByPrefix(
+		uniqueEntries, lib.Prefixes.PrefixValidatorBLSPublicKeyPKIDPairEntry)
+	uniqueBLSPkidPairSnapshotEntries := consumer.FilterEntriesByPrefix(
+		uniqueEntries, lib.Prefixes.PrefixSnapshotValidatorBLSPublicKeyPKIDPairEntry)
 	// Create a new array to hold the bun struct.
-	pgEntrySlice := make([]*PGBLSPkidPairEntry, len(uniqueEntries))
+	pgBLSPkidPairEntrySlice := make([]*PGBLSPkidPairEntry, len(uniqueBLSPkidPairEntries))
+	pgBLSPkidPairSnapshotEntrySlice := make([]*PGBLSPublicKeyPKIDPairSnapshotEntry, len(uniqueBLSPkidPairSnapshotEntries))
 
 	// Loop through the entries and convert them to PGEntry.
-	for ii, entry := range uniqueEntries {
-		pgEntrySlice[ii] = &PGBLSPkidPairEntry{BLSPublicKeyPKIDPairEntry: BLSPublicKeyPKIDPairEncoderToPGStruct(
+	for ii, entry := range uniqueBLSPkidPairEntries {
+		pgBLSPkidPairEntrySlice[ii] = &PGBLSPkidPairEntry{BLSPublicKeyPKIDPairEntry: BLSPublicKeyPKIDPairEncoderToPGStruct(
 			entry.Encoder.(*lib.BLSPublicKeyPKIDPairEntry), entry.KeyBytes, params)}
 	}
 
-	// Execute the insert query.
-	query := db.NewInsert().Model(&pgEntrySlice)
-
-	if operationType == lib.DbOperationTypeUpsert {
-		query = query.On("CONFLICT (badger_key) DO UPDATE")
+	for ii, entry := range uniqueBLSPkidPairSnapshotEntries {
+		pgBLSPkidPairSnapshotEntrySlice[ii] = &PGBLSPublicKeyPKIDPairSnapshotEntry{
+			BLSPublicKeyPKIDPairSnapshotEntry: BLSPublicKeyPKIDPairSnapshotEncoderToPGStruct(
+				entry.Encoder.(*lib.BLSPublicKeyPKIDPairEntry), entry.KeyBytes, params)}
 	}
 
-	if _, err := query.Returning("").Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.bulkInsertBLSPkidPairEntry: Error inserting entries")
+	if len(pgBLSPkidPairEntrySlice) > 0 {
+		// Execute the insert query.
+		query := db.NewInsert().Model(&pgBLSPkidPairEntrySlice)
+
+		if operationType == lib.DbOperationTypeUpsert {
+			query = query.On("CONFLICT (badger_key) DO UPDATE")
+		}
+
+		if _, err := query.Returning("").Exec(context.Background()); err != nil {
+			return errors.Wrapf(err, "entries.bulkInsertBLSPkidPairEntry: Error inserting entries")
+		}
 	}
+
+	if len(pgBLSPkidPairSnapshotEntrySlice) > 0 {
+		// Execute query for snapshot entries.
+		query := db.NewInsert().Model(&pgBLSPkidPairSnapshotEntrySlice)
+
+		if operationType == lib.DbOperationTypeUpsert {
+			query = query.On("CONFLICT (badger_key) DO UPDATE")
+		}
+
+		if _, err := query.Returning("").Exec(context.Background()); err != nil {
+			return errors.Wrapf(err, "entries.bulkInsertBLSPkidPairEntry: Error inserting snapshot entries")
+		}
+	}
+
 	return nil
 }
 
@@ -91,14 +155,27 @@ func bulkDeleteBLSPkidPairEntry(entries []*lib.StateChangeEntry, db *bun.DB, ope
 
 	// Transform the entries into a list of keys to delete.
 	keysToDelete := consumer.KeysToDelete(uniqueEntries)
+	blsPKIDPairEntryKeysToDelete := consumer.FilterKeysByPrefix(keysToDelete,
+		lib.Prefixes.PrefixValidatorBLSPublicKeyPKIDPairEntry)
+	blsPKIDPairSnapshotEntryKeysToDelete := consumer.FilterKeysByPrefix(keysToDelete,
+		lib.Prefixes.PrefixSnapshotValidatorBLSPublicKeyPKIDPairEntry)
 
 	// Execute the delete query.
 	if _, err := db.NewDelete().
 		Model(&PGBLSPkidPairEntry{}).
-		Where("badger_key IN (?)", bun.In(keysToDelete)).
+		Where("badger_key IN (?)", bun.In(blsPKIDPairEntryKeysToDelete)).
 		Returning("").
 		Exec(context.Background()); err != nil {
 		return errors.Wrapf(err, "entries.bulkDeleteBLSPkidPairEntry: Error deleting entries")
+	}
+
+	// Execute the delete query for snapshot entries.
+	if _, err := db.NewDelete().
+		Model(&PGBLSPublicKeyPKIDPairSnapshotEntry{}).
+		Where("badger_key IN (?)", bun.In(blsPKIDPairSnapshotEntryKeysToDelete)).
+		Returning("").
+		Exec(context.Background()); err != nil {
+		return errors.Wrapf(err, "entries.bulkDeleteBLSPkidPairEntry: Error deleting snapshot entries")
 	}
 
 	return nil

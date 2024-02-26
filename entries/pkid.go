@@ -166,15 +166,18 @@ func bulkInsertPkid(entries []*lib.StateChangeEntry, db *bun.DB, operationType l
 		pgEntrySlice[ii] = &PGLeaderScheduleEntry{LeaderScheduleEntry: *leaderScheduleEntry}
 	}
 
-	query := db.NewInsert().Model(&pgEntrySlice)
+	if len(pgEntrySlice) > 0 {
+		query := db.NewInsert().Model(&pgEntrySlice)
 
-	if operationType == lib.DbOperationTypeUpsert {
-		query = query.On("CONFLICT (badger_key) DO UPDATE")
+		if operationType == lib.DbOperationTypeUpsert {
+			query = query.On("CONFLICT (badger_key) DO UPDATE")
+		}
+
+		if _, err := query.Returning("").Exec(context.Background()); err != nil {
+			return errors.Wrapf(err, "entries.bulkInsertPkid: Error inserting entries")
+		}
 	}
 
-	if _, err := query.Returning("").Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.bulkInsertPkid: Error inserting entries")
-	}
 	return nil
 }
 
@@ -187,13 +190,15 @@ func bulkDeletePkid(entries []*lib.StateChangeEntry, db *bun.DB, operationType l
 	keysToDelete := consumer.KeysToDelete(uniqueEntries)
 	leaderSchedKeysToDelete := consumer.FilterKeysByPrefix(keysToDelete, lib.Prefixes.PrefixSnapshotLeaderSchedule)
 
-	// Execute the delete query.
-	if _, err := db.NewDelete().
-		Model(&PGLeaderScheduleEntry{}).
-		Where("badger_key IN (?)", bun.In(leaderSchedKeysToDelete)).
-		Returning("").
-		Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.bulkDeletePkid: Error deleting entries")
+	if len(leaderSchedKeysToDelete) > 0 {
+		// Execute the delete query.
+		if _, err := db.NewDelete().
+			Model(&PGLeaderScheduleEntry{}).
+			Where("badger_key IN (?)", bun.In(leaderSchedKeysToDelete)).
+			Returning("").
+			Exec(context.Background()); err != nil {
+			return errors.Wrapf(err, "entries.bulkDeletePkid: Error deleting entries")
+		}
 	}
 
 	return nil
