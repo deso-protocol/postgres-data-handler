@@ -88,7 +88,7 @@ from staking_summary,
 CREATE UNIQUE INDEX validator_stats_unique_index ON validator_stats (validator_pkid);
 
 		comment on materialized view validator_stats is E'@unique validator_pkid\n@foreignKey (validator_pkid) references validator_entry (validator_pkid)|@foreignFieldName validatorStats|@fieldName validatorEntry';
-		comment on materialized view my_stake_summary is E'@foreignKey (staker_pkid) references account (pkid)|@foreignFieldName myStakeSummary|@fieldName staker';
+		comment on materialized view my_stake_summary is E'@unique staker_pkid\n@foreignKey (staker_pkid) references account (pkid)|@foreignFieldName myStakeSummary|@fieldName staker';
 
 `)
 		if err != nil {
