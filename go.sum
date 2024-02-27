@@ -155,6 +155,8 @@ github.com/deso-protocol/state-consumer v1.0.4-0.20240107220224-c9c924b0d69e h1:
 github.com/deso-protocol/state-consumer v1.0.4-0.20240107220224-c9c924b0d69e/go.mod h1:ivi9/WBRWK/AG/cgAcGpA6GdodBAaEWh9p8PfQT3r5I=
 github.com/deso-protocol/state-consumer v1.0.4-0.20240117002702-0f75e8691905 h1:CntCnCV7LiH/CjQvicwRVR5iOcaIlFBffiTDwtT4BEs=
 github.com/deso-protocol/state-consumer v1.0.4-0.20240117002702-0f75e8691905/go.mod h1:ivi9/WBRWK/AG/cgAcGpA6GdodBAaEWh9p8PfQT3r5I=
+github.com/deso-protocol/state-consumer v1.0.4-0.20240227224306-285858902233 h1:SLf3uiovmn9N4Z5pSIxHOQ89IhTQkrsTOqxFIpUuypU=
+github.com/deso-protocol/state-consumer v1.0.4-0.20240227224306-285858902233/go.mod h1:ivi9/WBRWK/AG/cgAcGpA6GdodBAaEWh9p8PfQT3r5I=
 github.com/dgraph-io/badger/v3 v3.2103.5 h1:ylPa6qzbjYRQMU6jokoj4wzcaweHylt//CH0AKt0akg=
 github.com/dgraph-io/badger/v3 v3.2103.5/go.mod h1:4MPiseMeDQ3FNCYwRbbcBOGJLf5jsE0PPFzRiKjtcdw=
 github.com/dgraph-io/ristretto v0.1.1 h1:6CWw5tJNgpegArSHpNHJKldNeq03FQCwYvfMVWajOK8=
