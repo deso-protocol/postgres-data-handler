@@ -5,7 +5,7 @@ go 1.18
 replace github.com/deso-protocol/core => ../core/
 
 require (
-	github.com/deso-protocol/backend v1.2.10-0.20230727205436-dba653dc043c
+	github.com/deso-protocol/backend v1.2.10-0.20240226152054-1642c8947179
 	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
 	github.com/deso-protocol/state-consumer v1.0.4-0.20240227224306-285858902233
 	github.com/golang/glog v1.0.0
