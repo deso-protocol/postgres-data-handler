@@ -13,7 +13,7 @@ func createStakeEntryTable(db *bun.DB, tableName string) error {
 			CREATE TABLE {tableName} (
 				staker_pkid VARCHAR NOT NULL,
 				validator_pkid VARCHAR NOT NULL,
-				reward_method SMALLINT NOT NULL,
+				reward_method VARCHAR NOT NULL,
 				stake_amount_nanos NUMERIC(78, 0) NOT NULL,
 
 				extra_data JSONB,
