@@ -2,6 +2,7 @@ package entries
 
 import (
 	"context"
+	"github.com/deso-protocol/backend/routes"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
@@ -11,10 +12,10 @@ import (
 
 // TODO: when to use nullzero vs use_zero?
 type StakeEntry struct {
-	StakerPKID       string                  `bun:",nullzero"`
-	ValidatorPKID    string                  `bun:",nullzero"`
-	RewardMethod     lib.StakingRewardMethod // TODO: we probably want this to be human readable?
-	StakeAmountNanos *bunbig.Int             `pg:",use_zero"`
+	StakerPKID       string `bun:",nullzero"`
+	ValidatorPKID    string `bun:",nullzero"`
+	RewardMethod     routes.StakeRewardMethod
+	StakeAmountNanos *bunbig.Int `pg:",use_zero"`
 
 	ExtraData map[string]string `bun:"type:jsonb"`
 	BadgerKey []byte            `pg:",pk,use_zero"`
@@ -47,7 +48,7 @@ func StakeEncoderToPGStruct(stakeEntry *lib.StakeEntry, keyBytes []byte, params 
 		pgStakeEntry.ValidatorPKID = consumer.PublicKeyBytesToBase58Check((*stakeEntry.ValidatorPKID)[:], params)
 	}
 
-	pgStakeEntry.RewardMethod = stakeEntry.RewardMethod
+	pgStakeEntry.RewardMethod = routes.FromLibStakeRewardMethod(stakeEntry.RewardMethod)
 	pgStakeEntry.StakeAmountNanos = bunbig.FromMathBig(stakeEntry.StakeAmountNanos.ToBig())
 
 	return pgStakeEntry
