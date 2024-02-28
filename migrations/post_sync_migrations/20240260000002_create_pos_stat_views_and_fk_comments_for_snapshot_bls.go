@@ -53,7 +53,8 @@ from (select sum(total_stake_amount_nanos)  as global_stake_amount_nanos,
       from validator_entry) validator_summary,
      (select max(epoch_number) current_epoch_number from epoch_entry) current_epoch,
      (select count(distinct snapshot_at_epoch_number) num_epochs_in_leader_schedule
-      from leader_schedule_entry) num_epochs_in_leader_schedule;
+      from leader_schedule_entry) num_epochs_in_leader_schedule,
+     (select count(distinct staker_pkid) as num_stakers from stake_entry) staker_summary;
 
 CREATE UNIQUE INDEX staking_summary_unique_index ON staking_summary (global_stake_amount_nanos, num_validators, current_epoch_number, num_epochs_in_leader_schedule);
 
