@@ -83,6 +83,15 @@ func UtxoOperationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, pa
 	return nil
 }
 
+func isFailingTxnByUtxoOps(utxoOps []*lib.UtxoOperation) bool {
+	for _, utxoOp := range utxoOps {
+		if utxoOp.Type == lib.OperationTypeFailingTxn {
+			return true
+		}
+	}
+	return false
+}
+
 // bulkInsertUtxoOperationsEntry inserts a batch of utxo operation entries into the database.
 func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 
@@ -180,6 +189,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				if err != nil {
 					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem computing transaction metadata for entry %+v at block height %v", entry, entry.BlockHeight)
 				}
+				transactions[jj].Connects = !isFailingTxnByUtxoOps(utxoOps)
 
 				metadata := txIndexMetadata.GetEncoderForTxType(transaction.TxnMeta.GetTxnType())
 				basicTransferMetadata := txIndexMetadata.BasicTransferTxindexMetadata
