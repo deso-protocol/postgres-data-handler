@@ -24,7 +24,7 @@ type PGBLSPkidPairEntry struct {
 type BLSPublicKeyPKIDPairSnapshotEntry struct {
 	PKID                  string `bun:",nullzero"`
 	BLSPublicKey          string `bun:",nullzero"`
-	SnapshotAtEpochNumber uint64 `bun:",use_zero"`
+	SnapshotAtEpochNumber uint64 `pg:",use_zero"`
 
 	BadgerKey []byte `pg:",pk,use_zero"`
 }
