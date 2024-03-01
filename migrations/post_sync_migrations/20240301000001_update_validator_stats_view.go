@@ -16,7 +16,7 @@ func init() {
 create materialized view validator_stats as
 select validator_entry.validator_pkid,
        rank()
-       OVER ( order by (case when validator_entry.jailed_at_epoch_number = 0 then 1 else 0 end), validator_entry.total_stake_amount_nanos, validator_entry.jailed_at_epoch_number, validator_entry.validator_pkid) as validator_rank,
+       OVER ( order by (case when validator_entry.jailed_at_epoch_number = 0 then 0 else 1 end), validator_entry.total_stake_amount_nanos desc, validator_entry.jailed_at_epoch_number desc, validator_entry.validator_pkid) as validator_rank,
        validator_entry.total_stake_amount_nanos::float /
        staking_summary.global_stake_amount_nanos::float                                                                                                                                                            as percent_total_stake,
        coalesce(time_in_jail, 0) +
@@ -42,7 +42,7 @@ from staking_summary,
                     group by validator_pkid) as total_stake_rewards
                    on total_stake_rewards.validator_pkid = validator_entry.validator_pkid;
 CREATE UNIQUE INDEX validator_stats_unique_index ON validator_stats (validator_pkid);
-		comment on materialized view validator_stats is E'@unique validator_pkid\n@foreignKey (validator_pkid) references validator_entry (validator_pkid)|@foreignFieldName validatorStats|@fieldName validatorEntry';
+		comment on materialized view validator_stats is E'@primaryKey validator_pkid\n@unique validator_rank\n@foreignKey (validator_pkid) references validator_entry (validator_pkid)|@foreignFieldName validatorStats|@fieldName validatorEntry';
 `)
 		if err != nil {
 			return err
