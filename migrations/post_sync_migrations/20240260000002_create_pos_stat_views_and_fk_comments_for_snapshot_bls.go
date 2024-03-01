@@ -67,7 +67,7 @@ select validator_entry.validator_pkid,
        (case
             when jailed_at_epoch_number = 0 then 0
             else (staking_summary.current_epoch_number - jailed_at_epoch_number) END) epochs_in_jail,
-       coalesce(leader_schedule_summary.num_epochs_in_leader_schedule, 0),
+       coalesce(leader_schedule_summary.num_epochs_in_leader_schedule, 0) num_epochs_in_leader_schedule,
        coalesce(leader_schedule_summary.num_epochs_in_leader_schedule, 0)::float /
        staking_summary.num_epochs_in_leader_schedule::float             as            percent_epochs_in_leader_schedule,
        coalesce(total_rewards, 0)                                       as            total_stake_reward_nanos
