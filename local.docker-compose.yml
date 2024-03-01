@@ -1,0 +1,114 @@
+version: '3.8'
+services:
+  deso:
+#    image: docker.io/desoprotocol/backend-dev:451a0a65e27da4ad68cb0705c63b1c964a1ce011
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      - ADD_IPS=localhost:19000
+      - TESTNET=false
+      - REGTEST=false
+      - SYNC_TYPE=hypersync
+      - PRIVATE_MODE=true
+      - RUN_HOT_FEED_ROUTINE=false
+      - CONNECT_IPS=35.232.92.5:17000
+      - HYPERSYNC=true
+      - API_PORT=18001
+      - PROTOCOL_PORT=18000
+      - TXINDEX=true
+      - DATA_DIR=/pd/n0_00001
+      - ACCESS_CONTROL_ALLOW_ORIGINS=*
+      - SECURE_HEADER_ALLOW_HOSTS=localhost:4200
+      - SECURE_HEADER_DEVELOPMENT=true
+      - BLOCK_CYPHER_API_KEY=092dae962ea44b02809a4c74408b42a1
+      - MIN_SATOSHIS_FOR_PROFILE=0
+      - EXPOSE_GLOBAL_STATE=false
+      - SHOW_PROCESSING_SPINNERS=true
+      - COMP_PROFILE_CREATION=false
+      - STATE_CHANGE_DIR=/ss/state-changes
+    ports:
+        - '18000:18000'
+        - '18001:18001'
+        - '19000:19000'
+    volumes:
+      - pd_volume:/pd
+      - /tmp/state-change-files:/ss
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://deso:18001/api/v0/health-check || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+    command: ["run"]
+#  pdh:
+##    image: docker.io/desoprotocol/postgres-data-handler:c2ff0e2921911d2581685e1794a1324724997c64
+#    build:
+#      context: ..
+#      dockerfile: postgres-data-handler/Dockerfile
+#    environment:
+#      - DB_HOST=db-ss
+#      - DB_NAME=postgres
+#      - DB_PASSWORD=postgres
+#      - DB_PORT=5432
+#      - DB_USERNAME=postgres
+#      - READONLY_USER_PASSWORD=postgres
+#      - STATE_CHANGE_DIR=/ss/state-changes
+#      - CONSUMER_PROGRESS_DIR=/ss/consumer-progress
+#      - BATCH_BYTES=500000
+#      - THREAD_LIMIT=10
+#      - CALCULATE_EXPLORER_STATISTICS=true
+#      - LOG_QUERIES=false
+#      - IS_TESTNET=true
+#    command: ["run"]
+#    volumes:
+#      - ss_volume:/ss
+#    depends_on:
+#      db-ss:
+#        condition: service_healthy
+#  gql:
+#    image: docker.io/desoprotocol/graphql-api:4255d8c3c5be7911ed7817ef7b1baf979a6d3818
+#    environment:
+#      - DB_HOST=db-ss
+#      - DB_NAME=postgres
+#      - DB_PASSWORD=postgres
+#      - DB_PORT=5432
+#      - DB_USERNAME=postgres
+#      - DB_OWNER_USERNAME=postgres
+#      - DB_OWNER_PASSWORD=postgres
+#      - READONLY_USER_PASSWORD=postgres
+#      - LOG_SQL=true
+#      - DESO_NODE_URI=http://deso:18001
+#    ports:
+#      - '4000:4000'
+#    depends_on:
+#      db-ss:
+#        condition: service_healthy
+#    healthcheck:
+#      test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider --header='Content-Type: application/json' --post-data='{\"query\":\"query {__typename}\"}' http://gql:4000/graphql || exit 1" ]
+#      interval: 10s
+#      timeout: 15s
+#      retries: 30
+#      start_period: 10s
+  db-ss:
+    image: postgres:14
+    #    restart: always
+    environment:
+      - PGUSER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_LOG_STATEMENTS=all
+    ports:
+      - '5430:5432'
+    volumes:
+      - db_ss_volume:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 100
+volumes:
+  db_ss_volume:
+  pd_volume:
+  ss_volume:
