@@ -93,10 +93,6 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	affectedPublicKeys := make([]*PGAffectedPublicKeyEntry, 0)
 	blockEntries := make([]*PGBlockEntry, 0)
 
-	// Start timer to track how long it takes to insert the entries.
-	start := time.Now()
-
-	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserting %v entries\n", len(uniqueEntries))
 	transactionCount := 0
 
 	// Whether we are inserting transactions for the first time, or just updating them.
@@ -220,9 +216,6 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		}
 		// Print how long it took to insert the entries.
 	}
-	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Processed %v txns in %v s\n", transactionCount, time.Since(start))
-
-	start = time.Now()
 
 	if len(transactionUpdates) > 0 {
 
@@ -260,10 +253,6 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		}
 	}
 
-	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Updated %v txns in %v s\n", len(transactionUpdates), time.Since(start))
-
-	start = time.Now()
-
 	// Insert affected public keys into db
 	if len(affectedPublicKeys) > 0 {
 		_, err := db.NewInsert().Model(&affectedPublicKeys).On("CONFLICT (public_key, transaction_hash, metadata) DO UPDATE").Exec(context.Background())
@@ -272,7 +261,6 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		}
 	}
 
-	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserted %v affected public keys in %v s\n", len(affectedPublicKeys), time.Since(start))
 	return nil
 }
 
