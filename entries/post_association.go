@@ -60,7 +60,7 @@ func PostAssociationEncoderToPGStruct(postAssociationEntry *lib.PostAssociationE
 
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
 // based on the operation type and executes it.
-func PostAssociationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func PostAssociationBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -77,7 +77,7 @@ func PostAssociationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, 
 }
 
 // bulkInsertPostAssociationEntry inserts a batch of post_association entries into the database.
-func bulkInsertPostAssociationEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertPostAssociationEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -101,7 +101,7 @@ func bulkInsertPostAssociationEntry(entries []*lib.StateChangeEntry, db *bun.DB,
 }
 
 // bulkDeletePostEntry deletes a batch of post_association entries from the database.
-func bulkDeletePostAssociationEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeletePostAssociationEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
