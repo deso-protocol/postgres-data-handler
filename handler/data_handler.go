@@ -97,12 +97,6 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 			return errors.Wrapf(rollbackErr, "PostgresDataHandler.HandleEntryBatch: Error reverting to savepoint")
 		}
 		return errors.Wrapf(err, "PostgresDataHandler.CallBatchOperationForEncoderType")
-	} else {
-		// If no error occurs, release the savepoint.
-		err = postgresDataHandler.ReleaseSavepoint(savepointName)
-		if err != nil {
-			return errors.Wrapf(err, "PostgresDataHandler.HandleEntryBatch: Error releasing savepoint")
-		}
 	}
 
 	return nil
