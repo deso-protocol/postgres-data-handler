@@ -98,6 +98,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 		}
 		return errors.Wrapf(err, "PostgresDataHandler.CallBatchOperationForEncoderType")
 	}
+
 	return nil
 }
 
@@ -195,6 +196,18 @@ func (postgresDataHandler *PostgresDataHandler) RevertToSavepoint(savepointName 
 	_, err := postgresDataHandler.Txn.Exec(fmt.Sprintf("ROLLBACK TO SAVEPOINT %s", savepointName))
 	if err != nil {
 		return errors.Wrapf(err, "PostgresDataHandler.RevertToSavepoint: Error reverting to savepoint")
+	}
+	return nil
+}
+
+// ReleaseSavepoint releases the savepoint with the given name.
+func (postgresDataHandler *PostgresDataHandler) ReleaseSavepoint(savepointName string) error {
+	if postgresDataHandler.Txn == nil {
+		return nil
+	}
+	_, err := postgresDataHandler.Txn.Exec(fmt.Sprintf("RELEASE SAVEPOINT %s", savepointName))
+	if err != nil {
+		return errors.Wrapf(err, "PostgresDataHandler.ReleaseSavepoint: Error releasing savepoint")
 	}
 	return nil
 }

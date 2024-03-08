@@ -23,19 +23,23 @@ services:
       - EXPOSE_GLOBAL_STATE=false
       - SHOW_PROCESSING_SPINNERS=true
       - COMP_PROFILE_CREATION=false
-#      - REGTEST=false
-#      - TESTNET=false
-#      - CONNECT_IPS=35.232.92.5:17000
-#      - STATE_CHANGE_DIR=/ss/state-changes
-      - REGTEST=true
-      - TESTNET=true
-      - STATE_CHANGE_DIR=/ss/state-changes-regtest
-      - ADMIN_PUBLIC_KEYS=*
-      - SUPER_ADMIN_PUBLIC_KEYS=*
-      - NUM_MINING_THREADS=1
-      - MINER_PUBLIC_KEYS=BC1YLg7Bk5sq9iNY17bAwoAYiChLYpmWEi6nY6q5gnA1UQV6xixHjfV
-      - BLOCK_PRODUCER_SEED=essence camp ghost remove document vault ladder swim pupil index apart ring
-      - STARTER_DESO_SEED=road congress client market couple bid risk escape artwork rookie artwork food
+
+#     Mainnet Settings:
+      - REGTEST=false
+      - TESTNET=false
+      - CONNECT_IPS=35.232.92.5:17000
+      - STATE_CHANGE_DIR=/ss/state-changes
+
+#      Regtest Settings:
+#      - REGTEST=true
+#      - TESTNET=true
+#      - STATE_CHANGE_DIR=/ss/state-changes-regtest
+#      - ADMIN_PUBLIC_KEYS=*
+#      - SUPER_ADMIN_PUBLIC_KEYS=*
+#      - NUM_MINING_THREADS=1
+#      - MINER_PUBLIC_KEYS=BC1YLg7Bk5sq9iNY17bAwoAYiChLYpmWEi6nY6q5gnA1UQV6xixHjfV
+#      - BLOCK_PRODUCER_SEED=essence camp ghost remove document vault ladder swim pupil index apart ring
+#      - STARTER_DESO_SEED=road congress client market couple bid risk escape artwork rookie artwork food
     ports:
         - '18000:18000'
         - '18001:18001'

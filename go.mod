@@ -8,6 +8,7 @@ require (
 	github.com/deso-protocol/backend v1.2.10-0.20240301035823-448ec0478e01
 	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
 	github.com/golang/glog v1.0.0
+	github.com/google/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.7.1
 	github.com/uptrace/bun v1.1.14
@@ -36,7 +37,7 @@ require (
 	github.com/decred/dcrd/lru v1.1.1 // indirect
 	github.com/deso-protocol/go-deadlock v1.0.0 // indirect
 	github.com/deso-protocol/go-merkle-tree v1.0.0 // indirect
-	github.com/deso-protocol/state-consumer v1.0.4-0.20240307023907-c51fae67a36d // indirect
+	github.com/deso-protocol/state-consumer v1.0.4-0.20240308032457-9f41473d3ae7 // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.5 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
@@ -56,7 +57,6 @@ require (
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/flatbuffers v2.0.0+incompatible // indirect
 	github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5 // indirect
-	github.com/google/uuid v1.2.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.0.5 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/h2non/bimg v1.1.5 // indirect
