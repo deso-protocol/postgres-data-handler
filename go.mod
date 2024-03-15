@@ -37,7 +37,7 @@ require (
 	github.com/decred/dcrd/lru v1.1.1 // indirect
 	github.com/deso-protocol/go-deadlock v1.0.0 // indirect
 	github.com/deso-protocol/go-merkle-tree v1.0.0 // indirect
-	github.com/deso-protocol/state-consumer v1.0.4-0.20240314205619-c5935f363527 // indirect
+	github.com/deso-protocol/state-consumer v1.0.4-0.20240315231535-062dfc076c7e // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.5 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
