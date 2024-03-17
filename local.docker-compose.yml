@@ -33,7 +33,7 @@ services:
 #      Regtest Settings:
 #      - REGTEST=true
 #      - TESTNET=true
-#      - STATE_CHANGE_DIR=/ss/state-changes-regtest
+#      - STATE_CHANGE_DIR=/ss/state-changes
 #      - ADMIN_PUBLIC_KEYS=*
 #      - SUPER_ADMIN_PUBLIC_KEYS=*
 #      - NUM_MINING_THREADS=1
@@ -46,7 +46,8 @@ services:
         - '19000:19000'
     volumes:
       - pd_volume:/pd
-      - /tmp/state-change-files:/ss
+#      - /tmp/state-change-files:/ss
+      - ss_volume:/ss
     healthcheck:
       test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://deso:18001/api/v0/health-check || exit 1" ]
       interval: 30s
@@ -54,31 +55,31 @@ services:
       retries: 20
       start_period: 10s
     command: ["run"]
-#  pdh:
-##    image: docker.io/desoprotocol/postgres-data-handler:c2ff0e2921911d2581685e1794a1324724997c64
-#    build:
-#      context: ..
-#      dockerfile: postgres-data-handler/Dockerfile
-#    environment:
-#      - DB_HOST=db-ss
-#      - DB_NAME=postgres
-#      - DB_PASSWORD=postgres
-#      - DB_PORT=5432
-#      - DB_USERNAME=postgres
-#      - READONLY_USER_PASSWORD=postgres
-#      - STATE_CHANGE_DIR=/ss/state-changes
-#      - CONSUMER_PROGRESS_DIR=/ss/consumer-progress
-#      - BATCH_BYTES=500000
-#      - THREAD_LIMIT=10
-#      - CALCULATE_EXPLORER_STATISTICS=true
-#      - LOG_QUERIES=false
-#      - IS_TESTNET=true
-#    command: ["run"]
-#    volumes:
-#      - ss_volume:/ss
-#    depends_on:
-#      db-ss:
-#        condition: service_healthy
+  pdh:
+#    image: docker.io/desoprotocol/postgres-data-handler:c2ff0e2921911d2581685e1794a1324724997c64
+    build:
+      context: ..
+      dockerfile: postgres-data-handler/Dockerfile
+    environment:
+      - DB_HOST=db-ss
+      - DB_NAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - READONLY_USER_PASSWORD=postgres
+      - STATE_CHANGE_DIR=/ss/state-changes
+      - CONSUMER_PROGRESS_DIR=/ss/consumer-progress
+      - BATCH_BYTES=500000
+      - THREAD_LIMIT=10
+      - CALCULATE_EXPLORER_STATISTICS=true
+      - LOG_QUERIES=false
+      - IS_TESTNET=true
+    command: ["run"]
+    volumes:
+      - ss_volume:/ss
+    depends_on:
+      db-ss:
+        condition: service_healthy
 #  gql:
 #    image: docker.io/desoprotocol/graphql-api:4255d8c3c5be7911ed7817ef7b1baf979a6d3818
 #    environment:
