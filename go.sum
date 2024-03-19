@@ -151,6 +151,8 @@ github.com/deso-protocol/go-merkle-tree v1.0.0 h1:9zkI5dQsITYy77s4kbTGPQmZnhQ+Ls
 github.com/deso-protocol/go-merkle-tree v1.0.0/go.mod h1:V/vbg/maaNv6G7zf9VVs645nLFx/jsO2L/awFB/S/ZU=
 github.com/deso-protocol/state-consumer v1.0.4-0.20240317233809-dcd98836645c h1:vjWAddiW2hYV3HrROrOEHhPtFmibxw85H5eEbwCowx4=
 github.com/deso-protocol/state-consumer v1.0.4-0.20240317233809-dcd98836645c/go.mod h1:ivi9/WBRWK/AG/cgAcGpA6GdodBAaEWh9p8PfQT3r5I=
+github.com/deso-protocol/state-consumer v1.0.4-0.20240319012350-bba8955e0692 h1:h4OQvKpE50AB3cNrVbWWB5wznDqloei/uHbN3rGHgxY=
+github.com/deso-protocol/state-consumer v1.0.4-0.20240319012350-bba8955e0692/go.mod h1:ivi9/WBRWK/AG/cgAcGpA6GdodBAaEWh9p8PfQT3r5I=
 github.com/dgraph-io/badger/v3 v3.2103.5 h1:ylPa6qzbjYRQMU6jokoj4wzcaweHylt//CH0AKt0akg=
 github.com/dgraph-io/badger/v3 v3.2103.5/go.mod h1:4MPiseMeDQ3FNCYwRbbcBOGJLf5jsE0PPFzRiKjtcdw=
 github.com/dgraph-io/ristretto v0.1.1 h1:6CWw5tJNgpegArSHpNHJKldNeq03FQCwYvfMVWajOK8=
