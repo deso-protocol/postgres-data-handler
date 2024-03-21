@@ -33,7 +33,6 @@ COPY core/bls         ../core/bls
 COPY core/cmd         ../core/cmd
 COPY core/lib         ../core/lib
 COPY core/migrate     ../core/migrate
-COPY core/scripts     ../core/scripts
 
 # include backend src
 COPY backend/apis      ../backend/apis
@@ -46,12 +45,9 @@ COPY backend/countries ../backend/countries
 # include state-consumer src
 COPY state-consumer/consumer ../state-consumer/consumer
 
-# install relic
-RUN ../core/scripts/install-relic.sh
-
 RUN go mod tidy
 
 ## build postgres data handler backend
-RUN GOOS=linux go build -mod=mod -a -installsuffix cgo -o bin/postgres-data-handler -tags=relic main.go
+RUN GOOS=linux go build -mod=mod -a -installsuffix cgo -o bin/postgres-data-handler main.go
 
 ENTRYPOINT ["/postgres-data-handler/src/postgres-data-handler/bin/postgres-data-handler"]
