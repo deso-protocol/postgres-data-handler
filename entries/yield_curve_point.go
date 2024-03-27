@@ -18,13 +18,13 @@ type LockupYieldCurvePoint struct {
 }
 
 type PGLockupYieldCurvePoint struct {
-	bun.BaseModel `bun:"table:locked_balance_entry"`
+	bun.BaseModel `bun:"table:yield_curve_point"`
 	LockupYieldCurvePoint
 }
 
 // TODO: Do I need this?
 type PGLockupYieldCurvePointUtxoOps struct {
-	bun.BaseModel `bun:"table:locked_balance_entry_utxo_ops"`
+	bun.BaseModel `bun:"table:yield_curve_point_utxo_ops"`
 	LockupYieldCurvePoint
 	UtxoOperation
 }
