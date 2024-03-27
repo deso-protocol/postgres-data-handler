@@ -71,7 +71,7 @@ services:
       - CONSUMER_PROGRESS_DIR=/ss/consumer-progress
       - BATCH_BYTES=500000
       - THREAD_LIMIT=10
-      - CALCULATE_EXPLORER_STATISTICS=true
+      - CALCULATE_EXPLORER_STATISTICS=false
       - LOG_QUERIES=false
       - IS_TESTNET=true
     command: ["run"]

@@ -7,6 +7,7 @@ replace github.com/deso-protocol/core => ../core/
 require (
 	github.com/deso-protocol/backend v1.2.10-0.20240301035823-448ec0478e01
 	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
+	github.com/deso-protocol/state-consumer v1.0.4-0.20240319012350-bba8955e0692
 	github.com/golang/glog v1.0.0
 	github.com/google/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
@@ -37,7 +38,6 @@ require (
 	github.com/decred/dcrd/lru v1.1.1 // indirect
 	github.com/deso-protocol/go-deadlock v1.0.0 // indirect
 	github.com/deso-protocol/go-merkle-tree v1.0.0 // indirect
-	github.com/deso-protocol/state-consumer v1.0.4-0.20240319012350-bba8955e0692 // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.5 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
