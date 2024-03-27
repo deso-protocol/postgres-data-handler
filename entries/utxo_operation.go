@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
 	"time"
@@ -64,7 +65,7 @@ func ConvertUtxoOperationKeyToBlockHashHex(keyBytes []byte) string {
 	return hex.EncodeToString(keyBytes[1:])
 }
 
-// PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
+// UtxoOperationBatchOperation is the entry point for processing a batch of utxo operations. It determines the appropriate handler
 // based on the operation type and executes it.
 func UtxoOperationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
@@ -82,6 +83,15 @@ func UtxoOperationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, pa
 	return nil
 }
 
+func isFailingTxnByUtxoOps(utxoOps []*lib.UtxoOperation) bool {
+	for _, utxoOp := range utxoOps {
+		if utxoOp.Type == lib.OperationTypeFailingTxn {
+			return true
+		}
+	}
+	return false
+}
+
 // bulkInsertUtxoOperationsEntry inserts a batch of utxo operation entries into the database.
 func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 
@@ -92,6 +102,8 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	transactionUpdates := make([]*PGTransactionEntry, 0)
 	affectedPublicKeys := make([]*PGAffectedPublicKeyEntry, 0)
 	blockEntries := make([]*PGBlockEntry, 0)
+	stakeRewardEntries := make([]*PGStakeReward, 0)
+	jailedHistoryEntries := make([]*PGJailedHistoryEvent, 0)
 
 	// Start timer to track how long it takes to insert the entries.
 	start := time.Now()
@@ -113,14 +125,18 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		blockHash := ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes)
 
 		// Check to see if the state change entry has an attached block.
-		// Note that this only happens during the iniltial sync, in order to speed up the sync process.
+		// Note that this only happens during the initial sync, in order to speed up the sync process.
 		if entry.Block != nil {
 			insertTransactions = true
 			block := entry.Block
-			blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes)
+			blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
 			blockEntries = append(blockEntries, blockEntry)
 			for ii, txn := range block.Txns {
-				pgTxn, err := TransactionEncoderToPGStruct(txn, uint64(ii), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, params)
+				// Check if the transaction connects or not.
+				txnConnects := params.IsPoWBlockHeight(blockEntry.Height) ||
+					ii == 0 || block.TxnConnectStatusByIndex.Get(ii-1)
+				pgTxn, err := TransactionEncoderToPGStruct(
+					txn, uint64(ii), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, txnConnects, params)
 				if err != nil {
 					return errors.Wrapf(err, "entries.bulkInsertUtxoOperationsEntry: Problem converting transaction to PG struct")
 				}
@@ -169,10 +185,11 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				if err != nil {
 					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem decoding transaction for entry %+v at block height %v", entry, entry.BlockHeight)
 				}
-				txIndexMetadata, err := consumer.ComputeTransactionMetadata(transaction, blockHash, &lib.DeSoMainnetParams, transaction.TxnFeeNanos, uint64(jj), utxoOps)
+				txIndexMetadata, err := consumer.ComputeTransactionMetadata(transaction, blockHash, params, transaction.TxnFeeNanos, uint64(jj), utxoOps)
 				if err != nil {
 					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem computing transaction metadata for entry %+v at block height %v", entry, entry.BlockHeight)
 				}
+				transactions[jj].Connects = !isFailingTxnByUtxoOps(utxoOps)
 
 				metadata := txIndexMetadata.GetEncoderForTxType(transaction.TxnMeta.GetTxnType())
 				basicTransferMetadata := txIndexMetadata.BasicTransferTxindexMetadata
@@ -185,6 +202,33 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				// Track which public keys have already been added to the affected public keys slice, to avoid duplicates.
 				affectedPublicKeyMetadataSet := make(map[string]bool)
 				affectedPublicKeySet := make(map[string]bool)
+
+				switch transaction.TxnMeta.GetTxnType() {
+				case lib.TxnTypeUnjailValidator:
+					// Find the unjail utxo op
+					var unjailUtxoOp *lib.UtxoOperation
+					for _, utxoOp := range utxoOps {
+						if utxoOp.Type == lib.OperationTypeUnjailValidator {
+							unjailUtxoOp = utxoOp
+							break
+						}
+					}
+					if unjailUtxoOp == nil {
+						glog.Error("bulkInsertUtxoOperationsEntry: Problem finding unjail utxo op")
+						continue
+					}
+					scm, ok := unjailUtxoOp.StateChangeMetadata.(*lib.UnjailValidatorStateChangeMetadata)
+					if !ok {
+						glog.Error("bulkInsertUtxoOperationsEntry: Problem with state change metadata for unjail")
+						continue
+					}
+					// Parse the jailed history event and add it to the slice.
+					jailedHistoryEntries = append(jailedHistoryEntries,
+						&PGJailedHistoryEvent{
+							JailedHistoryEntry: UnjailValidatorStateChangeMetadataEncoderToPGStruct(scm, params),
+						},
+					)
+				}
 
 				// Loop through the affected public keys and add them to the affected public keys slice.
 				for _, affectedPublicKey := range txIndexMetadata.AffectedPublicKeys {
@@ -216,6 +260,27 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 					affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
 				}
 				transactionUpdates = append(transactionUpdates, transactions[jj])
+			} else if jj == len(transactions) {
+				// TODO: parse utxo operations for the block level index.
+				// Examples: deletion of expired nonces, staking rewards (restaked
+				// + payed to balance), validator jailing, updating validator's
+				// last active at epoch.
+				for ii, utxoOp := range utxoOps {
+					switch utxoOp.Type {
+					case lib.OperationTypeStakeDistributionRestake, lib.OperationTypeStakeDistributionPayToBalance:
+						stateChangeMetadata, ok := utxoOp.StateChangeMetadata.(*lib.StakeRewardStateChangeMetadata)
+						if !ok {
+							glog.Error("bulkInsertUtxoOperationsEntry: Problem with state change metadata for " +
+								"stake rewards")
+							continue
+						}
+						stakeReward := PGStakeReward{
+							StakeReward: StakeRewardEncoderToPGStruct(stateChangeMetadata, params, blockHash, uint64(ii)),
+						}
+						stakeRewardEntries = append(stakeRewardEntries, &stakeReward)
+					}
+				}
+
 			}
 		}
 		// Print how long it took to insert the entries.
@@ -273,6 +338,25 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	}
 
 	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserted %v affected public keys in %v s\n", len(affectedPublicKeys), time.Since(start))
+
+	start = time.Now()
+
+	// Insert stake rewards into db
+	if len(stakeRewardEntries) > 0 {
+		_, err := db.NewInsert().Model(&stakeRewardEntries).On("CONFLICT (block_hash, utxo_op_index) DO UPDATE").Exec(context.Background())
+		if err != nil {
+			return errors.Wrapf(err, "InsertStakeRewards: Problem inserting stake rewards")
+		}
+	}
+	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserted %v stake rewards in %v s\n", len(stakeRewardEntries), time.Since(start))
+
+	if len(jailedHistoryEntries) > 0 {
+		_, err := db.NewInsert().Model(&jailedHistoryEntries).On("CONFLICT (validator_pkid, jailed_at_epoch_number, unjailed_at_epoch_number) DO NOTHING").Exec(context.Background())
+		if err != nil {
+			return errors.Wrapf(err, "InsertJailedHistory: Problem inserting jailed history")
+		}
+	}
+
 	return nil
 }
 

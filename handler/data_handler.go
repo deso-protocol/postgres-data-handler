@@ -63,7 +63,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypePostAssociationEntry:
 		err = entries.PostAssociationBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	case lib.EncoderTypePKIDEntry:
-		err = entries.PkidBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+		err = entries.PkidEntryBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	case lib.EncoderTypeDeSoBalanceEntry:
 		err = entries.DesoBalanceBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	case lib.EncoderTypeDAOCoinLimitOrderEntry:
@@ -74,6 +74,24 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 		err = entries.BlockBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	case lib.EncoderTypeTxn:
 		err = entries.TransactionBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeStakeEntry:
+		err = entries.StakeBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeValidatorEntry:
+		err = entries.ValidatorBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeLockedStakeEntry:
+		err = entries.LockedStakeBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeLockedBalanceEntry:
+		err = entries.LockedBalanceEntryBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeLockupYieldCurvePoint:
+		err = entries.LockupYieldCurvePointBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeEpochEntry:
+		err = entries.EpochEntryBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypePKID:
+		err = entries.PkidBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeGlobalParamsEntry:
+		err = entries.GlobalParamsBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
+	case lib.EncoderTypeBLSPublicKeyPKIDPairEntry:
+		err = entries.BLSPublicKeyPKIDPairBatchOperation(batchedEntries, postgresDataHandler.DB, postgresDataHandler.Params)
 	}
 
 	if err != nil {
