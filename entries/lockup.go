@@ -11,7 +11,7 @@ import (
 
 // TODO: when to use nullzero vs use_zero?
 type LockedBalanceEntry struct {
-	HODLerPKID                  string `bun:",nullzero"`
+	HodlerPKID                  string `bun:",nullzero"`
 	ProfilePKID                 string `bun:",nullzero"`
 	UnlockTimestampNanoSecs     int64
 	VestingEndTimestampNanoSecs int64
@@ -39,7 +39,7 @@ func LockedBalanceEntryEncoderToPGStruct(lockedBalanceEntry *lib.LockedBalanceEn
 	}
 
 	if lockedBalanceEntry.HODLerPKID != nil {
-		pgLockedBalanceEntry.HODLerPKID = consumer.PublicKeyBytesToBase58Check((*lockedBalanceEntry.HODLerPKID)[:], params)
+		pgLockedBalanceEntry.HodlerPKID = consumer.PublicKeyBytesToBase58Check((*lockedBalanceEntry.HODLerPKID)[:], params)
 	}
 
 	if lockedBalanceEntry.ProfilePKID != nil {
