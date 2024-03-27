@@ -13,7 +13,7 @@ func createYieldCurvePointTable(db *bun.DB, tableName string) error {
 			CREATE TABLE {tableName} (
 				profile_pkid VARCHAR NOT NULL,
 				lockup_duration_nano_secs BIGINT NOT NULL,
-				lockup_yield_api_basis_points BIGINT NOT NULL,
+				lockup_yield_apy_basis_points BIGINT NOT NULL,
 
 				badger_key BYTEA PRIMARY KEY 
 			);
