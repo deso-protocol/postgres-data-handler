@@ -83,15 +83,6 @@ func UtxoOperationBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, pa
 	return nil
 }
 
-func isFailingTxnByUtxoOps(utxoOps []*lib.UtxoOperation) bool {
-	for _, utxoOp := range utxoOps {
-		if utxoOp.Type == lib.OperationTypeFailingTxn {
-			return true
-		}
-	}
-	return false
-}
-
 // bulkInsertUtxoOperationsEntry inserts a batch of utxo operation entries into the database.
 func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 
@@ -132,11 +123,8 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
 			blockEntries = append(blockEntries, blockEntry)
 			for ii, txn := range block.Txns {
-				// Check if the transaction connects or not.
-				txnConnects := params.IsPoWBlockHeight(blockEntry.Height) ||
-					ii == 0 || block.TxnConnectStatusByIndex.Get(ii-1)
 				pgTxn, err := TransactionEncoderToPGStruct(
-					txn, uint64(ii), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, txnConnects, params)
+					txn, uint64(ii), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, params)
 				if err != nil {
 					return errors.Wrapf(err, "entries.bulkInsertUtxoOperationsEntry: Problem converting transaction to PG struct")
 				}
@@ -189,7 +177,6 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				if err != nil {
 					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem computing transaction metadata for entry %+v at block height %v", entry, entry.BlockHeight)
 				}
-				transactions[jj].Connects = !isFailingTxnByUtxoOps(utxoOps)
 
 				metadata := txIndexMetadata.GetEncoderForTxType(transaction.TxnMeta.GetTxnType())
 				basicTransferMetadata := txIndexMetadata.BasicTransferTxindexMetadata

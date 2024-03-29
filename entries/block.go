@@ -20,7 +20,6 @@ type BlockEntry struct {
 	Nonce                        uint64
 	ExtraNonce                   uint64
 	BlockVersion                 uint32
-	TxnConnectStatusByIndexHash  string `pg:",use_zero"`
 	ProposerVotingPublicKey      string `pg:",use_zero"`
 	ProposerRandomSeedSignature  string `pg:",use_zero"`
 	ProposedInView               uint64
@@ -38,10 +37,6 @@ type PGBlockEntry struct {
 // Convert the UserAssociation DeSo encoder to the PG struct used by bun.
 func BlockEncoderToPGStruct(block *lib.MsgDeSoBlock, keyBytes []byte, params *lib.DeSoParams) *PGBlockEntry {
 	blockHash, _ := block.Hash()
-	var txnConnectStatusByIndexHash string
-	if block.Header.TxnConnectStatusByIndexHash != nil {
-		txnConnectStatusByIndexHash = hex.EncodeToString(block.Header.TxnConnectStatusByIndexHash.ToBytes())
-	}
 	return &PGBlockEntry{
 		BlockEntry: BlockEntry{
 			BlockHash:                    hex.EncodeToString(blockHash[:]),
@@ -52,7 +47,6 @@ func BlockEncoderToPGStruct(block *lib.MsgDeSoBlock, keyBytes []byte, params *li
 			Nonce:                        block.Header.Nonce,
 			ExtraNonce:                   block.Header.ExtraNonce,
 			BlockVersion:                 block.Header.Version,
-			TxnConnectStatusByIndexHash:  txnConnectStatusByIndexHash,
 			ProposerVotingPublicKey:      block.Header.ProposerVotingPublicKey.ToString(),
 			ProposerRandomSeedSignature:  block.Header.ProposerRandomSeedSignature.ToString(),
 			ProposedInView:               block.Header.ProposedInView,
@@ -98,12 +92,8 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 		blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
 		pgBlockEntrySlice = append(pgBlockEntrySlice, blockEntry)
 		for jj, transaction := range block.Txns {
-			// Check if the transaction connects or not.
-			txnConnects := blockEntry.Height < uint64(params.ForkHeights.ProofOfStake2ConsensusCutoverBlockHeight) ||
-				jj == 0 || block.TxnConnectStatusByIndex.Get(jj-1)
 			pgTransactionEntry, err := TransactionEncoderToPGStruct(
-				transaction, uint64(jj), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, txnConnects,
-				params,
+				transaction, uint64(jj), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, params,
 			)
 			if err != nil {
 				return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Problem converting transaction to PG struct")
