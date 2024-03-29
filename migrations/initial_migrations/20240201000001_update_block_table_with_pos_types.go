@@ -10,7 +10,6 @@ func updateBlockTableWithPoSFields(db *bun.DB, tableName string) error {
 	_, err := db.Exec(`
 			ALTER TABLE block
 			ADD COLUMN block_version BIGINT,
-			ADD COLUMN txn_connect_status_by_index_hash VARCHAR,
 			ADD COLUMN proposer_voting_public_key VARCHAR,
 			ADD COLUMN proposer_random_seed_signature VARCHAR,
 			ADD COLUMN proposed_in_view BIGINT,
@@ -27,7 +26,6 @@ func init() {
 		_, err := db.Exec(`
 			ALTER TABLE block
 			DROP COLUMN block_version,
-			DROP COLUMN txn_connect_status_by_index_hash,
 			DROP COLUMN proposer_voting_public_key,
 			DROP COLUMN proposer_random_seed_signature,
 			DROP COLUMN proposed_in_view,

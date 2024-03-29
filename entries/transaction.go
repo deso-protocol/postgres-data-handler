@@ -33,8 +33,7 @@ type TransactionEntry struct {
 	IndexInBlock                 uint64
 	BlockHeight                  uint64
 	Timestamp                    time.Time `pg:",use_zero"`
-	Connects                     bool
-	BadgerKey                    []byte `pg:",use_zero"`
+	BadgerKey                    []byte    `pg:",use_zero"`
 }
 
 type PGTransactionEntry struct {
@@ -48,7 +47,6 @@ func TransactionEncoderToPGStruct(
 	blockHash string,
 	blockHeight uint64,
 	timestamp time.Time,
-	connects bool,
 	params *lib.DeSoParams,
 ) (*PGTransactionEntry, error) {
 
@@ -95,7 +93,6 @@ func TransactionEncoderToPGStruct(
 			IndexInBlock:    blockIndex,
 			BlockHeight:     blockHeight,
 			Timestamp:       timestamp,
-			Connects:        connects,
 			BadgerKey:       transaction.Hash()[:],
 		},
 	}
@@ -137,9 +134,7 @@ func transformTransactionEntry(entries []*lib.StateChangeEntry, params *lib.DeSo
 
 	for _, entry := range uniqueTransactions {
 		transaction := entry.Encoder.(*lib.MsgDeSoTxn)
-		// Assuming transactions connect when using this function. We can only
-		// tell if a transaction connects or not if we have the block.
-		transactionEntry, err := TransactionEncoderToPGStruct(transaction, 0, "", 0, time.Now(), true, params)
+		transactionEntry, err := TransactionEncoderToPGStruct(transaction, 0, "", 0, time.Now(), params)
 		if err != nil {
 			return nil, errors.Wrapf(err, "entries.transformAndBulkInsertTransactionEntry: Problem converting transaction to PG struct")
 		}
