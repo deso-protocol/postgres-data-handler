@@ -38,6 +38,7 @@ func UserAssociationEncoderToPGStruct(userAssociationEntry *lib.UserAssociationE
 	pgEntry := UserAssociationEntry{
 		AssociationType:  string(userAssociationEntry.AssociationType[:]),
 		AssociationValue: string(userAssociationEntry.AssociationValue[:]),
+		BlockHeight:      userAssociationEntry.BlockHeight,
 		ExtraData:        consumer.ExtraDataBytesToString(userAssociationEntry.ExtraData),
 		BadgerKey:        keyBytes,
 	}
