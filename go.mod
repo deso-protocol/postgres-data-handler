@@ -4,10 +4,12 @@ go 1.18
 
 replace github.com/deso-protocol/core => ../core/
 
+replace github.com/deso-protocol/state-consumer => ../state-consumer/
+
 require (
 	github.com/deso-protocol/backend v1.2.10-0.20240301035823-448ec0478e01
 	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
-	github.com/deso-protocol/state-consumer v1.0.4-0.20240319012350-bba8955e0692
+	github.com/deso-protocol/state-consumer v0.0.0-00010101000000-000000000000
 	github.com/golang/glog v1.0.0
 	github.com/google/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
