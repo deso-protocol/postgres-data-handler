@@ -130,6 +130,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 }
 
 func (postgresDataHandler *PostgresDataHandler) InitiateTransaction() error {
+	fmt.Printf("Initiating Txn\n")
 	// If a transaction is already open, rollback the current transaction.
 	if postgresDataHandler.Txn != nil {
 		err := postgresDataHandler.Txn.Rollback()
@@ -146,6 +147,7 @@ func (postgresDataHandler *PostgresDataHandler) InitiateTransaction() error {
 }
 
 func (postgresDataHandler *PostgresDataHandler) CommitTransaction() error {
+	fmt.Printf("Committing Txn\n")
 	if postgresDataHandler.Txn == nil {
 		return fmt.Errorf("PostgresDataHandler.CommitTransaction: No transaction to commit")
 	}
@@ -158,6 +160,7 @@ func (postgresDataHandler *PostgresDataHandler) CommitTransaction() error {
 }
 
 func (postgresDataHandler *PostgresDataHandler) RollbackTransaction() error {
+	fmt.Printf("Rolling back Txn\n")
 	if postgresDataHandler.Txn == nil {
 		return fmt.Errorf("PostgresDataHandler.RollbackTransaction: No transaction to rollback")
 	}
