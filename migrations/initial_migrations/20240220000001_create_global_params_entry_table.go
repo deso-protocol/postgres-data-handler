@@ -27,12 +27,15 @@ func createGlobalParamsEntryTable(db *bun.DB, tableName string) error {
 				jail_inactive_validator_grace_period_epochs BIGINT NOT NULL,
 				maximum_vested_intersections_per_lockup_transaction INT NOT NULL,
 				fee_bucket_growth_rate_basis_points BIGINT NOT NULL,
-				failing_transaction_bmf_multiplier_basis_points BIGINT NOT NULL,
 				block_timestamp_drift_nano_secs BIGINT NOT NULL,
 				mempool_max_size_bytes BIGINT NOT NULL,
 				mempool_fee_estimator_num_mempool_blocks BIGINT NOT NULL,
 				mempool_fee_estimator_num_past_blocks BIGINT NOT NULL,
-
+				max_block_size_bytes_pos BIGINT NOT NULL,
+				soft_max_block_size_bytes_pos BIGINT NOT NULL,
+				max_txn_size_bytes_pos BIGINT NOT NULL,
+				block_production_interval_milliseconds_pos BIGINT NOT NULL,
+				timeout_interval_milliseconds_pos BIGINT NOT NULL,
 				badger_key BYTEA PRIMARY KEY 
 			);
 		`, "{tableName}", tableName, -1))

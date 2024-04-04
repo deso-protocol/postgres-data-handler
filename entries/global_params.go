@@ -25,11 +25,15 @@ type GlobalParamsEntry struct {
 	JailInactiveValidatorGracePeriodEpochs         uint64
 	MaximumVestedIntersectionsPerLockupTransaction int
 	FeeBucketGrowthRateBasisPoints                 uint64
-	FailingTransactionBMFMultiplierBasisPoints     uint64
 	BlockTimestampDriftNanoSecs                    int64
 	MempoolMaxSizeBytes                            uint64
 	MempoolFeeEstimatorNumMempoolBlocks            uint64
 	MempoolFeeEstimatorNumPastBlocks               uint64
+	MaxBlockSizeBytesPoS                           uint64
+	SoftMaxBlockSizeBytesPoS                       uint64
+	MaxTxnSizeBytesPoS                             uint64
+	BlockProductionIntervalMillisecondsPoS         uint64
+	TimeoutIntervalMillisecondsPoS                 uint64
 
 	BadgerKey []byte `pg:",pk,use_zero"`
 }
@@ -60,12 +64,17 @@ func GlobalParamsEncoderToPGStruct(globalParamsEntry *lib.GlobalParamsEntry, key
 		JailInactiveValidatorGracePeriodEpochs:         mergedGlobalParamsEntry.JailInactiveValidatorGracePeriodEpochs,
 		MaximumVestedIntersectionsPerLockupTransaction: mergedGlobalParamsEntry.MaximumVestedIntersectionsPerLockupTransaction,
 		FeeBucketGrowthRateBasisPoints:                 mergedGlobalParamsEntry.FeeBucketGrowthRateBasisPoints,
-		FailingTransactionBMFMultiplierBasisPoints:     mergedGlobalParamsEntry.FailingTransactionBMFMultiplierBasisPoints,
 		BlockTimestampDriftNanoSecs:                    mergedGlobalParamsEntry.BlockTimestampDriftNanoSecs,
 		MempoolMaxSizeBytes:                            mergedGlobalParamsEntry.MempoolMaxSizeBytes,
 		MempoolFeeEstimatorNumMempoolBlocks:            mergedGlobalParamsEntry.MempoolFeeEstimatorNumMempoolBlocks,
 		MempoolFeeEstimatorNumPastBlocks:               mergedGlobalParamsEntry.MempoolFeeEstimatorNumPastBlocks,
-		BadgerKey:                                      keyBytes,
+		MaxBlockSizeBytesPoS:                           mergedGlobalParamsEntry.MaxBlockSizeBytesPoS,
+		SoftMaxBlockSizeBytesPoS:                       mergedGlobalParamsEntry.SoftMaxBlockSizeBytesPoS,
+		MaxTxnSizeBytesPoS:                             mergedGlobalParamsEntry.MaxTxnSizeBytesPoS,
+		BlockProductionIntervalMillisecondsPoS:         mergedGlobalParamsEntry.BlockProductionIntervalMillisecondsPoS,
+		TimeoutIntervalMillisecondsPoS:                 mergedGlobalParamsEntry.TimeoutIntervalMillisecondsPoS,
+
+		BadgerKey: keyBytes,
 	}
 }
 
