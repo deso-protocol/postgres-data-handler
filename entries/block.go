@@ -81,6 +81,39 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 		return nil
 	}
 
+	// We need to check if this block is replacing an existing block at the same height.
+	// If it is, we need to delete the existing block and all transactions associated with it.
+	// Get all block with matching heights and different hashes.
+	heights := make([]uint64, len(entries))
+	hashes := make([]string, len(entries))
+	for ii, entry := range entries {
+		heights[ii] = entry.Encoder.(*lib.MsgDeSoBlock).Header.Height
+		hash, err := entry.Encoder.(*lib.MsgDeSoBlock).Hash()
+		if err != nil {
+			return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Error getting block hash")
+		}
+		hashes[ii] = hex.EncodeToString(hash[:])
+	}
+	blocks := []*PGBlockEntry{}
+	err := db.NewSelect().
+		Model(blocks).
+		Where("height IN (?)", bun.In(heights)).
+		Where("block_hash NOT IN (?)", bun.In(hashes)).
+		Scan(context.Background())
+	if err != nil {
+		return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Error getting blocks")
+	}
+	// If we have blocks at the same height, delete them and their transactions.
+	if len(blocks) > 0 {
+		keysToDelete := make([][]byte, len(blocks))
+		for ii, block := range blocks {
+			keysToDelete[ii] = block.BadgerKey
+		}
+		if err = bulkDeleteBlockEntriesFromKeysToDelete(db, keysToDelete); err != nil {
+			return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Error deleting blocks")
+		}
+	}
+
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueBlocks := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -112,7 +145,7 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 		return errors.Wrapf(err, "entries.bulkInsertBlock: Error inserting entries")
 	}
 
-	err := bulkInsertTransactionEntry(pgTransactionEntrySlice, db, operationType)
+	err = bulkInsertTransactionEntry(pgTransactionEntrySlice, db, operationType)
 	if err != nil {
 		return errors.Wrapf(err, "entries.bulkInsertBlock: Error inserting transaction entries")
 	}
@@ -128,6 +161,12 @@ func bulkDeleteBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 	// Transform the entries into a list of keys to delete.
 	keysToDelete := consumer.KeysToDelete(uniqueEntries)
 
+	return bulkDeleteBlockEntriesFromKeysToDelete(db, keysToDelete)
+}
+
+// bulkDeleteBlockEntriesFromKeysToDelete deletes a batch of block entries from the database.
+// It also deletes any transactions and utxo operations associated with the block.
+func bulkDeleteBlockEntriesFromKeysToDelete(db *bun.DB, keysToDelete [][]byte) error {
 	// Execute the delete query on the blocks table.
 	if _, err := db.NewDelete().
 		Model(&PGBlockEntry{}).
@@ -145,12 +184,20 @@ func bulkDeleteBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 
 	// Delete any transactions associated with the block.
 	if _, err := db.NewDelete().
-		Model(&PGBlockEntry{}).
+		Model(&PGTransactionEntry{}).
 		Where("block_hash IN (?)", bun.In(blockHashHexesToDelete)).
 		Returning("").
 		Exec(context.Background()); err != nil {
 		return errors.Wrapf(err, "entries.bulkDeleteBlockEntry: Error deleting transaction entries")
 	}
 
+	// Delete any utxo operations associated with the block.
+	if _, err := db.NewDelete().
+		Model(&PGUtxoOperationEntry{}).
+		Where("block_hash IN (?)", bun.In(blockHashHexesToDelete)).
+		Returning("").
+		Exec(context.Background()); err != nil {
+		return errors.Wrapf(err, "entries.bulkDeleteBlockEntry: Error deleting utxo operation entries")
+	}
 	return nil
 }
