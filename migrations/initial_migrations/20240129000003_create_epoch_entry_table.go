@@ -16,6 +16,7 @@ func createEpochEntryTable(db *bun.DB, tableName string) error {
 				initial_block_height BIGINT NOT NULL,
 				initial_view BIGINT NOT NULL,
 				final_block_height BIGINT NOT NULL,
+				initial_leader_index_offset BIGINT NOT NULL,
 				created_at_block_timestamp_nano_secs BIGINT NOT NULL,
 				snapshot_at_epoch_number BIGINT NOT NULL			
 			);
