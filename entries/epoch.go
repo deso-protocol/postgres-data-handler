@@ -2,6 +2,7 @@ package entries
 
 import (
 	"context"
+
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ type EpochEntry struct {
 	InitialBlockHeight              uint64
 	InitialView                     uint64
 	FinalBlockHeight                uint64
+	InitialLeaderIndexOffset        uint64
 	CreatedAtBlockTimestampNanoSecs int64
 	SnapshotAtEpochNumber           uint64
 }
@@ -43,6 +45,7 @@ func EpochEntryEncoderToPGStruct(epochEntry *lib.EpochEntry, keyBytes []byte, pa
 		InitialBlockHeight:              epochEntry.InitialBlockHeight,
 		InitialView:                     epochEntry.InitialView,
 		FinalBlockHeight:                epochEntry.FinalBlockHeight,
+		InitialLeaderIndexOffset:        epochEntry.InitialLeaderIndexOffset,
 		CreatedAtBlockTimestampNanoSecs: epochEntry.CreatedAtBlockTimestampNanoSecs,
 		SnapshotAtEpochNumber:           snapshotAtEpochNumber,
 	}
