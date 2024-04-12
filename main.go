@@ -1,13 +1,13 @@
 package main
 
 import (
-	"PostgresDataHandler/handler"
-	"PostgresDataHandler/migrations/initial_migrations"
-	"PostgresDataHandler/migrations/post_sync_migrations"
 	"database/sql"
 	"flag"
 	"fmt"
 	"github.com/deso-protocol/core/lib"
+	"github.com/deso-protocol/postgres-data-handler/handler"
+	"github.com/deso-protocol/postgres-data-handler/migrations/initial_migrations"
+	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
 	"github.com/spf13/viper"

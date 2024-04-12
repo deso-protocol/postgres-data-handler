@@ -1,14 +1,14 @@
 package handler
 
 import (
-	"PostgresDataHandler/entries"
-	"PostgresDataHandler/migrations/post_sync_migrations"
 	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"github.com/deso-protocol/core/lib"
+	"github.com/deso-protocol/postgres-data-handler/entries"
+	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
