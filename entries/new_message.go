@@ -3,6 +3,7 @@ package entries
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
@@ -45,7 +46,7 @@ func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes 
 	}
 
 	pgNewMessageEntry := NewMessageEntry{
-		EncryptedText:      string(newMessageEntry.EncryptedText[:]),
+		EncryptedText:      hex.EncodeToString(newMessageEntry.EncryptedText[:]),
 		Timestamp:          consumer.UnixNanoToTime(newMessageEntry.TimestampNanos),
 		ExtraData:          consumer.ExtraDataBytesToString(newMessageEntry.ExtraData),
 		IsGroupChatMessage: isGroupChatMessage,
