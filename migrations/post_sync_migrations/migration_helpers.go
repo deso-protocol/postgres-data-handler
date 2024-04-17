@@ -23,7 +23,7 @@ var (
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_wallet_count_all", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_new_wallet_count_30_d", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_active_wallet_count_30_d", Ticker: time.NewTicker(30 * time.Minute)},
-		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_block_height_current", Ticker: time.NewTicker(15 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_block_height_current", Ticker: time.NewTicker(100 * time.Millisecond)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_txn_count_pending", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_txn_fee_1_d", Ticker: time.NewTicker(15 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY statistic_total_supply", Ticker: time.NewTicker(15 * time.Minute)},
