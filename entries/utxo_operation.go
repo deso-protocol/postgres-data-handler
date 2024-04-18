@@ -182,6 +182,16 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				basicTransferMetadata := txIndexMetadata.BasicTransferTxindexMetadata
 				basicTransferMetadata.UtxoOps = nil
 
+				// For atomic transactions, we need to remove the UtxoOps from the metadata for each inner transaction.
+				if metadata != nil && metadata.GetEncoderType() == lib.EncoderTypeAtomicTxnsWrapperTxindexMetadata {
+					atomicTxnMetadata := metadata.(*lib.AtomicTxnsWrapperTxindexMetadata)
+					for _, innerTxnMetadata := range atomicTxnMetadata.InnerTxnsTransactionMetadata {
+						if innerTxnMetadata.BasicTransferTxindexMetadata == nil {
+							continue
+						}
+						innerTxnMetadata.BasicTransferTxindexMetadata.UtxoOps = nil
+					}
+				}
 				transactions[jj].TxIndexMetadata = metadata
 
 				transactions[jj].TxIndexBasicTransferMetadata = txIndexMetadata.GetEncoderForTxType(lib.TxnTypeBasicTransfer)
