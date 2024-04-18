@@ -126,13 +126,29 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 		blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
 		pgBlockEntrySlice = append(pgBlockEntrySlice, blockEntry)
 		for jj, transaction := range block.Txns {
+			indexInBlock := uint64(jj)
 			pgTransactionEntry, err := TransactionEncoderToPGStruct(
-				transaction, uint64(jj), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, params,
+				transaction,
+				&indexInBlock,
+				blockEntry.BlockHash,
+				blockEntry.Height,
+				blockEntry.Timestamp,
+				nil,
+				nil,
+				params,
 			)
 			if err != nil {
 				return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Problem converting transaction to PG struct")
 			}
 			pgTransactionEntrySlice = append(pgTransactionEntrySlice, pgTransactionEntry)
+			if transaction.TxnMeta.GetTxnType() != lib.TxnTypeAtomicTxnsWrapper {
+				continue
+			}
+			innerTxns, err := parseInnerTxnsFromAtomicTxn(pgTransactionEntry, params)
+			if err != nil {
+				return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Problem parsing inner txns from atomic txn")
+			}
+			pgTransactionEntrySlice = append(pgTransactionEntrySlice, innerTxns...)
 		}
 	}
 

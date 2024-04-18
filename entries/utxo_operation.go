@@ -110,11 +110,17 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	for _, entry := range uniqueEntries {
 
 		transactions := []*PGTransactionEntry{}
+		innerTransactions := []*PGTransactionEntry{}
+		innerTransactionsUtxoOperations := [][]*lib.UtxoOperation{}
 
 		// We can use this function regardless of the db prefix, because both block_hash and transaction_hash
 		// are stored in the same blockHashHex format in the key.
 		blockHash := ConvertUtxoOperationKeyToBlockHashHex(entry.KeyBytes)
 
+		utxoOperations, ok := entry.Encoder.(*lib.UtxoOperationBundle)
+		if !ok {
+			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem with entry %v", entry)
+		}
 		// Check to see if the state change entry has an attached block.
 		// Note that this only happens during the initial sync, in order to speed up the sync process.
 		if entry.Block != nil {
@@ -123,12 +129,41 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
 			blockEntries = append(blockEntries, blockEntry)
 			for ii, txn := range block.Txns {
+				indexInBlock := uint64(ii)
 				pgTxn, err := TransactionEncoderToPGStruct(
-					txn, uint64(ii), blockEntry.BlockHash, blockEntry.Height, blockEntry.Timestamp, params)
+					txn,
+					&indexInBlock,
+					blockEntry.BlockHash,
+					blockEntry.Height,
+					blockEntry.Timestamp,
+					nil,
+					nil,
+					params,
+				)
 				if err != nil {
 					return errors.Wrapf(err, "entries.bulkInsertUtxoOperationsEntry: Problem converting transaction to PG struct")
 				}
 				transactions = append(transactions, pgTxn)
+				if txn.TxnMeta.GetTxnType() != lib.TxnTypeAtomicTxnsWrapper {
+					continue
+				}
+				// If we have an atomic transaction, we need to parse the inner transactions.
+				if ii >= len(utxoOperations.UtxoOpBundle) {
+					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: not enough utxo operations")
+				}
+				innerTxns, innerUtxoOps, err := getInnerTxnsFromAtomicTxn(
+					pgTxn,
+					utxoOperations.UtxoOpBundle[ii],
+					params,
+				)
+				if err != nil {
+					return errors.Wrapf(
+						err,
+						"entries.bulkInsertUtxoOperationsEntry: Problem getting inner transactions",
+					)
+				}
+				innerTransactions = append(innerTransactions, innerTxns...)
+				innerTransactionsUtxoOperations = append(innerTransactionsUtxoOperations, innerUtxoOps...)
 			}
 		} else {
 			// If the block isn't available on the entry itself, we can retrieve it from the database.
@@ -150,136 +185,96 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			// Note: it's normally considered bad practice to use string formatting to insert values into a query. However,
 			// in this case, the filterField is a constant and the value is clearly only block hash or transaction hash -
 			// so there is no risk of SQL injection.
-			err := db.NewSelect().Model(&transactions).Column("txn_bytes", "transaction_hash", "timestamp", "txn_type").Where(fmt.Sprintf("%s = ?", filterField), blockHash).Order("index_in_block ASC").Scan(context.Background())
+			err := db.NewSelect().
+				Model(&transactions).
+				Column(
+					"txn_bytes",
+					"transaction_hash",
+					"timestamp",
+					"txn_type",
+					"block_hash",
+					"block_height",
+				).Where(fmt.Sprintf("%s = ?", filterField), blockHash).Where("wrapper_transaction_hash IS NULL").Order("index_in_block ASC").Scan(context.Background())
 			if err != nil {
 				return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem getting transactions at block height %v: %v", entry.BlockHeight, err)
 			}
-		}
+			for ii, pgTxn := range transactions {
+				// Hack our way around the fact that we can't unmarshal the txn meta for atomic txns.
+				if pgTxn.TxnType != uint16(lib.TxnTypeAtomicTxnsWrapper) {
+					continue
+				}
+				atomicTxn := &lib.MsgDeSoTxn{}
+				if err = atomicTxn.FromBytes(pgTxn.TxnBytes); err != nil {
+					return errors.Wrapf(err, "entries.bulkInsertUtxoOperationsEntry: Problem decoding atomic txn")
+				}
+				// Recreate the transaction encoder instead of using the one from the db.
+				pgAtomicTxn, err := TransactionEncoderToPGStruct(
+					atomicTxn,
+					pgTxn.IndexInBlock,
+					pgTxn.BlockHash,
+					pgTxn.BlockHeight,
+					pgTxn.Timestamp,
+					nil,
+					nil,
+					params,
+				)
 
-		utxoOperations, ok := entry.Encoder.(*lib.UtxoOperationBundle)
-		if !ok {
-			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem with entry %v", entry)
+				// If we have an atomic transaction, we need to parse the inner transactions.
+				if ii >= len(utxoOperations.UtxoOpBundle) {
+					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: not enough utxo operations")
+				}
+				innerTxns, innerUtxoOps, err := getInnerTxnsFromAtomicTxn(
+					pgAtomicTxn,
+					utxoOperations.UtxoOpBundle[ii],
+					params,
+				)
+				if err != nil {
+					return errors.Wrapf(
+						err,
+						"entries.bulkInsertUtxoOperationsEntry: Problem getting inner transactions",
+					)
+				}
+				innerTransactions = append(innerTransactions, innerTxns...)
+				innerTransactionsUtxoOperations = append(innerTransactionsUtxoOperations, innerUtxoOps...)
+			}
 		}
 
 		transactionCount += len(utxoOperations.UtxoOpBundle)
-		// Create a wait group to wait for all the goroutines to finish.
-		for jj := range utxoOperations.UtxoOpBundle {
 
-			utxoOps := utxoOperations.UtxoOpBundle[jj]
-			// Update the transaction metadata for this transaction.
-			if jj < len(transactions) {
-				transaction := &lib.MsgDeSoTxn{}
-				err := transaction.FromBytes(transactions[jj].TxnBytes)
-				if err != nil {
-					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem decoding transaction for entry %+v at block height %v", entry, entry.BlockHeight)
-				}
-				txIndexMetadata, err := consumer.ComputeTransactionMetadata(transaction, blockHash, params, transaction.TxnFeeNanos, uint64(jj), utxoOps)
-				if err != nil {
-					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem computing transaction metadata for entry %+v at block height %v", entry, entry.BlockHeight)
-				}
-
-				metadata := txIndexMetadata.GetEncoderForTxType(transaction.TxnMeta.GetTxnType())
-				basicTransferMetadata := txIndexMetadata.BasicTransferTxindexMetadata
-				basicTransferMetadata.UtxoOps = nil
-
-				// For atomic transactions, we need to remove the UtxoOps from the metadata for each inner transaction.
-				if metadata != nil && metadata.GetEncoderType() == lib.EncoderTypeAtomicTxnsWrapperTxindexMetadata {
-					atomicTxnMetadata := metadata.(*lib.AtomicTxnsWrapperTxindexMetadata)
-					for _, innerTxnMetadata := range atomicTxnMetadata.InnerTxnsTransactionMetadata {
-						if innerTxnMetadata.BasicTransferTxindexMetadata == nil {
-							continue
-						}
-						innerTxnMetadata.BasicTransferTxindexMetadata.UtxoOps = nil
-					}
-				}
-				transactions[jj].TxIndexMetadata = metadata
-
-				transactions[jj].TxIndexBasicTransferMetadata = txIndexMetadata.GetEncoderForTxType(lib.TxnTypeBasicTransfer)
-
-				// Track which public keys have already been added to the affected public keys slice, to avoid duplicates.
-				affectedPublicKeyMetadataSet := make(map[string]bool)
-				affectedPublicKeySet := make(map[string]bool)
-
-				switch transaction.TxnMeta.GetTxnType() {
-				case lib.TxnTypeUnjailValidator:
-					// Find the unjail utxo op
-					var unjailUtxoOp *lib.UtxoOperation
-					for _, utxoOp := range utxoOps {
-						if utxoOp.Type == lib.OperationTypeUnjailValidator {
-							unjailUtxoOp = utxoOp
-							break
-						}
-					}
-					if unjailUtxoOp == nil {
-						glog.Error("bulkInsertUtxoOperationsEntry: Problem finding unjail utxo op")
-						continue
-					}
-					scm, ok := unjailUtxoOp.StateChangeMetadata.(*lib.UnjailValidatorStateChangeMetadata)
-					if !ok {
-						glog.Error("bulkInsertUtxoOperationsEntry: Problem with state change metadata for unjail")
-						continue
-					}
-					// Parse the jailed history event and add it to the slice.
-					jailedHistoryEntries = append(jailedHistoryEntries,
-						&PGJailedHistoryEvent{
-							JailedHistoryEntry: UnjailValidatorStateChangeMetadataEncoderToPGStruct(scm, params),
-						},
-					)
-				}
-
-				// Loop through the affected public keys and add them to the affected public keys slice.
-				for _, affectedPublicKey := range txIndexMetadata.AffectedPublicKeys {
-					// Skip if we've already added this public key/metadata.
-					apkmDuplicateKey := fmt.Sprintf("%v:%v", affectedPublicKey.PublicKeyBase58Check, affectedPublicKey.Metadata)
-					if _, ok := affectedPublicKeyMetadataSet[apkmDuplicateKey]; ok {
-						continue
-					}
-					affectedPublicKeyMetadataSet[apkmDuplicateKey] = true
-
-					// Track which public keys have already been added to the affected public keys slice. If they have,
-					// mark this record as a duplicate to make it easier to filter out.
-					apkIsDuplicate := false
-					if _, ok := affectedPublicKeySet[affectedPublicKey.PublicKeyBase58Check]; ok {
-						apkIsDuplicate = true
-					}
-					affectedPublicKeySet[affectedPublicKey.PublicKeyBase58Check] = true
-
-					affectedPublicKeyEntry := &PGAffectedPublicKeyEntry{
-						AffectedPublicKeyEntry: AffectedPublicKeyEntry{
-							PublicKey:       affectedPublicKey.PublicKeyBase58Check,
-							Metadata:        affectedPublicKey.Metadata,
-							IsDuplicate:     apkIsDuplicate,
-							Timestamp:       transactions[jj].Timestamp,
-							TxnType:         transactions[jj].TxnType,
-							TransactionHash: transactions[jj].TransactionHash,
-						},
-					}
-					affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
-				}
-				transactionUpdates = append(transactionUpdates, transactions[jj])
-			} else if jj == len(transactions) {
-				// TODO: parse utxo operations for the block level index.
-				// Examples: deletion of expired nonces, staking rewards (restaked
-				// + payed to balance), validator jailing, updating validator's
-				// last active at epoch.
-				for ii, utxoOp := range utxoOps {
-					switch utxoOp.Type {
-					case lib.OperationTypeStakeDistributionRestake, lib.OperationTypeStakeDistributionPayToBalance:
-						stateChangeMetadata, ok := utxoOp.StateChangeMetadata.(*lib.StakeRewardStateChangeMetadata)
-						if !ok {
-							glog.Error("bulkInsertUtxoOperationsEntry: Problem with state change metadata for " +
-								"stake rewards")
-							continue
-						}
-						stakeReward := PGStakeReward{
-							StakeReward: StakeRewardEncoderToPGStruct(stateChangeMetadata, params, blockHash, uint64(ii)),
-						}
-						stakeRewardEntries = append(stakeRewardEntries, &stakeReward)
-					}
-				}
-
-			}
+		var err error
+		// TODO: Create a wait group to wait for all the goroutines to finish.
+		transactionUpdates, affectedPublicKeys, stakeRewardEntries, jailedHistoryEntries, err =
+			parseUtxoOperationBundle(
+				entry,
+				utxoOperations.UtxoOpBundle,
+				transactions,
+				blockHash,
+				params,
+			)
+		if err != nil {
+			return errors.Wrapf(err, "entries.bulkInsertUtxoOperationsEntry: Problem parsing utxo operation bundle")
 		}
+
+		// Parse inner txns and their utxo operations
+		innerTransactionUpdates, innerAffectedPublicKeys, innerStakeRewardEntries, innerJailedHistoryEntries, err :=
+			parseUtxoOperationBundle(
+				entry,
+				innerTransactionsUtxoOperations,
+				innerTransactions,
+				blockHash,
+				params,
+			)
+		if err != nil {
+			return errors.Wrapf(
+				err,
+				"entries.bulkInsertUtxoOperationsEntry: Problem parsing inner utxo operation bundle",
+			)
+		}
+		transactionUpdates = append(transactionUpdates, innerTransactionUpdates...)
+		affectedPublicKeys = append(affectedPublicKeys, innerAffectedPublicKeys...)
+		stakeRewardEntries = append(stakeRewardEntries, innerStakeRewardEntries...)
+		jailedHistoryEntries = append(jailedHistoryEntries, innerJailedHistoryEntries...)
+		transactionCount += len(innerTransactionsUtxoOperations)
 		// Print how long it took to insert the entries.
 	}
 	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Processed %v txns in %v s\n", transactionCount, time.Since(start))
@@ -375,4 +370,184 @@ func bulkDeleteUtxoOperationEntry(entries []*lib.StateChangeEntry, db *bun.DB, o
 	}
 
 	return nil
+}
+
+func parseUtxoOperationBundle(
+	entry *lib.StateChangeEntry,
+	utxoOpBundle [][]*lib.UtxoOperation,
+	transactions []*PGTransactionEntry,
+	blockHashHex string,
+	params *lib.DeSoParams,
+) (
+	[]*PGTransactionEntry,
+	[]*PGAffectedPublicKeyEntry,
+	[]*PGStakeReward,
+	[]*PGJailedHistoryEvent,
+	error,
+) {
+	var affectedPublicKeys []*PGAffectedPublicKeyEntry
+	var transactionUpdates []*PGTransactionEntry
+	var jailedHistoryEntries []*PGJailedHistoryEvent
+	var stakeRewardEntries []*PGStakeReward
+	for jj := range utxoOpBundle {
+		utxoOps := utxoOpBundle[jj]
+		// Update the transaction metadata for this transaction.
+		if jj < len(transactions) {
+			transaction := &lib.MsgDeSoTxn{}
+			err := transaction.FromBytes(transactions[jj].TxnBytes)
+			if err != nil {
+				return nil,
+					nil,
+					nil,
+					nil,
+					errors.Wrapf(
+						err,
+						"parseUtxoOperationBundle: Problem decoding transaction for entry %+v at "+
+							"block height %v",
+						entry,
+						entry.BlockHeight,
+					)
+			}
+			txIndexMetadata, err := consumer.ComputeTransactionMetadata(transaction, blockHashHex, params, transaction.TxnFeeNanos, uint64(jj), utxoOps)
+			if err != nil {
+				return nil,
+					nil,
+					nil,
+					nil,
+					errors.Wrapf(
+						err,
+						"parseUtxoOperationBundle: Problem computing transaction metadata for "+
+							"entry %+v at block height %v",
+						entry,
+						entry.BlockHeight,
+					)
+			}
+
+			metadata := txIndexMetadata.GetEncoderForTxType(transaction.TxnMeta.GetTxnType())
+			basicTransferMetadata := txIndexMetadata.BasicTransferTxindexMetadata
+			basicTransferMetadata.UtxoOps = nil
+
+			// For atomic transactions, we need to remove the UtxoOps from the metadata for each inner transaction.
+			if metadata != nil && metadata.GetEncoderType() == lib.EncoderTypeAtomicTxnsWrapperTxindexMetadata {
+				atomicTxnMetadata := metadata.(*lib.AtomicTxnsWrapperTxindexMetadata)
+				for _, innerTxnMetadata := range atomicTxnMetadata.InnerTxnsTransactionMetadata {
+					if innerTxnMetadata.BasicTransferTxindexMetadata == nil {
+						continue
+					}
+					innerTxnMetadata.BasicTransferTxindexMetadata.UtxoOps = nil
+				}
+			}
+			transactions[jj].TxIndexMetadata = metadata
+
+			transactions[jj].TxIndexBasicTransferMetadata = txIndexMetadata.GetEncoderForTxType(lib.TxnTypeBasicTransfer)
+
+			// Track which public keys have already been added to the affected public keys slice, to avoid duplicates.
+			affectedPublicKeyMetadataSet := make(map[string]bool)
+			affectedPublicKeySet := make(map[string]bool)
+
+			switch transaction.TxnMeta.GetTxnType() {
+			case lib.TxnTypeUnjailValidator:
+				// Find the unjail utxo op
+				var unjailUtxoOp *lib.UtxoOperation
+				for _, utxoOp := range utxoOps {
+					if utxoOp.Type == lib.OperationTypeUnjailValidator {
+						unjailUtxoOp = utxoOp
+						break
+					}
+				}
+				if unjailUtxoOp == nil {
+					glog.Error("parseUtxoOperationBundle: Problem finding unjail utxo op")
+					continue
+				}
+				scm, ok := unjailUtxoOp.StateChangeMetadata.(*lib.UnjailValidatorStateChangeMetadata)
+				if !ok {
+					glog.Error("parseUtxoOperationBundle: Problem with state change metadata for unjail")
+					continue
+				}
+				// Parse the jailed history event and add it to the slice.
+				jailedHistoryEntries = append(jailedHistoryEntries,
+					&PGJailedHistoryEvent{
+						JailedHistoryEntry: UnjailValidatorStateChangeMetadataEncoderToPGStruct(scm, params),
+					},
+				)
+			}
+
+			// Loop through the affected public keys and add them to the affected public keys slice.
+			for _, affectedPublicKey := range txIndexMetadata.AffectedPublicKeys {
+				// Skip if we've already added this public key/metadata.
+				apkmDuplicateKey := fmt.Sprintf("%v:%v", affectedPublicKey.PublicKeyBase58Check, affectedPublicKey.Metadata)
+				if _, ok := affectedPublicKeyMetadataSet[apkmDuplicateKey]; ok {
+					continue
+				}
+				affectedPublicKeyMetadataSet[apkmDuplicateKey] = true
+
+				// Track which public keys have already been added to the affected public keys slice. If they have,
+				// mark this record as a duplicate to make it easier to filter out.
+				apkIsDuplicate := false
+				if _, ok := affectedPublicKeySet[affectedPublicKey.PublicKeyBase58Check]; ok {
+					apkIsDuplicate = true
+				}
+				affectedPublicKeySet[affectedPublicKey.PublicKeyBase58Check] = true
+
+				affectedPublicKeyEntry := &PGAffectedPublicKeyEntry{
+					AffectedPublicKeyEntry: AffectedPublicKeyEntry{
+						PublicKey:       affectedPublicKey.PublicKeyBase58Check,
+						Metadata:        affectedPublicKey.Metadata,
+						IsDuplicate:     apkIsDuplicate,
+						Timestamp:       transactions[jj].Timestamp,
+						TxnType:         transactions[jj].TxnType,
+						TransactionHash: transactions[jj].TransactionHash,
+					},
+				}
+				affectedPublicKeys = append(affectedPublicKeys, affectedPublicKeyEntry)
+			}
+			transactionUpdates = append(transactionUpdates, transactions[jj])
+		} else if jj == len(transactions) {
+			// TODO: parse utxo operations for the block level index.
+			// Examples: deletion of expired nonces, staking rewards (restaked
+			// + payed to balance), validator jailing, updating validator's
+			// last active at epoch.
+			for ii, utxoOp := range utxoOps {
+				switch utxoOp.Type {
+				case lib.OperationTypeStakeDistributionRestake, lib.OperationTypeStakeDistributionPayToBalance:
+					stateChangeMetadata, ok := utxoOp.StateChangeMetadata.(*lib.StakeRewardStateChangeMetadata)
+					if !ok {
+						glog.Error("parseUtxoOperationBundle: Problem with state change metadata for " +
+							"stake rewards")
+						continue
+					}
+					stakeReward := PGStakeReward{
+						StakeReward: StakeRewardEncoderToPGStruct(stateChangeMetadata, params, blockHashHex, uint64(ii)),
+					}
+					stakeRewardEntries = append(stakeRewardEntries, &stakeReward)
+				}
+			}
+		}
+	}
+	return transactionUpdates, affectedPublicKeys, stakeRewardEntries, jailedHistoryEntries, nil
+}
+
+func getInnerTxnsFromAtomicTxn(
+	pgAtomicTxn *PGTransactionEntry,
+	utxoOperations []*lib.UtxoOperation,
+	params *lib.DeSoParams,
+) (
+	[]*PGTransactionEntry,
+	[][]*lib.UtxoOperation,
+	error,
+) {
+	innerTxns, err := parseInnerTxnsFromAtomicTxn(pgAtomicTxn, params)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "getInnerTxnsFromAtomicTxn: Problem parsing inner txns")
+	}
+	atomicUtxoOp := consumer.GetUtxoOpByOperationType(utxoOperations, lib.OperationTypeAtomicTxnsWrapper)
+	if atomicUtxoOp == nil {
+		return nil, nil, fmt.Errorf("getInnerTxnsFromAtomicTxn: atomic txn has no utxo operation")
+	}
+	if atomicUtxoOp.AtomicTxnsInnerUtxoOps == nil ||
+		len(atomicUtxoOp.AtomicTxnsInnerUtxoOps) != len(innerTxns) {
+		return nil, nil, fmt.Errorf("getInnerTxnsFromAtomicTxn: atomic txn has no inner utxo operations")
+	}
+	glog.Infof("getInnerTxnsFromAtomicTxn: Found %v inner txns", atomicUtxoOp.AtomicTxnsInnerUtxoOps)
+	return innerTxns, atomicUtxoOp.AtomicTxnsInnerUtxoOps, nil
 }
