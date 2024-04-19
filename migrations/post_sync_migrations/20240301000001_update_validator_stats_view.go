@@ -18,15 +18,17 @@ select validator_entry.validator_pkid,
        rank()
        OVER ( order by (case when validator_entry.jailed_at_epoch_number = 0 then 0 else 1 end), validator_entry.total_stake_amount_nanos desc, validator_entry.jailed_at_epoch_number desc, validator_entry.validator_pkid) as validator_rank,
        validator_entry.total_stake_amount_nanos::float /
-       staking_summary.global_stake_amount_nanos::float                                                                                                                                                            as percent_total_stake,
+       coalesce(nullif(staking_summary.global_stake_amount_nanos::float, 0),
+                1)                                                                                                                                                                                                           as percent_total_stake,
        coalesce(time_in_jail, 0) +
        (case
             when jailed_at_epoch_number = 0 then 0
-            else (staking_summary.current_epoch_number - jailed_at_epoch_number) END)                                                                                                                                 epochs_in_jail,
-       coalesce(leader_schedule_summary.num_epochs_in_leader_schedule, 0)                                                                                                                                          as num_epochs_in_leader_schedule,
+            else (staking_summary.current_epoch_number - jailed_at_epoch_number) END)                                                                                                                                           epochs_in_jail,
+       coalesce(leader_schedule_summary.num_epochs_in_leader_schedule, 0)                                                                                                                                                    as num_epochs_in_leader_schedule,
        coalesce(leader_schedule_summary.num_epochs_in_leader_schedule, 0)::float /
-       staking_summary.num_epochs_in_leader_schedule::float                                                                                                                                                        as percent_epochs_in_leader_schedule,
-       coalesce(total_rewards, 0)                                                                                                                                                                                  as total_stake_reward_nanos
+       coalesce(nullif(staking_summary.num_epochs_in_leader_schedule::float, 0),
+                1)                                                                                                                                                                                                           as percent_epochs_in_leader_schedule,
+       coalesce(total_rewards, 0)                                                                                                                                                                                            as total_stake_reward_nanos
 from staking_summary,
      validator_entry
          left join (select validator_pkid, sum(jhe.unjailed_at_epoch_number - jhe.jailed_at_epoch_number) time_in_jail
