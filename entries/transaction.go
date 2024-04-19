@@ -49,7 +49,6 @@ func TransactionEncoderToPGStruct(
 	timestamp time.Time,
 	params *lib.DeSoParams,
 ) (*PGTransactionEntry, error) {
-
 	var txInputs []map[string]string
 	for _, input := range transaction.TxInputs {
 		txInputs = append(txInputs, map[string]string{
