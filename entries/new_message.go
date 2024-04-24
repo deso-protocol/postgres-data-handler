@@ -11,14 +11,14 @@ import (
 )
 
 type NewMessageEntry struct {
-	SenderAccessGroupOwnerPublicKey    string    `bun:",nullzero"`
-	SenderAccessGroupKeyName           string    `bun:",nullzero"`
-	SenderAccessGroupPublicKey         string    `bun:",nullzero"`
-	RecipientAccessGroupOwnerPublicKey string    `bun:",nullzero"`
-	RecipientAccessGroupKeyName        string    `bun:",nullzero"`
-	RecipientAccessGroupPublicKey      string    `bun:",nullzero"`
-	EncryptedText                      string    `pg:",use_zero"`
-	IsGroupChatMessage                 bool      `bun:",nullzero"`
+	SenderAccessGroupOwnerPublicKey    string `bun:",nullzero"`
+	SenderAccessGroupKeyName           string `bun:",nullzero"`
+	SenderAccessGroupPublicKey         string `bun:",nullzero"`
+	RecipientAccessGroupOwnerPublicKey string `bun:",nullzero"`
+	RecipientAccessGroupKeyName        string `bun:",nullzero"`
+	RecipientAccessGroupPublicKey      string `bun:",nullzero"`
+	EncryptedText                      string `pg:",use_zero"`
+	IsGroupChatMessage                 bool
 	Timestamp                          time.Time `pg:",use_zero"`
 
 	ExtraData map[string]string `bun:"type:jsonb"`
