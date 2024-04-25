@@ -93,13 +93,14 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 	transactionUpdates := make([]*PGTransactionEntry, 0)
 	affectedPublicKeys := make([]*PGAffectedPublicKeyEntry, 0)
 	blockEntries := make([]*PGBlockEntry, 0)
+	pgBlockSigners := make([]*PGBlockSigner, 0)
 	stakeRewardEntries := make([]*PGStakeReward, 0)
 	jailedHistoryEntries := make([]*PGJailedHistoryEvent, 0)
 
 	// Start timer to track how long it takes to insert the entries.
 	start := time.Now()
 
-	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserting %v entries\n", len(uniqueEntries))
+	glog.V(2).Infof("entries.bulkInsertUtxoOperationsEntry: Inserting %v entries\n", len(uniqueEntries))
 	transactionCount := 0
 
 	// Whether we are inserting transactions for the first time, or just updating them.
@@ -126,8 +127,9 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		if entry.Block != nil {
 			insertTransactions = true
 			block := entry.Block
-			blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
+			blockEntry, blockSigners := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
 			blockEntries = append(blockEntries, blockEntry)
+			pgBlockSigners = append(pgBlockSigners, blockSigners...)
 			for ii, txn := range block.Txns {
 				indexInBlock := uint64(ii)
 				pgTxn, err := TransactionEncoderToPGStruct(
@@ -277,7 +279,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		transactionCount += len(innerTransactionsUtxoOperations)
 		// Print how long it took to insert the entries.
 	}
-	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Processed %v txns in %v s\n", transactionCount, time.Since(start))
+	glog.V(2).Infof("entries.bulkInsertUtxoOperationsEntry: Processed %v txns in %v s\n", transactionCount, time.Since(start))
 
 	start = time.Now()
 
@@ -299,6 +301,16 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				return errors.Wrapf(err, "entries.bulkInsertBlock: Error inserting entries")
 			}
 
+			blockSignerQuery := db.NewInsert().Model(&pgBlockSigners)
+
+			if operationType == lib.DbOperationTypeUpsert {
+				blockSignerQuery = blockSignerQuery.On("CONFLICT (block_hash, signer_index) DO UPDATE")
+			}
+
+			if _, err := blockSignerQuery.Exec(context.Background()); err != nil {
+				return errors.Wrapf(err, "entries.bulkInsertBlockSigners: Error inserting block signer entries")
+			}
+
 		} else {
 			values := db.NewValues(&transactionUpdates)
 			_, err := db.NewUpdate().
@@ -317,7 +329,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		}
 	}
 
-	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Updated %v txns in %v s\n", len(transactionUpdates), time.Since(start))
+	glog.V(2).Infof("entries.bulkInsertUtxoOperationsEntry: Updated %v txns in %v s\n", len(transactionUpdates), time.Since(start))
 
 	start = time.Now()
 
@@ -329,7 +341,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 		}
 	}
 
-	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserted %v affected public keys in %v s\n", len(affectedPublicKeys), time.Since(start))
+	glog.V(2).Infof("entries.bulkInsertUtxoOperationsEntry: Inserted %v affected public keys in %v s\n", len(affectedPublicKeys), time.Since(start))
 
 	start = time.Now()
 
@@ -340,7 +352,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 			return errors.Wrapf(err, "InsertStakeRewards: Problem inserting stake rewards")
 		}
 	}
-	fmt.Printf("entries.bulkInsertUtxoOperationsEntry: Inserted %v stake rewards in %v s\n", len(stakeRewardEntries), time.Since(start))
+	glog.V(2).Infof("entries.bulkInsertUtxoOperationsEntry: Inserted %v stake rewards in %v s\n", len(stakeRewardEntries), time.Since(start))
 
 	if len(jailedHistoryEntries) > 0 {
 		_, err := db.NewInsert().Model(&jailedHistoryEntries).On("CONFLICT (validator_pkid, jailed_at_epoch_number, unjailed_at_epoch_number) DO NOTHING").Exec(context.Background())
@@ -410,6 +422,9 @@ func parseUtxoOperationBundle(
 			}
 			txIndexMetadata, err := consumer.ComputeTransactionMetadata(transaction, blockHashHex, params, transaction.TxnFeeNanos, uint64(jj), utxoOps)
 			if err != nil {
+				glog.Errorf("parseUtxoOperationBundle: Problem computing transaction metadata for "+
+					"entry %+v at block height %v: %v", entry, entry.BlockHeight, err)
+				// TODO: swallow error and continue.
 				return nil,
 					nil,
 					nil,
