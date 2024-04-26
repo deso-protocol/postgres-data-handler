@@ -105,5 +105,6 @@ CREATE VIEW statistic_dashboard AS
 			statistic_follow_count
 			CROSS JOIN
 			statistic_message_count;
+			comment on view statistic_dashboard is E'@name dashboardStat';
 `
 }
