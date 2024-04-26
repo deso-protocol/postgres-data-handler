@@ -422,22 +422,13 @@ func parseUtxoOperationBundle(
 			}
 			txIndexMetadata, err := consumer.ComputeTransactionMetadata(transaction, blockHashHex, params, transaction.TxnFeeNanos, uint64(jj), utxoOps)
 			if err != nil {
+				// If we fail to compute txindex metadata, log the error and continue to the next transaction.
+				// We still append this txn to the transactionUpdates slice so that we can have it in the db.
 				glog.Errorf("parseUtxoOperationBundle: Problem computing transaction metadata for "+
 					"entry %+v at block height %v: %v", entry, entry.BlockHeight, err)
-				// TODO: swallow error and continue.
-				return nil,
-					nil,
-					nil,
-					nil,
-					errors.Wrapf(
-						err,
-						"parseUtxoOperationBundle: Problem computing transaction metadata for "+
-							"entry %+v at block height %v",
-						entry,
-						entry.BlockHeight,
-					)
+				transactionUpdates = append(transactionUpdates, transactions[jj])
+				continue
 			}
-
 			metadata := txIndexMetadata.GetEncoderForTxType(transaction.TxnMeta.GetTxnType())
 			basicTransferMetadata := txIndexMetadata.BasicTransferTxindexMetadata
 			basicTransferMetadata.UtxoOps = nil
