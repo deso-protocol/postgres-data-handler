@@ -301,14 +301,16 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db *bun.DB, 
 				return errors.Wrapf(err, "entries.bulkInsertBlock: Error inserting entries")
 			}
 
-			blockSignerQuery := db.NewInsert().Model(&pgBlockSigners)
+			if len(pgBlockSigners) > 0 {
+				blockSignerQuery := db.NewInsert().Model(&pgBlockSigners)
 
-			if operationType == lib.DbOperationTypeUpsert {
-				blockSignerQuery = blockSignerQuery.On("CONFLICT (block_hash, signer_index) DO UPDATE")
-			}
+				if operationType == lib.DbOperationTypeUpsert {
+					blockSignerQuery = blockSignerQuery.On("CONFLICT (block_hash, signer_index) DO UPDATE")
+				}
 
-			if _, err := blockSignerQuery.Exec(context.Background()); err != nil {
-				return errors.Wrapf(err, "entries.bulkInsertBlockSigners: Error inserting block signer entries")
+				if _, err := blockSignerQuery.Exec(context.Background()); err != nil {
+					return errors.Wrapf(err, "entries.bulkInsertBlockSigners: Error inserting block signer entries")
+				}
 			}
 
 		} else {
