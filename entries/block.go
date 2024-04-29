@@ -3,6 +3,7 @@ package entries
 import (
 	"context"
 	"encoding/hex"
+	"reflect"
 	"time"
 
 	"github.com/deso-protocol/core/lib"
@@ -34,12 +35,43 @@ type PGBlockEntry struct {
 	BlockEntry
 }
 
+type BlockSigner struct {
+	BlockHash   string
+	SignerIndex uint64
+}
+
+type PGBlockSigner struct {
+	bun.BaseModel `bun:"table:block_signer"`
+	BlockSigner
+}
+
 // Convert the UserAssociation DeSo encoder to the PG struct used by bun.
-func BlockEncoderToPGStruct(block *lib.MsgDeSoBlock, keyBytes []byte, params *lib.DeSoParams) *PGBlockEntry {
+func BlockEncoderToPGStruct(block *lib.MsgDeSoBlock, keyBytes []byte, params *lib.DeSoParams) (*PGBlockEntry, []*PGBlockSigner) {
 	blockHash, _ := block.Hash()
+	blockHashHex := hex.EncodeToString(blockHash[:])
+	qc := block.Header.GetQC()
+	blockSigners := []*PGBlockSigner{}
+	if !isInterfaceNil(qc) {
+		aggSig := qc.GetAggregatedSignature()
+		if !isInterfaceNil(aggSig) {
+			signersList := aggSig.GetSignersList()
+			for ii := 0; ii < signersList.Size(); ii++ {
+				// Skip signers that didn't sign.
+				if !signersList.Get(ii) {
+					continue
+				}
+				blockSigners = append(blockSigners, &PGBlockSigner{
+					BlockSigner: BlockSigner{
+						BlockHash:   blockHashHex,
+						SignerIndex: uint64(ii),
+					},
+				})
+			}
+		}
+	}
 	return &PGBlockEntry{
 		BlockEntry: BlockEntry{
-			BlockHash:                    hex.EncodeToString(blockHash[:]),
+			BlockHash:                    blockHashHex,
 			PrevBlockHash:                hex.EncodeToString(block.Header.PrevBlockHash[:]),
 			TxnMerkleRoot:                hex.EncodeToString(block.Header.TransactionMerkleRoot[:]),
 			Timestamp:                    consumer.UnixNanoToTime(uint64(block.Header.TstampNanoSecs)),
@@ -53,7 +85,7 @@ func BlockEncoderToPGStruct(block *lib.MsgDeSoBlock, keyBytes []byte, params *li
 			ProposerVotePartialSignature: block.Header.ProposerVotePartialSignature.ToString(),
 			BadgerKey:                    keyBytes,
 		},
-	}
+	}, blockSigners
 }
 
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
@@ -120,11 +152,13 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 	// Create a new array to hold the bun struct.
 	pgBlockEntrySlice := make([]*PGBlockEntry, 0)
 	pgTransactionEntrySlice := make([]*PGTransactionEntry, 0)
+	pgBlockSignersEntrySlice := make([]*PGBlockSigner, 0)
 
 	for _, entry := range uniqueBlocks {
 		block := entry.Encoder.(*lib.MsgDeSoBlock)
-		blockEntry := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
+		blockEntry, blockSigners := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
 		pgBlockEntrySlice = append(pgBlockEntrySlice, blockEntry)
+		pgBlockSignersEntrySlice = append(pgBlockSignersEntrySlice, blockSigners...)
 		for jj, transaction := range block.Txns {
 			indexInBlock := uint64(jj)
 			pgTransactionEntry, err := TransactionEncoderToPGStruct(
@@ -164,6 +198,19 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db *bun.DB, operation
 
 	if err = bulkInsertTransactionEntry(pgTransactionEntrySlice, db, operationType); err != nil {
 		return errors.Wrapf(err, "entries.bulkInsertBlock: Error inserting transaction entries")
+	}
+
+	if len(pgBlockSignersEntrySlice) > 0 {
+		// Execute the insert query.
+		query := db.NewInsert().Model(&pgBlockSignersEntrySlice)
+
+		if operationType == lib.DbOperationTypeUpsert {
+			query = query.On("CONFLICT (block_hash, signer_index) DO UPDATE")
+		}
+
+		if _, err := query.Returning("").Exec(context.Background()); err != nil {
+			return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Error inserting block signers")
+		}
 	}
 
 	return nil
@@ -214,5 +261,26 @@ func bulkDeleteBlockEntriesFromKeysToDelete(db *bun.DB, keysToDelete [][]byte) e
 		Exec(context.Background()); err != nil {
 		return errors.Wrapf(err, "entries.bulkDeleteBlockEntry: Error deleting utxo operation entries")
 	}
+
+	// Delete any signers associated with the block.
+	if _, err := db.NewDelete().
+		Model(&PGBlockSigner{}).
+		Where("block_hash IN (?)", bun.In(blockHashHexesToDelete)).
+		Returning("").
+		Exec(context.Background()); err != nil {
+		return errors.Wrapf(err, "entries.bulkDeleteBlockEntry: Error deleting block signers")
+	}
 	return nil
+}
+
+// golang interface types are stored as a tuple of (type, value). A single i==nil check is not enough to
+// determine if a pointer that implements an interface is nil. This function checks if the interface is nil
+// by checking if the pointer itself is nil.
+func isInterfaceNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+
+	value := reflect.ValueOf(i)
+	return value.Kind() == reflect.Ptr && value.IsNil()
 }
