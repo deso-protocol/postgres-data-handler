@@ -1,4 +1,4 @@
-module PostgresDataHandler
+module github.com/deso-protocol/postgres-data-handler
 
 go 1.22
 

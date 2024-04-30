@@ -55,7 +55,7 @@ func LockedStakeEncoderToPGStruct(lockedStakeEntry *lib.LockedStakeEntry, keyByt
 
 // LockedStakeBatchOperation is the entry point for processing a batch of LockedStake entries.
 // It determines the appropriate handler based on the operation type and executes it.
-func LockedStakeBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func LockedStakeBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -72,7 +72,7 @@ func LockedStakeBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, para
 }
 
 // bulkInsertLockedStakeEntry inserts a batch of locked stake entries into the database.
-func bulkInsertLockedStakeEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertLockedStakeEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -97,7 +97,7 @@ func bulkInsertLockedStakeEntry(entries []*lib.StateChangeEntry, db *bun.DB, ope
 }
 
 // bulkDeleteLockedStakeEntry deletes a batch of locked stake entries from the database.
-func bulkDeleteLockedStakeEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteLockedStakeEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
