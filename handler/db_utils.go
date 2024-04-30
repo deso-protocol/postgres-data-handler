@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"PostgresDataHandler/migrations/initial_migrations"
-	"PostgresDataHandler/migrations/post_sync_migrations"
 	"context"
+	"github.com/deso-protocol/postgres-data-handler/migrations/initial_migrations"
+	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/golang/glog"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/migrate"

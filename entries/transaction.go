@@ -118,7 +118,7 @@ func TransactionEncoderToPGStruct(
 
 // TransactionBatchOperation is the entry point for processing a batch of transaction entries. It determines the appropriate handler
 // based on the operation type and executes it.
-func TransactionBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func TransactionBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -176,7 +176,7 @@ func transformTransactionEntry(entries []*lib.StateChangeEntry, params *lib.DeSo
 	return pgTransactionEntrySlice, nil
 }
 
-func bulkInsertTransactionEntry(entries []*PGTransactionEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertTransactionEntry(entries []*PGTransactionEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Bulk insert the entries.
 	transactionQuery := db.NewInsert().Model(&entries)
 
@@ -191,7 +191,7 @@ func bulkInsertTransactionEntry(entries []*PGTransactionEntry, db *bun.DB, opera
 }
 
 // transformAndBulkInsertTransactionEntry inserts a batch of user_association entries into the database.
-func transformAndBulkInsertTransactionEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func transformAndBulkInsertTransactionEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	pgTransactionEntrySlice, err := transformTransactionEntry(entries, params)
 	if err != nil {
 		return errors.Wrapf(err, "entries.transformAndBulkInsertTransactionEntry: Problem transforming transaction entries")
@@ -206,7 +206,7 @@ func transformAndBulkInsertTransactionEntry(entries []*lib.StateChangeEntry, db 
 }
 
 // bulkDeleteTransactionEntry deletes a batch of transaction entries from the database.
-func bulkDeleteTransactionEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteTransactionEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 

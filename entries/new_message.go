@@ -3,6 +3,7 @@ package entries
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
@@ -45,7 +46,7 @@ func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes 
 	}
 
 	pgNewMessageEntry := NewMessageEntry{
-		EncryptedText:      string(newMessageEntry.EncryptedText[:]),
+		EncryptedText:      hex.EncodeToString(newMessageEntry.EncryptedText[:]),
 		Timestamp:          consumer.UnixNanoToTime(newMessageEntry.TimestampNanos),
 		ExtraData:          consumer.ExtraDataBytesToString(newMessageEntry.ExtraData),
 		IsGroupChatMessage: isGroupChatMessage,
@@ -81,7 +82,7 @@ func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes 
 
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
 // based on the operation type and executes it.
-func NewMessageBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func NewMessageBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -98,7 +99,7 @@ func NewMessageBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, param
 }
 
 // bulkInsertNewMessageEntry inserts a batch of new_message entries into the database.
-func bulkInsertNewMessageEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertNewMessageEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -123,7 +124,7 @@ func bulkInsertNewMessageEntry(entries []*lib.StateChangeEntry, db *bun.DB, oper
 }
 
 // bulkDeletePostEntry deletes a batch of new_message entries from the database.
-func bulkDeleteNewMessageEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteNewMessageEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 

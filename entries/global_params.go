@@ -80,7 +80,7 @@ func GlobalParamsEncoderToPGStruct(globalParamsEntry *lib.GlobalParamsEntry, key
 
 // GlobalParamsBatchOperation is the entry point for processing a batch of global params entries.
 // It determines the appropriate handler based on the operation type and executes it.
-func GlobalParamsBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func GlobalParamsBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -97,7 +97,7 @@ func GlobalParamsBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, par
 }
 
 // bulkInsertGlobalParamsEntry inserts a batch of global_params entries into the database.
-func bulkInsertGlobalParamsEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertGlobalParamsEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -122,7 +122,7 @@ func bulkInsertGlobalParamsEntry(entries []*lib.StateChangeEntry, db *bun.DB, op
 }
 
 // bulkDeletePostEntry deletes a batch of global_params entries from the database.
-func bulkDeleteGlobalParamsEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteGlobalParamsEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 

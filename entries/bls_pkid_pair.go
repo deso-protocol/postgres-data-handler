@@ -77,7 +77,7 @@ func BLSPublicKeyPKIDPairSnapshotEncoderToPGStruct(
 
 // BLSPublicKeyPKIDPairBatchOperation is the entry point for processing a batch of BLSPublicKeyPKIDPair entries.
 // It determines the appropriate handler based on the operation type and executes it.
-func BLSPublicKeyPKIDPairBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func BLSPublicKeyPKIDPairBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -95,7 +95,7 @@ func BLSPublicKeyPKIDPairBatchOperation(entries []*lib.StateChangeEntry, db *bun
 
 // bulkInsertBLSPkidPairEntry inserts a batch of stake entries into the database.
 func bulkInsertBLSPkidPairEntry(
-	entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams,
+	entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams,
 ) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
@@ -149,7 +149,7 @@ func bulkInsertBLSPkidPairEntry(
 }
 
 // bulkDeleteBLSPkidPairEntry deletes a batch of stake entries from the database.
-func bulkDeleteBLSPkidPairEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteBLSPkidPairEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
