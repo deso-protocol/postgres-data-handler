@@ -60,7 +60,7 @@ func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte, param
 		IsNFT:                                    postEntry.IsNFT,
 		NumNFTCopies:                             postEntry.NumNFTCopies,
 		NumNFTCopiesForSale:                      postEntry.NumNFTCopiesForSale,
-		NumNFTCopiesBurned:						  postEntry.NumNFTCopiesBurned,
+		NumNFTCopiesBurned:                       postEntry.NumNFTCopiesBurned,
 		HasUnlockable:                            postEntry.HasUnlockable,
 		NFTRoyaltyToCreatorBasisPoints:           postEntry.NFTRoyaltyToCreatorBasisPoints,
 		NFTRoyaltyToCoinBasisPoints:              postEntry.NFTRoyaltyToCoinBasisPoints,
@@ -90,7 +90,7 @@ func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte, param
 
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
 // based on the operation type and executes it.
-func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func PostBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -107,7 +107,7 @@ func PostBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib
 }
 
 // bulkInsertPostEntry inserts a batch of post entries into the database.
-func bulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertPostEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -135,7 +135,7 @@ func bulkInsertPostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationT
 }
 
 // bulkDeletePostEntry deletes a batch of post entries from the database.
-func bulkDeletePostEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeletePostEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 

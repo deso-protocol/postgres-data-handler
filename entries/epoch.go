@@ -53,7 +53,7 @@ func EpochEntryEncoderToPGStruct(epochEntry *lib.EpochEntry, keyBytes []byte, pa
 
 // EpochEntryBatchOperation is the entry point for processing a batch of Epoch entries.
 // It determines the appropriate handler based on the operation type and executes it.
-func EpochEntryBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func EpochEntryBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -73,7 +73,7 @@ func EpochEntryBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, param
 }
 
 // bulkInsertEpochEntry inserts a batch of locked stake entries into the database.
-func bulkInsertEpochEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertEpochEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
