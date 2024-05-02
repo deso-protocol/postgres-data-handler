@@ -19,7 +19,7 @@ type DaoCoinLimitOrderEntry struct {
 	OperationType                                uint8  `bun:",nullzero"`
 	FillType                                     uint8  `bun:",nullzero"`
 	BlockHeight                                  uint32 `bun:",nullzero"`
-	IsDaoCoinConst                               bool   `bun:",nullzero"`
+	IsDaoCoinConst                               bool
 	BadgerKey                                    []byte `pg:",pk,use_zero"`
 }
 
