@@ -163,28 +163,36 @@ func bulkInsertValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, opera
 func bulkDeleteValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
+	uniqueKeys := consumer.KeysToDelete(uniqueEntries)
 
 	// Transform the entries into a list of keys to delete.
-	validatorEntriesToDelete := consumer.FilterEntriesByPrefix(uniqueEntries, lib.Prefixes.PrefixValidatorByPKID)
+	validatorKeysToDelete := consumer.FilterKeysByPrefix(uniqueKeys, lib.Prefixes.PrefixValidatorByPKID)
 
-	snapshotValidatorEntriesToDelete := consumer.FilterEntriesByPrefix(uniqueEntries, lib.Prefixes.PrefixSnapshotValidatorSetByPKID)
+	snapshotValidatorKeysToDelete := consumer.FilterKeysByPrefix(
+		uniqueKeys,
+		lib.Prefixes.PrefixSnapshotValidatorSetByPKID,
+	)
 
 	// Execute the delete query for validator entries.
-	if _, err := db.NewDelete().
-		Model(&PGValidatorEntry{}).
-		Where("badger_key IN (?)", bun.In(validatorEntriesToDelete)).
-		Returning("").
-		Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.bulkDeleteValidatorEntry: Error deleting entries")
+	if len(validatorKeysToDelete) > 0 {
+		if _, err := db.NewDelete().
+			Model(&PGValidatorEntry{}).
+			Where("badger_key IN (?)", bun.In(validatorKeysToDelete)).
+			Returning("").
+			Exec(context.Background()); err != nil {
+			return errors.Wrapf(err, "entries.bulkDeleteValidatorEntry: Error deleting entries")
+		}
 	}
 
-	// Execute the delete query.
-	if _, err := db.NewDelete().
-		Model(&PGSnapshotValidatorEntry{}).
-		Where("badger_key IN (?)", bun.In(snapshotValidatorEntriesToDelete)).
-		Returning("").
-		Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.bulkDeleteSnapshotValidatorEntry: Error deleting entries")
+	// Execute the delete query for snapshot validator entries.
+	if len(snapshotValidatorKeysToDelete) > 0 {
+		if _, err := db.NewDelete().
+			Model(&PGSnapshotValidatorEntry{}).
+			Where("badger_key IN (?)", bun.In(snapshotValidatorKeysToDelete)).
+			Returning("").
+			Exec(context.Background()); err != nil {
+			return errors.Wrapf(err, "entries.bulkDeleteSnapshotValidatorEntry: Error deleting entries")
+		}
 	}
 
 	return nil
