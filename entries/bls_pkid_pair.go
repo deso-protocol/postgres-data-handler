@@ -161,21 +161,25 @@ func bulkDeleteBLSPkidPairEntry(entries []*lib.StateChangeEntry, db bun.IDB, ope
 		lib.Prefixes.PrefixSnapshotValidatorBLSPublicKeyPKIDPairEntry)
 
 	// Execute the delete query.
-	if _, err := db.NewDelete().
-		Model(&PGBLSPkidPairEntry{}).
-		Where("badger_key IN (?)", bun.In(blsPKIDPairEntryKeysToDelete)).
-		Returning("").
-		Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.bulkDeleteBLSPkidPairEntry: Error deleting entries")
+	if len(blsPKIDPairEntryKeysToDelete) > 0 {
+		if _, err := db.NewDelete().
+			Model(&PGBLSPkidPairEntry{}).
+			Where("badger_key IN (?)", bun.In(blsPKIDPairEntryKeysToDelete)).
+			Returning("").
+			Exec(context.Background()); err != nil {
+			return errors.Wrapf(err, "entries.bulkDeleteBLSPkidPairEntry: Error deleting entries")
+		}
 	}
 
 	// Execute the delete query for snapshot entries.
-	if _, err := db.NewDelete().
-		Model(&PGBLSPublicKeyPKIDPairSnapshotEntry{}).
-		Where("badger_key IN (?)", bun.In(blsPKIDPairSnapshotEntryKeysToDelete)).
-		Returning("").
-		Exec(context.Background()); err != nil {
-		return errors.Wrapf(err, "entries.bulkDeleteBLSPkidPairEntry: Error deleting snapshot entries")
+	if len(blsPKIDPairSnapshotEntryKeysToDelete) > 0 {
+		if _, err := db.NewDelete().
+			Model(&PGBLSPublicKeyPKIDPairSnapshotEntry{}).
+			Where("badger_key IN (?)", bun.In(blsPKIDPairSnapshotEntryKeysToDelete)).
+			Returning("").
+			Exec(context.Background()); err != nil {
+			return errors.Wrapf(err, "entries.bulkDeleteBLSPkidPairEntry: Error deleting snapshot entries")
+		}
 	}
 
 	return nil
