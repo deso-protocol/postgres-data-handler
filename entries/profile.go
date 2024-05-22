@@ -49,7 +49,7 @@ func ProfileEntryEncoderToPGStruct(profileEntry *lib.ProfileEntry, keyBytes []by
 		MintingDisabled:                  profileEntry.CreatorCoinEntry.MintingDisabled,
 		DesoLockedNanos:                  profileEntry.CreatorCoinEntry.DeSoLockedNanos,
 		CcCoinsInCirculationNanos:        profileEntry.CreatorCoinEntry.CoinsInCirculationNanos.Uint64(),
-		DaoCoinsInCirculationNanosHex:    profileEntry.DAOCoinEntry.CoinsInCirculationNanos.String(),
+		DaoCoinsInCirculationNanosHex:    profileEntry.DAOCoinEntry.CoinsInCirculationNanos.Hex(),
 		DaoCoinMintingDisabled:           profileEntry.DAOCoinEntry.MintingDisabled,
 		DaoCoinTransferRestrictionStatus: profileEntry.DAOCoinEntry.TransferRestrictionStatus,
 		ExtraData:                        consumer.ExtraDataBytesToString(profileEntry.ExtraData),
