@@ -21,36 +21,34 @@ services:
       - EXPOSE_GLOBAL_STATE=false
       - SHOW_PROCESSING_SPINNERS=true
       - COMP_PROFILE_CREATION=false
+      - STATE_CHANGE_DIR=/ss/state-changes
 
 #      Hypersync Settings:
-#      - SYNC_TYPE=hypersync
-#      - HYPERSYNC=true
+      - SYNC_TYPE=hypersync
+      - HYPERSYNC=true
 #      Blocksync Settings:
-      - SYNC_TYPE=blocksync
-      - HYPERSYNC=false
+#      - SYNC_TYPE=blocksync
+#      - HYPERSYNC=false
 
 #     Mainnet Settings:
 #      - REGTEST=false
 #      - TESTNET=false
 #      - CONNECT_IPS=35.232.92.5:17000
-#      - STATE_CHANGE_DIR=/ss/state-changes
 
 #     Testnet Settings:
-      - REGTEST=false
-      - TESTNET=true
-      - CONNECT_IPS=35.192.117.201:18000
-      - STATE_CHANGE_DIR=/ss/state-changes
+#      - REGTEST=false
+#      - TESTNET=true
+#      - CONNECT_IPS=35.192.117.201:18000
 
 #      Regtest Settings:
-#      - REGTEST=true
-#      - TESTNET=true
-#      - STATE_CHANGE_DIR=/ss/state-changes
-#      - ADMIN_PUBLIC_KEYS=*
-#      - SUPER_ADMIN_PUBLIC_KEYS=*
-#      - NUM_MINING_THREADS=1
-#      - MINER_PUBLIC_KEYS=BC1YLg7Bk5sq9iNY17bAwoAYiChLYpmWEi6nY6q5gnA1UQV6xixHjfV
-#      - BLOCK_PRODUCER_SEED=essence camp ghost remove document vault ladder swim pupil index apart ring
-#      - STARTER_DESO_SEED=road congress client market couple bid risk escape artwork rookie artwork food
+      - REGTEST=true
+      - TESTNET=true
+      - ADMIN_PUBLIC_KEYS=*
+      - SUPER_ADMIN_PUBLIC_KEYS=*
+      - NUM_MINING_THREADS=1
+      - MINER_PUBLIC_KEYS=BC1YLg7Bk5sq9iNY17bAwoAYiChLYpmWEi6nY6q5gnA1UQV6xixHjfV
+      - BLOCK_PRODUCER_SEED=essence camp ghost remove document vault ladder swim pupil index apart ring
+      - STARTER_DESO_SEED=road congress client market couple bid risk escape artwork rookie artwork food
     ports:
         - '18000:18000'
         - '18001:18001'
@@ -66,6 +64,7 @@ services:
       retries: 20
       start_period: 10s
     command: ["run"]
+    entrypoint: /deso/bin/backend
   pdh:
 #    image: docker.io/desoprotocol/postgres-data-handler:c2ff0e2921911d2581685e1794a1324724997c64
     build:
@@ -89,6 +88,7 @@ services:
 #     Testnet Settings:
       - IS_TESTNET=true
     command: ["run"]
+    entrypoint: /postgres-data-handler/src/postgres-data-handler/bin/postgres-data-handler
     volumes:
       - ss_volume:/ss
     depends_on:
