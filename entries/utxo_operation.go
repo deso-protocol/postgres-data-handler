@@ -122,6 +122,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db bun.IDB, 
 		if !ok {
 			return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: Problem with entry %v", entry)
 		}
+
 		// Check to see if the state change entry has an attached block.
 		// Note that this only happens during the initial sync, in order to speed up the sync process.
 		if entry.Block != nil {
