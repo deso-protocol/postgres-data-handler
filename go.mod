@@ -1,14 +1,17 @@
-module PostgresDataHandler
+module github.com/deso-protocol/postgres-data-handler
 
 go 1.18
 
 replace github.com/deso-protocol/core => ../core/
 
+replace github.com/deso-protocol/state-consumer => ../state-consumer/
+
 require (
-	github.com/deso-protocol/backend v1.2.10-0.20230727205436-dba653dc043c
+	github.com/deso-protocol/backend v1.2.10-0.20240301035823-448ec0478e01
 	github.com/deso-protocol/core v1.2.10-0.20230314161821-4069c3e417d3
-	github.com/deso-protocol/state-consumer v1.0.4-0.20240117002702-0f75e8691905
+	github.com/deso-protocol/state-consumer v0.0.0-00010101000000-000000000000
 	github.com/golang/glog v1.0.0
+	github.com/google/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.7.1
 	github.com/uptrace/bun v1.1.14
@@ -56,7 +59,6 @@ require (
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/flatbuffers v2.0.0+incompatible // indirect
 	github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5 // indirect
-	github.com/google/uuid v1.2.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.0.5 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/h2non/bimg v1.1.5 // indirect

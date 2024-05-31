@@ -17,7 +17,7 @@ func createNewMessageEntryTable(db *bun.DB, tableName string) error {
 				recipient_access_group_key_name VARCHAR,
 				recipient_access_group_public_key VARCHAR,
 				encrypted_text VARCHAR NOT NULL,
-				is_group_chat_message BOOLEAN NOT NULL,
+				is_group_chat_message BOOLEAN,
 				timestamp TIMESTAMP NOT NULL,
 				extra_data JSONB,
 				badger_key BYTEA PRIMARY KEY

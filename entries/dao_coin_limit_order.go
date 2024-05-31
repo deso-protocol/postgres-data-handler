@@ -19,7 +19,7 @@ type DaoCoinLimitOrderEntry struct {
 	OperationType                                uint8  `bun:",nullzero"`
 	FillType                                     uint8  `bun:",nullzero"`
 	BlockHeight                                  uint32 `bun:",nullzero"`
-	IsDaoCoinConst                               bool   `bun:",nullzero"`
+	IsDaoCoinConst                               bool
 	BadgerKey                                    []byte `pg:",pk,use_zero"`
 }
 
@@ -48,7 +48,7 @@ func DaoCoinLimitOrderEncoderToPGStruct(daoCoinLimitOrder *lib.DAOCoinLimitOrder
 
 // DaoCoinLimitOrderBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
 // based on the operation type and executes it.
-func DaoCoinLimitOrderBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func DaoCoinLimitOrderBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -65,7 +65,7 @@ func DaoCoinLimitOrderBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB
 }
 
 // bulkInsertDaoCoinLimitOrderEntry inserts a batch of post_association entries into the database.
-func bulkInsertDaoCoinLimitOrderEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertDaoCoinLimitOrderEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -89,7 +89,7 @@ func bulkInsertDaoCoinLimitOrderEntry(entries []*lib.StateChangeEntry, db *bun.D
 }
 
 // bulkDeletePostEntry deletes a batch of post_association entries from the database.
-func bulkDeleteDaoCoinLimitOrderEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteDaoCoinLimitOrderEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
