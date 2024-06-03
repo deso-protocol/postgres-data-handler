@@ -9,6 +9,9 @@ import (
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+		if !calculateExplorerStatistics {
+			return nil
+		}
 
 		err := RunMigrationWithRetries(db, fmt.Sprintf(`
 			DROP MATERIALIZED VIEW IF EXISTS statistic_txn_count_all CASCADE;
