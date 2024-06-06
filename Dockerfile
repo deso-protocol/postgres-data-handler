@@ -2,10 +2,7 @@ FROM alpine:latest AS postgres-data-handler
 
 RUN apk update
 RUN apk upgrade
-RUN apk add --update bash cmake g++ gcc git make vips-dev
-
-COPY --from=golang:1.22-alpine /usr/local/go/ /usr/local/go/
-ENV PATH="/usr/local/go/bin:${PATH}"
+RUN apk add --update bash go cmake g++ gcc git make vips-dev
 
 WORKDIR /postgres-data-handler/src
 
