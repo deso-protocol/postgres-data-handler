@@ -30,10 +30,14 @@ type TransactionEntry struct {
 	PublicKey                    string
 	ExtraData                    map[string]string `bun:"type:jsonb"`
 	Signature                    []byte
-	IndexInBlock                 uint64
+	IndexInBlock                 *uint64
 	BlockHeight                  uint64
 	Timestamp                    time.Time `pg:",use_zero"`
-	BadgerKey                    []byte    `pg:",use_zero"`
+	// Atomic fields
+	WrapperTransactionHash    *string
+	IndexInWrapperTransaction *uint64
+
+	BadgerKey []byte `pg:",use_zero"`
 }
 
 type PGTransactionEntry struct {
@@ -41,7 +45,16 @@ type PGTransactionEntry struct {
 	TransactionEntry
 }
 
-func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64, blockHash string, blockHeight uint64, timestamp time.Time, params *lib.DeSoParams) (*PGTransactionEntry, error) {
+func TransactionEncoderToPGStruct(
+	transaction *lib.MsgDeSoTxn,
+	blockIndex *uint64,
+	blockHash string,
+	blockHeight uint64,
+	timestamp time.Time,
+	wrapperTransactionHash *string,
+	indexInWrapperTransaction *uint64,
+	params *lib.DeSoParams,
+) (*PGTransactionEntry, error) {
 
 	var txInputs []map[string]string
 	for _, input := range transaction.TxInputs {
@@ -70,23 +83,25 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 
 	transactionEntry := &PGTransactionEntry{
 		TransactionEntry: TransactionEntry{
-			TransactionHash: hex.EncodeToString(transaction.Hash()[:]),
-			TransactionId:   consumer.PublicKeyBytesToBase58Check(transaction.Hash()[:], params),
-			BlockHash:       blockHash,
-			Version:         uint16(transaction.TxnVersion),
-			Inputs:          txInputs,
-			Outputs:         txOutputs,
-			FeeNanos:        transaction.TxnFeeNanos,
-			TxnMeta:         transaction.TxnMeta,
-			TxnMetaBytes:    txnMetaBytes,
-			TxnBytes:        txnBytes,
-			TxnType:         uint16(transaction.TxnMeta.GetTxnType()),
-			PublicKey:       consumer.PublicKeyBytesToBase58Check(transaction.PublicKey[:], params),
-			ExtraData:       consumer.ExtraDataBytesToString(transaction.ExtraData),
-			IndexInBlock:    blockIndex,
-			BlockHeight:     blockHeight,
-			Timestamp:       timestamp,
-			BadgerKey:       transaction.Hash()[:],
+			TransactionHash:           hex.EncodeToString(transaction.Hash()[:]),
+			TransactionId:             consumer.PublicKeyBytesToBase58Check(transaction.Hash()[:], params),
+			BlockHash:                 blockHash,
+			Version:                   uint16(transaction.TxnVersion),
+			Inputs:                    txInputs,
+			Outputs:                   txOutputs,
+			FeeNanos:                  transaction.TxnFeeNanos,
+			TxnMeta:                   transaction.TxnMeta,
+			TxnMetaBytes:              txnMetaBytes,
+			TxnBytes:                  txnBytes,
+			TxnType:                   uint16(transaction.TxnMeta.GetTxnType()),
+			PublicKey:                 consumer.PublicKeyBytesToBase58Check(transaction.PublicKey[:], params),
+			ExtraData:                 consumer.ExtraDataBytesToString(transaction.ExtraData),
+			IndexInBlock:              blockIndex,
+			BlockHeight:               blockHeight,
+			Timestamp:                 timestamp,
+			WrapperTransactionHash:    wrapperTransactionHash,
+			IndexInWrapperTransaction: indexInWrapperTransaction,
+			BadgerKey:                 transaction.Hash()[:],
 		},
 	}
 
@@ -103,7 +118,7 @@ func TransactionEncoderToPGStruct(transaction *lib.MsgDeSoTxn, blockIndex uint64
 
 // TransactionBatchOperation is the entry point for processing a batch of transaction entries. It determines the appropriate handler
 // based on the operation type and executes it.
-func TransactionBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func TransactionBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -127,16 +142,41 @@ func transformTransactionEntry(entries []*lib.StateChangeEntry, params *lib.DeSo
 
 	for _, entry := range uniqueTransactions {
 		transaction := entry.Encoder.(*lib.MsgDeSoTxn)
-		transactionEntry, err := TransactionEncoderToPGStruct(transaction, 0, "", 0, time.Now(), params)
+		txIndexInBlock := uint64(0)
+		transactionEntry, err := TransactionEncoderToPGStruct(
+			transaction,
+			&txIndexInBlock,
+			"",
+			0,
+			time.Now(),
+			nil,
+			nil,
+			params,
+		)
 		if err != nil {
-			return nil, errors.Wrapf(err, "entries.transformAndBulkInsertTransactionEntry: Problem converting transaction to PG struct")
+			return nil, errors.Wrapf(
+				err,
+				"entries.transformAndBulkInsertTransactionEntry: Problem converting transaction to PG struct",
+			)
 		}
 		pgTransactionEntrySlice = append(pgTransactionEntrySlice, transactionEntry)
+		if transactionEntry.TxnMeta.GetTxnType() != lib.TxnTypeAtomicTxnsWrapper {
+			continue
+		}
+		innerTxns, err := parseInnerTxnsFromAtomicTxn(transactionEntry, params)
+		if err != nil {
+			return nil, errors.Wrapf(
+				err,
+				"entries.transformAndBulkInsertTransactionEntry: Problem parsing inner txns from atomic txn",
+			)
+		}
+		pgTransactionEntrySlice = append(pgTransactionEntrySlice, innerTxns...)
+
 	}
 	return pgTransactionEntrySlice, nil
 }
 
-func bulkInsertTransactionEntry(entries []*PGTransactionEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkInsertTransactionEntry(entries []*PGTransactionEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Bulk insert the entries.
 	transactionQuery := db.NewInsert().Model(&entries)
 
@@ -151,7 +191,7 @@ func bulkInsertTransactionEntry(entries []*PGTransactionEntry, db *bun.DB, opera
 }
 
 // transformAndBulkInsertTransactionEntry inserts a batch of user_association entries into the database.
-func transformAndBulkInsertTransactionEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func transformAndBulkInsertTransactionEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	pgTransactionEntrySlice, err := transformTransactionEntry(entries, params)
 	if err != nil {
 		return errors.Wrapf(err, "entries.transformAndBulkInsertTransactionEntry: Problem transforming transaction entries")
@@ -166,7 +206,7 @@ func transformAndBulkInsertTransactionEntry(entries []*lib.StateChangeEntry, db 
 }
 
 // bulkDeleteTransactionEntry deletes a batch of transaction entries from the database.
-func bulkDeleteTransactionEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteTransactionEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
@@ -183,4 +223,42 @@ func bulkDeleteTransactionEntry(entries []*lib.StateChangeEntry, db *bun.DB, ope
 	}
 
 	return nil
+}
+
+func parseInnerTxnsFromAtomicTxn(
+	pgAtomicTxn *PGTransactionEntry,
+	params *lib.DeSoParams,
+) (
+	[]*PGTransactionEntry,
+	error,
+) {
+	if pgAtomicTxn == nil {
+		return nil, fmt.Errorf("parseInnerTxnsFromAtomicTxn: atomicTxn is nil")
+	}
+	if pgAtomicTxn.TxnMeta.GetTxnType() != lib.TxnTypeAtomicTxnsWrapper {
+		return nil, fmt.Errorf("parseInnerTxnsFromAtomicTxn: txn is not an atomic txn")
+	}
+	realTxMeta, ok := pgAtomicTxn.TxnMeta.(*lib.AtomicTxnsWrapperMetadata)
+	if !ok {
+		return nil, fmt.Errorf("parseInnerTxnsFromAtomicTxn: txn meta is not an atomic txn wrapper")
+	}
+	innerTxns := make([]*PGTransactionEntry, 0)
+	for ii, txn := range realTxMeta.Txns {
+		indexInWrapper := uint64(ii)
+		pgInnerTxn, err := TransactionEncoderToPGStruct(
+			txn,
+			nil,
+			pgAtomicTxn.BlockHash,
+			pgAtomicTxn.BlockHeight,
+			pgAtomicTxn.Timestamp,
+			&pgAtomicTxn.TransactionHash,
+			&indexInWrapper,
+			params,
+		)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getInnerTxnsFromAtomicTxn: Problem converting inner txn to PG struct")
+		}
+		innerTxns = append(innerTxns, pgInnerTxn)
+	}
+	return innerTxns, nil
 }

@@ -62,7 +62,7 @@ func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte, params *lib.D
 
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
 // based on the operation type and executes it.
-func NftBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.DeSoParams) error {
+func NftBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -79,7 +79,7 @@ func NftBatchOperation(entries []*lib.StateChangeEntry, db *bun.DB, params *lib.
 }
 
 // bulkInsertNftEntry inserts a batch of nft entries into the database.
-func bulkInsertNftEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertNftEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -104,7 +104,7 @@ func bulkInsertNftEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationTy
 }
 
 // bulkDeletePostEntry deletes a batch of nft entries from the database.
-func bulkDeleteNftEntry(entries []*lib.StateChangeEntry, db *bun.DB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteNftEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 

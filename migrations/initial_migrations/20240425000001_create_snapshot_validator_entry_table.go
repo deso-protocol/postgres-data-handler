@@ -1,0 +1,48 @@
+package initial_migrations
+
+import (
+	"context"
+	"strings"
+
+	"github.com/uptrace/bun"
+)
+
+// TODO: Not nullable fields
+func createSnapshotValidatorEntryTable(db *bun.DB, tableName string) error {
+	_, err := db.Exec(strings.Replace(`
+			CREATE TABLE {tableName} (
+				validator_pkid VARCHAR NOT NULL,
+				domains VARCHAR ARRAY,
+				disable_delegated_stake BOOLEAN,
+				delegated_stake_commission_basis_points BIGINT,
+				voting_public_key VARCHAR,
+				voting_authorization VARCHAR,
+				total_stake_amount_nanos NUMERIC(78, 0) NOT NULL,
+				last_active_at_epoch_number BIGINT,
+				jailed_at_epoch_number BIGINT,
+				extra_data JSONB,
+				snapshot_at_epoch_number BIGINT NOT NULL,
+				badger_key BYTEA PRIMARY KEY 
+			);
+			CREATE INDEX {tableName}_validator_pkid_idx ON {tableName} (validator_pkid);
+			CREATE INDEX {tableName}_snapshot_at_epoch_number_idx ON {tableName} (snapshot_at_epoch_number);
+			CREATE INDEX {tableName}_total_stake_amount_nanos on {tableName} (total_stake_amount_nanos);
+			CREATE INDEX {tableName}_badger_key ON {tableName} (badger_key);
+		`, "{tableName}", tableName, -1))
+	// TODO: What other fields do we need indexed?
+	return err
+}
+
+func init() {
+	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
+		return createSnapshotValidatorEntryTable(db, "snapshot_validator_entry")
+	}, func(ctx context.Context, db *bun.DB) error {
+		_, err := db.Exec(`
+			DROP TABLE IF EXISTS snapshot_validator_entry;
+		`)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
