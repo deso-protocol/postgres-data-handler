@@ -212,7 +212,7 @@ func init() {
 				VALUES (NEW.pkid, NEW.public_key)
 				ON CONFLICT (public_key)
 				DO UPDATE SET pkid = EXCLUDED.pkid
-				WHERE wallet_table.pkid <> EXCLUDED.pkid;
+				WHERE wallet.pkid <> EXCLUDED.pkid;
 			
 				GET DIAGNOSTICS row_count = ROW_COUNT;
 			
