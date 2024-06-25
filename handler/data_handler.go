@@ -130,7 +130,10 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 	switch syncEvent {
 	case consumer.SyncEventStart:
 		fmt.Println("Starting sync from beginning")
-		RunMigrations(postgresDataHandler.DB, true, MigrationTypeInitial)
+		err := postgresDataHandler.ResetAndMigrateDatabase()
+		if err != nil {
+			return errors.Wrapf(err, "PostgresDataHandler.HandleSyncEvent: Error resetting and migrating database")
+		}
 	case consumer.SyncEventHypersyncStart:
 		fmt.Println("Starting hypersync")
 	case consumer.SyncEventHypersyncComplete:
@@ -142,6 +145,20 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 		go post_sync_migrations.RefreshExplorerStatistics(postgresDataHandler.DB)
 		// After hypersync, we don't need to maintain so many idle open connections.
 		postgresDataHandler.DB.SetMaxIdleConns(4)
+	}
+
+	return nil
+}
+
+func (postgresDataHandler *PostgresDataHandler) ResetAndMigrateDatabase() error {
+	// Drop and recreate the schema - essentially nuke the entire db.
+	if _, err := postgresDataHandler.DB.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
+		return fmt.Errorf("failed to reset schema: %w", err)
+	}
+
+	// Run migrations.
+	if err := RunMigrations(postgresDataHandler.DB, false, MigrationTypeInitial); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	return nil
