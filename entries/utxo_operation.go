@@ -557,6 +557,6 @@ func getInnerTxnsFromAtomicTxn(
 		len(atomicUtxoOp.AtomicTxnsInnerUtxoOps) != len(innerTxns) {
 		return nil, nil, fmt.Errorf("getInnerTxnsFromAtomicTxn: atomic txn has no inner utxo operations")
 	}
-	glog.Infof("getInnerTxnsFromAtomicTxn: Found %v inner txns", atomicUtxoOp.AtomicTxnsInnerUtxoOps)
+	glog.V(2).Infof("getInnerTxnsFromAtomicTxn: Found %v inner txns", atomicUtxoOp.AtomicTxnsInnerUtxoOps)
 	return innerTxns, atomicUtxoOp.AtomicTxnsInnerUtxoOps, nil
 }
