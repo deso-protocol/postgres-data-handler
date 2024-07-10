@@ -270,6 +270,14 @@ func bulkDeleteBlockEntriesFromKeysToDelete(db bun.IDB, keysToDelete [][]byte) e
 		Exec(context.Background()); err != nil {
 		return errors.Wrapf(err, "entries.bulkDeleteBlockEntry: Error deleting block signers")
 	}
+	// Delete any stake rewards associated with the block.
+	if _, err := db.NewDelete().
+		Model(&PGStakeReward{}).
+		Where("block_hash IN (?)", bun.In(blockHashHexesToDelete)).
+		Returning("").
+		Exec(context.Background()); err != nil {
+		return errors.Wrapf(err, "entries.bulkDeleteBlockEntry: Error deleting stake rewards")
+	}
 	return nil
 }
 
