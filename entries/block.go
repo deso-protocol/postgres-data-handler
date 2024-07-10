@@ -116,39 +116,6 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db bun.IDB, operation
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueBlocks := consumer.UniqueEntries(entries)
 
-	// We need to check if this block is replacing an existing block at the same height.
-	// If it is, we need to delete the existing block and all transactions associated with it.
-	// Get all block with matching heights and different hashes.
-	heights := make([]uint64, len(entries))
-	hashes := make([]string, len(entries))
-	for ii, entry := range uniqueBlocks {
-		heights[ii] = entry.Encoder.(*lib.MsgDeSoBlock).Header.Height
-		hash, err := entry.Encoder.(*lib.MsgDeSoBlock).Hash()
-		if err != nil {
-			return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Error getting block hash")
-		}
-		hashes[ii] = hex.EncodeToString(hash[:])
-	}
-	blocks := []*PGBlockEntry{}
-	err := db.NewSelect().
-		Model(&blocks).
-		Where("height IN (?)", bun.In(heights)).
-		Where("block_hash NOT IN (?)", bun.In(hashes)).
-		Scan(context.Background())
-	if err != nil {
-		return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Error getting blocks")
-	}
-	// If we have blocks at the same height, delete them and their transactions.
-	if len(blocks) > 0 {
-		keysToDelete := make([][]byte, len(blocks))
-		for ii, block := range blocks {
-			keysToDelete[ii] = block.BadgerKey
-		}
-		if err = bulkDeleteBlockEntriesFromKeysToDelete(db, keysToDelete); err != nil {
-			return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Error deleting blocks")
-		}
-	}
-
 	// Create a new array to hold the bun struct.
 	pgBlockEntrySlice := make([]*PGBlockEntry, 0)
 	pgTransactionEntrySlice := make([]*PGTransactionEntry, 0)
@@ -189,14 +156,27 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db bun.IDB, operation
 	blockQuery := db.NewInsert().Model(&pgBlockEntrySlice)
 
 	if operationType == lib.DbOperationTypeUpsert {
-		blockQuery = blockQuery.On("CONFLICT (block_hash) DO UPDATE")
+		blockQuery = blockQuery.On(`CONFLICT (height) DO UPDATE
+			SET prev_block_hash = EXCLUDED.prev_block_hash,
+				block_hash = EXCLUDED.block_hash,
+				txn_merkle_root = EXCLUDED.txn_merkle_root,
+				timestamp = EXCLUDED.timestamp,
+				nonce = EXCLUDED.nonce,
+				extra_nonce = EXCLUDED.extra_nonce,
+				block_version = EXCLUDED.block_version,
+				proposer_voting_public_key = EXCLUDED.proposer_voting_public_key,
+				proposer_random_seed_signature = EXCLUDED.proposer_random_seed_signature,
+				proposed_in_view = EXCLUDED.proposed_in_view,
+				proposer_vote_partial_signature = EXCLUDED.proposer_vote_partial_signature
+				WHERE handle_block_conflict(pg_block_entry.block_hash) IS NOT NULL
+		`)
 	}
 
 	if _, err := blockQuery.Exec(context.Background()); err != nil {
 		return errors.Wrapf(err, "entries.bulkInsertBlock: Error inserting entries")
 	}
 
-	if err = bulkInsertTransactionEntry(pgTransactionEntrySlice, db, operationType); err != nil {
+	if err := bulkInsertTransactionEntry(pgTransactionEntrySlice, db, operationType); err != nil {
 		return errors.Wrapf(err, "entries.bulkInsertBlock: Error inserting transaction entries")
 	}
 
