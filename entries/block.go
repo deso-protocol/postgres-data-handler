@@ -168,7 +168,7 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db bun.IDB, operation
 				proposer_random_seed_signature = EXCLUDED.proposer_random_seed_signature,
 				proposed_in_view = EXCLUDED.proposed_in_view,
 				proposer_vote_partial_signature = EXCLUDED.proposer_vote_partial_signature
-				WHERE handle_block_conflict(pg_block_entry.block_hash) IS NOT NULL
+				WHERE handle_block_conflict(pg_block_entry.block_hash, EXCLUDED.block_hash) IS NOT NULL
 		`)
 	}
 
@@ -249,6 +249,15 @@ func bulkDeleteBlockEntriesFromKeysToDelete(db bun.IDB, keysToDelete [][]byte) e
 		Returning("").
 		Exec(context.Background()); err != nil {
 		return errors.Wrapf(err, "entries.bulkDeleteBlockEntry: Error deleting block signers")
+	}
+
+	// Delete any stake rewards associated with the block.
+	if _, err := db.NewDelete().
+		Model(&PGStakeReward{}).
+		Where("block_hash IN (?)", bun.In(blockHashHexesToDelete)).
+		Returning("").
+		Exec(context.Background()); err != nil {
+		return errors.Wrapf(err, "entries.bulkDeleteBlockEntry: Error deleting stake rewards")
 	}
 	return nil
 }
