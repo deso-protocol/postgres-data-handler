@@ -12,7 +12,7 @@ func init() {
 
 			CREATE OR REPLACE FUNCTION handle_block_conflict(block_hash_val varchar) RETURNS VOID AS $$
 			BEGIN
-				DELETE FROM transaction_entry WHERE block_hash = block_hash_val;
+				DELETE FROM transaction_partitioned WHERE block_hash = block_hash_val;
 				DELETE FROM utxo_operation WHERE block_hash = block_hash_val;
 				DELETE FROM block_signer WHERE block_hash = block_hash_val;
 			END;
