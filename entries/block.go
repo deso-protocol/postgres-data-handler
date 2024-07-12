@@ -156,20 +156,7 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db bun.IDB, operation
 	blockQuery := db.NewInsert().Model(&pgBlockEntrySlice)
 
 	if operationType == lib.DbOperationTypeUpsert {
-		blockQuery = blockQuery.On(`CONFLICT (height) DO UPDATE
-			SET prev_block_hash = EXCLUDED.prev_block_hash,
-				block_hash = EXCLUDED.block_hash,
-				txn_merkle_root = EXCLUDED.txn_merkle_root,
-				timestamp = EXCLUDED.timestamp,
-				nonce = EXCLUDED.nonce,
-				extra_nonce = EXCLUDED.extra_nonce,
-				block_version = EXCLUDED.block_version,
-				proposer_voting_public_key = EXCLUDED.proposer_voting_public_key,
-				proposer_random_seed_signature = EXCLUDED.proposer_random_seed_signature,
-				proposed_in_view = EXCLUDED.proposed_in_view,
-				proposer_vote_partial_signature = EXCLUDED.proposer_vote_partial_signature
-				WHERE handle_block_conflict(pg_block_entry.block_hash, EXCLUDED.block_hash) IS NOT NULL
-		`)
+		blockQuery = blockQuery.On("CONFLICT (block_hash) DO UPDATE")
 	}
 
 	if _, err := blockQuery.Exec(context.Background()); err != nil {
@@ -272,4 +259,32 @@ func isInterfaceNil(i interface{}) bool {
 
 	value := reflect.ValueOf(i)
 	return value.Kind() == reflect.Ptr && value.IsNil()
+}
+
+func BlockNodeOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
+	operationType := entries[0].OperationType
+	if operationType == lib.DbOperationTypeDelete {
+		// This should NEVER happen.
+		return errors.New("BlockNodeOperation: Delete operation not supported")
+	}
+
+	uniqueBlockNodes := consumer.UniqueEntries(entries)
+	blockHashesToDelete := []*lib.BlockHash{}
+	for _, entry := range uniqueBlockNodes {
+		blockNode := entry.Encoder.(*lib.BlockNode)
+		if !blockNode.IsCommitted() {
+			blockHashesToDelete = append(blockHashesToDelete, blockNode.Hash)
+		}
+	}
+
+	if len(blockHashesToDelete) == 0 {
+		return nil
+	}
+
+	blockKeysToDelete := make([][]byte, len(blockHashesToDelete))
+	for ii, blockHashToDelete := range blockHashesToDelete {
+		blockKeysToDelete[ii] = lib.BlockHashToBlockKey(blockHashToDelete)
+	}
+
+	return bulkDeleteBlockEntriesFromKeysToDelete(db, blockKeysToDelete)
 }
