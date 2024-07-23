@@ -270,6 +270,15 @@ func bulkDeleteBlockEntriesFromKeysToDelete(db bun.IDB, keysToDelete [][]byte) e
 		Exec(context.Background()); err != nil {
 		return errors.Wrapf(err, "entries.bulkDeleteBlockEntry: Error deleting block signers")
 	}
+
+	// Delete any stake rewards associated with the block.
+	if _, err := db.NewDelete().
+		Model(&PGStakeReward{}).
+		Where("block_hash IN (?)", bun.In(blockHashHexesToDelete)).
+		Returning("").
+		Exec(context.Background()); err != nil {
+		return errors.Wrapf(err, "entries.bulkDeleteBlockEntry: Error deleting stake rewards")
+	}
 	return nil
 }
 
@@ -283,4 +292,32 @@ func isInterfaceNil(i interface{}) bool {
 
 	value := reflect.ValueOf(i)
 	return value.Kind() == reflect.Ptr && value.IsNil()
+}
+
+func BlockNodeOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
+	operationType := entries[0].OperationType
+	if operationType == lib.DbOperationTypeDelete {
+		// This should NEVER happen.
+		return errors.New("BlockNodeOperation: Delete operation not supported")
+	}
+
+	uniqueBlockNodes := consumer.UniqueEntries(entries)
+	blockHashesToDelete := []*lib.BlockHash{}
+	for _, entry := range uniqueBlockNodes {
+		blockNode := entry.Encoder.(*lib.BlockNode)
+		if !blockNode.IsCommitted() {
+			blockHashesToDelete = append(blockHashesToDelete, blockNode.Hash)
+		}
+	}
+
+	if len(blockHashesToDelete) == 0 {
+		return nil
+	}
+
+	blockKeysToDelete := make([][]byte, len(blockHashesToDelete))
+	for ii, blockHashToDelete := range blockHashesToDelete {
+		blockKeysToDelete[ii] = lib.BlockHashToBlockKey(blockHashToDelete)
+	}
+
+	return bulkDeleteBlockEntriesFromKeysToDelete(db, blockKeysToDelete)
 }
