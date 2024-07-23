@@ -87,7 +87,7 @@ services:
       - BATCH_BYTES=500000
       - THREAD_LIMIT=10
       - CALCULATE_EXPLORER_STATISTICS=false
-      - LOG_QUERIES=true
+      - LOG_QUERIES=false
       #     Mainnet Settings:
       #      - IS_TESTNET=false
       #     Testnet Settings:

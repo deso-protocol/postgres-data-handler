@@ -71,7 +71,7 @@ func TestDaoCoinLimitOrderFullOrderFillAtomic(t *testing.T) {
 func TestDaoCoinLimitOrderFullOrderFillSequentialBlocks(t *testing.T) {
 	t.Parallel()
 
-	testCount := 1
+	testCount := 10
 
 	testUserCount := testCount * 3
 
