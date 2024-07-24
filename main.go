@@ -68,6 +68,7 @@ func main() {
 			params.EnableRegtest()
 		}
 	}
+	lib.GlobalDeSoParams = *params
 
 	// Initialize and run a state syncer consumer.
 	stateSyncerConsumer := &consumer.StateSyncerConsumer{}
