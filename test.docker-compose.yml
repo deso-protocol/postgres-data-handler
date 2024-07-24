@@ -46,6 +46,7 @@ services:
       #      Regtest Settings:
       - REGTEST=true
       - TESTNET=true
+      - REGTEST_ACCELERATED=true
       - STATE_CHANGE_DIR=/ss/state-changes
       - ADMIN_PUBLIC_KEYS=*
       - SUPER_ADMIN_PUBLIC_KEYS=*
@@ -92,6 +93,8 @@ services:
       #      - IS_TESTNET=false
       #     Testnet Settings:
       - IS_TESTNET=true
+      - REGTEST=true
+      - ACCELERATED_REGTEST=true
     command: ["run"]
     volumes:
       - ss_volume:/ss
