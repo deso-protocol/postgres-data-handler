@@ -68,6 +68,7 @@ func main() {
 			params.EnableRegtest(isAcceleratedRegtest)
 		}
 	}
+	lib.GlobalDeSoParams = *params
 
 	// Initialize and run a state syncer consumer.
 	stateSyncerConsumer := &consumer.StateSyncerConsumer{}
@@ -136,7 +137,7 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	datadogProfiler = viper.GetBool("DATADOG_PROFILER")
 	isTestnet = viper.GetBool("IS_TESTNET")
 	isRegtest = viper.GetBool("REGTEST")
-	isAcceleratedRegtest = viper.GetBool("ACCERLATED_REGTEST")
+	isAcceleratedRegtest = viper.GetBool("ACCELERATED_REGTEST")
 
 	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest
 }
