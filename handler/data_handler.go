@@ -107,6 +107,8 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 		err = entries.GlobalParamsBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeBLSPublicKeyPKIDPairEntry:
 		err = entries.BLSPublicKeyPKIDPairBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+	case lib.EncoderTypeBlockNode:
+		err = entries.BlockNodeOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	}
 
 	if err != nil {
@@ -203,6 +205,10 @@ func (postgresDataHandler *PostgresDataHandler) RollbackTransaction() error {
 	}
 	postgresDataHandler.Txn = nil
 	return nil
+}
+
+func (postgresDataHandler *PostgresDataHandler) GetParams() *lib.DeSoParams {
+	return postgresDataHandler.Params
 }
 
 // GetDbHandle returns the correct interface to use for database operations.
