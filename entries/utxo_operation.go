@@ -244,9 +244,12 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db bun.IDB, 
 
 		transactionCount += len(utxoOperations.UtxoOpBundle)
 
-		var err error
 		// TODO: Create a wait group to wait for all the goroutines to finish.
-		transactionUpdates, affectedPublicKeys, stakeRewardEntries, jailedHistoryEntries, err =
+		utxoBundleTransactionUpdates,
+			utxoBundleAffectedPublicKeys,
+			utxoBundleStakeRewardEntries,
+			utxoBundleJailedHistoryEntries,
+			err :=
 			parseUtxoOperationBundle(
 				entry,
 				utxoOperations.UtxoOpBundle,
@@ -257,6 +260,10 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db bun.IDB, 
 		if err != nil {
 			return errors.Wrapf(err, "entries.bulkInsertUtxoOperationsEntry: Problem parsing utxo operation bundle")
 		}
+		transactionUpdates = append(transactionUpdates, utxoBundleTransactionUpdates...)
+		affectedPublicKeys = append(affectedPublicKeys, utxoBundleAffectedPublicKeys...)
+		stakeRewardEntries = append(stakeRewardEntries, utxoBundleStakeRewardEntries...)
+		jailedHistoryEntries = append(jailedHistoryEntries, utxoBundleJailedHistoryEntries...)
 
 		// Parse inner txns and their utxo operations
 		innerTransactionUpdates, innerAffectedPublicKeys, innerStakeRewardEntries, innerJailedHistoryEntries, err :=
