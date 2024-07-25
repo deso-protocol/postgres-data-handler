@@ -23,7 +23,7 @@ func main() {
 	// Initialize flags and get config values.
 	setupFlags()
 	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword,
-		explorerStatistics, datadogProfiler, isTestnet, isRegtest := getConfigValues()
+		explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest := getConfigValues()
 
 	// Print all the config values in a single printf call broken up
 	// with newlines and make it look pretty both printed out and in code
@@ -65,7 +65,7 @@ func main() {
 	if isTestnet {
 		params = &lib.DeSoTestnetParams
 		if isRegtest {
-			params.EnableRegtest()
+			params.EnableRegtest(isAcceleratedRegtest)
 		}
 	}
 
@@ -99,7 +99,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool, isTestnet bool, isRegtest bool) {
+func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool, isTestnet bool, isRegtest bool, isAcceleratedRegtest bool) {
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
@@ -136,8 +136,9 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	datadogProfiler = viper.GetBool("DATADOG_PROFILER")
 	isTestnet = viper.GetBool("IS_TESTNET")
 	isRegtest = viper.GetBool("REGTEST")
+	isAcceleratedRegtest = viper.GetBool("ACCERLATED_REGTEST")
 
-	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest
+	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest
 }
 
 func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {
