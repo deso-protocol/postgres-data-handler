@@ -116,39 +116,6 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db bun.IDB, operation
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueBlocks := consumer.UniqueEntries(entries)
 
-	// We need to check if this block is replacing an existing block at the same height.
-	// If it is, we need to delete the existing block and all transactions associated with it.
-	// Get all block with matching heights and different hashes.
-	heights := make([]uint64, len(entries))
-	hashes := make([]string, len(entries))
-	for ii, entry := range uniqueBlocks {
-		heights[ii] = entry.Encoder.(*lib.MsgDeSoBlock).Header.Height
-		hash, err := entry.Encoder.(*lib.MsgDeSoBlock).Hash()
-		if err != nil {
-			return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Error getting block hash")
-		}
-		hashes[ii] = hex.EncodeToString(hash[:])
-	}
-	blocks := []*PGBlockEntry{}
-	err := db.NewSelect().
-		Model(&blocks).
-		Where("height IN (?)", bun.In(heights)).
-		Where("block_hash NOT IN (?)", bun.In(hashes)).
-		Scan(context.Background())
-	if err != nil {
-		return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Error getting blocks")
-	}
-	// If we have blocks at the same height, delete them and their transactions.
-	if len(blocks) > 0 {
-		keysToDelete := make([][]byte, len(blocks))
-		for ii, block := range blocks {
-			keysToDelete[ii] = block.BadgerKey
-		}
-		if err = bulkDeleteBlockEntriesFromKeysToDelete(db, keysToDelete); err != nil {
-			return errors.Wrapf(err, "entries.bulkInsertBlockEntry: Error deleting blocks")
-		}
-	}
-
 	// Create a new array to hold the bun struct.
 	pgBlockEntrySlice := make([]*PGBlockEntry, 0)
 	pgTransactionEntrySlice := make([]*PGTransactionEntry, 0)
@@ -196,7 +163,7 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db bun.IDB, operation
 		return errors.Wrapf(err, "entries.bulkInsertBlock: Error inserting entries")
 	}
 
-	if err = bulkInsertTransactionEntry(pgTransactionEntrySlice, db, operationType); err != nil {
+	if err := bulkInsertTransactionEntry(pgTransactionEntrySlice, db, operationType); err != nil {
 		return errors.Wrapf(err, "entries.bulkInsertBlock: Error inserting transaction entries")
 	}
 
