@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/uptrace/bun/extra/bundebug"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
+	"strings"
 )
 
 func main() {
@@ -41,10 +43,12 @@ func main() {
 		CALCULATE_EXPLORER_STATISTICS: %t
 		DATA_DOG_PROFILER: %t
 		TESTNET: %t
+		REGTEST: %t
+		ACCELERATED_REGTEST: %t
 		`, viper.GetString("DB_HOST"), viper.GetString("DB_PORT"),
 		viper.GetString("DB_USERNAME"),
 		stateChangeDir, consumerProgressDir, batchBytes, threadLimit,
-		logQueries, explorerStatistics, datadogProfiler, isTestnet)
+		logQueries, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest)
 
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
@@ -142,6 +146,33 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest
 }
 
+type CustomQueryHook struct {
+	bundebug.QueryHook
+}
+
+func (h *CustomQueryHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent) context.Context {
+	queryStr := event.Query
+
+	if strings.HasPrefix(strings.ToUpper(queryStr), "BEGIN") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "COMMIT") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "SAVEPOINT") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "RELEASE SAVEPOINT") {
+		return ctx
+	}
+	return h.QueryHook.BeforeQuery(ctx, event)
+}
+
+func (h *CustomQueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
+	queryStr := event.Query
+	if strings.HasPrefix(strings.ToUpper(queryStr), "BEGIN") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "COMMIT") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "SAVEPOINT") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "RELEASE SAVEPOINT") {
+		return
+	}
+	h.QueryHook.AfterQuery(ctx, event)
+}
+
 func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {
 	// Open a PostgreSQL database.
 	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
@@ -158,7 +189,11 @@ func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPasswor
 
 	//Print all queries to stdout for debugging.
 	if logQueries {
-		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+		//db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+		customHook := &CustomQueryHook{
+			QueryHook: *bundebug.NewQueryHook(bundebug.WithVerbose(true)),
+		}
+		db.AddQueryHook(customHook)
 	}
 
 	// Set the readonly user password for the initial migrations.

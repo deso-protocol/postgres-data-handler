@@ -909,6 +909,8 @@ func (nodeClient *NodeClient) WaitForTxnHash(txnHash string, isMined bool) (*ent
 
 	var err error
 
+	fmt.Printf("Here is the txn hash we are waiting for: %s\n", txnHash)
+
 	for txnRes == nil || err == sql.ErrNoRows || txnRes.TransactionHash != txnHash || (isMined && txnRes.BlockHeight == 0) {
 		err = nodeClient.StateSyncerDB.NewSelect().Column("transaction_hash", "block_height").Model(txnRes).Where("transaction_hash = ?", txnHash).Scan(context.Background())
 		if err != nil && err != sql.ErrNoRows {
