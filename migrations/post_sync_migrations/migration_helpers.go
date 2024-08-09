@@ -96,7 +96,7 @@ func RunMigrationWithRetries(db *bun.DB, migrationQuery string) error {
 
 func RefreshExplorerStatistics(db *bun.DB) {
 	// Only run if explorer statistics are enabled.
-	if !calculateExplorerStatistics {
+	if !calculateExplorerStatistics || true {
 		return
 	}
 
