@@ -55,7 +55,7 @@ func main() {
 	// Setup profiler if enabled.
 	if datadogProfiler {
 		tracer.Start()
-		err := profiler.Start(profiler.WithProfileTypes(profiler.CPUProfile, profiler.BlockProfile, profiler.MutexProfile, profiler.GoroutineProfile, profiler.HeapProfile))
+		err = profiler.Start(profiler.WithProfileTypes(profiler.CPUProfile, profiler.BlockProfile, profiler.MutexProfile, profiler.GoroutineProfile, profiler.HeapProfile))
 		if err != nil {
 			glog.Fatal(err)
 		}
