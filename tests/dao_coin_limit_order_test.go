@@ -26,7 +26,7 @@ func TestDaoCoinLimitOrderFullOrderFillAtomic(t *testing.T) {
 
 	testUserCount := testCount * 3
 
-	testConfig, err := SetupTestEnvironment(testUserCount, fmt.Sprintf("%s%d", t.Name(), rand.Intn(math.MaxInt16)))
+	testConfig, err := SetupTestEnvironment(testUserCount, fmt.Sprintf("%s%d", t.Name(), rand.Intn(math.MaxInt16)), true)
 	defer CleanupTestEnvironment(t, testConfig)
 	require.NoError(t, err)
 
@@ -75,7 +75,7 @@ func TestDaoCoinLimitOrderFullOrderFillSequentialBlocks(t *testing.T) {
 
 	testUserCount := testCount * 3
 
-	testConfig, err := SetupTestEnvironment(testUserCount, fmt.Sprintf("%s%d", t.Name(), rand.Intn(math.MaxInt16)))
+	testConfig, err := SetupTestEnvironment(testUserCount, fmt.Sprintf("%s%d", t.Name(), rand.Intn(math.MaxInt16)), true)
 	defer CleanupTestEnvironment(t, testConfig)
 	require.NoError(t, err)
 

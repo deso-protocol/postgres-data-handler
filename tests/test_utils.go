@@ -28,11 +28,11 @@ type TestConfig struct {
 	TestUsers  []*TestUser
 }
 
-func SetupTestEnvironment(testUserCount int, password string) (*TestConfig, error) {
+func SetupTestEnvironment(testUserCount int, password string, setupDb bool) (*TestConfig, error) {
 	SetupFlags("../.env")
 	stateSyncerPgUri, nodeUrl, logQueries := GetConfigValues()
 
-	nodeClient, err := NewNodeClient(nodeUrl, stateSyncerPgUri, &lib.DeSoTestnetParams, logQueries)
+	nodeClient, err := NewNodeClient(nodeUrl, stateSyncerPgUri, &lib.DeSoTestnetParams, logQueries, setupDb)
 	if err != nil {
 		glog.Fatalf("Error creating node client: %v", err)
 	}
@@ -48,10 +48,10 @@ func SetupTestEnvironment(testUserCount int, password string) (*TestConfig, erro
 
 	// Before we can sign and submit the transactions, we need to ensure that the max txn size is large enough to
 	// accommodate the transactions we are about to submit. Just max that sucker out so we can have lots of headroom here.
-	_, err = IncreaseMaxTxnByteSize(nodeClient, testUsers[0], lib.MaxMaxTxnSizeBytes, true)
-	if err != nil {
-		return nil, err
-	}
+	//_, err = IncreaseMaxTxnByteSize(nodeClient, testUsers[0], lib.MaxMaxTxnSizeBytes, true)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	var txns []*lib.MsgDeSoTxn
 	var correspondingOwnerPublicKeysBase58Check []string
@@ -73,7 +73,9 @@ func SetupTestEnvironment(testUserCount int, password string) (*TestConfig, erro
 		return nil, err
 	}
 
-	_, err = nodeClient.WaitForTxnHash(submitRes.TxnHashHex, true)
+	if nodeClient.StateSyncerDB != nil {
+		_, err = nodeClient.WaitForTxnHash(submitRes.TxnHashHex, true)
+	}
 
 	return &TestConfig{
 		NodeClient: nodeClient,

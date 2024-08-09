@@ -51,46 +51,51 @@ func ConstructPgURI(
 		dbUser, dbPassword, dbHost, dbPort, dbName)
 }
 
-func NewNodeClient(nodeURL string, pgURI string, desoParams *lib.DeSoParams, logQueries bool) (*NodeClient, error) {
-	// Open a PostgreSQL database.
-	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
-	if pgdb == nil {
-		glog.Fatalf("Error connecting to postgres db at URI: %v", pgURI)
-	}
+func NewNodeClient(nodeURL string, pgURI string, desoParams *lib.DeSoParams, logQueries bool, setupDb bool) (*NodeClient, error) {
+	var db *bun.DB
 
-	// Create a Bun db on top of postgres for querying.
-	db := bun.NewDB(pgdb, pgdialect.New())
-	db.SetConnMaxLifetime(0)
-	db.SetMaxIdleConns(10)
+	if setupDb {
 
-	// Print all queries to stdout for debugging.
-	if logQueries {
-		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
-	}
+		// Open a PostgreSQL database.
+		pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
+		if pgdb == nil {
+			glog.Fatalf("Error connecting to postgres db at URI: %v", pgURI)
+		}
 
-	ctx := context.Background()
+		// Create a Bun db on top of postgres for querying.
+		db = bun.NewDB(pgdb, pgdialect.New())
+		db.SetConnMaxLifetime(0)
+		db.SetMaxIdleConns(10)
 
-	// Apply db migrations.
-	migrator := migrate.NewMigrator(db, initial_migrations.Migrations)
-	if err := migrator.Init(ctx); err != nil {
-		return nil, err
-	}
-	group, err := migrator.Migrate(ctx)
-	if err != nil {
-		return nil, err
-	}
+		// Print all queries to stdout for debugging.
+		if logQueries {
+			db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+		}
 
-	migrator = migrate.NewMigrator(db, post_sync_migrations.Migrations)
-	if err = migrator.Init(ctx); err != nil {
-		return nil, err
-	}
-	group, err = migrator.Migrate(ctx)
-	if err != nil {
-		return nil, err
-	}
+		ctx := context.Background()
 
-	if logQueries {
-		glog.Infof("Migrated to %s\n", group)
+		// Apply db migrations.
+		migrator := migrate.NewMigrator(db, initial_migrations.Migrations)
+		if err := migrator.Init(ctx); err != nil {
+			return nil, err
+		}
+		group, err := migrator.Migrate(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		migrator = migrate.NewMigrator(db, post_sync_migrations.Migrations)
+		if err = migrator.Init(ctx); err != nil {
+			return nil, err
+		}
+		group, err = migrator.Migrate(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if logQueries {
+			glog.Infof("Migrated to %s\n", group)
+		}
 	}
 
 	nodeClient := &NodeClient{
@@ -731,6 +736,15 @@ func (nodeClient *NodeClient) TransferDAOCoins(
 	signAndSubmitTxn bool,
 ) (*routes.TransferDAOCoinResponse, *routes.SubmitTransactionResponse, error) {
 	return NodePostRequest[routes.TransferDAOCoinRequest, routes.TransferDAOCoinResponse](nodeClient, routes.RoutePathTransferDAOCoin, *request, signAndSubmitTxn, privateKey, "TransactionHex", isDerived)
+}
+
+func (nodeClient *NodeClient) LockCoins(
+	request *routes.CoinLockupRequest,
+	privateKey *btcec.PrivateKey,
+	isDerived bool,
+	signAndSubmitTxn bool,
+) (*routes.CoinLockResponse, *routes.SubmitTransactionResponse, error) {
+	return NodePostRequest[routes.CoinLockupRequest, routes.CoinLockResponse](nodeClient, routes.RoutePathCoinLockup, *request, signAndSubmitTxn, privateKey, "TransactionHex", isDerived)
 }
 
 func (nodeClient *NodeClient) UpdateGlobalParams(
