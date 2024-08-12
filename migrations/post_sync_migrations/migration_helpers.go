@@ -142,7 +142,11 @@ func StartAsyncJobs(db *bun.DB) error {
 	}
 
 	for _, job := range asyncJobs {
-		if _, err = AsyncJobScheduler.NewJob(job.Schedule, job.Task); err != nil {
+		if _, err = AsyncJobScheduler.NewJob(
+			job.Schedule,
+			job.Task,
+			gocron.WithSingletonMode(gocron.LimitModeReschedule),
+		); err != nil {
 			return fmt.Errorf("error scheduling async job %s: %v", job.Name, err)
 		}
 	}
