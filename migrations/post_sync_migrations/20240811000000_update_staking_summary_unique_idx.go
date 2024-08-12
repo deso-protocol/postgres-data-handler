@@ -75,11 +75,8 @@ func init() {
 							GROUP BY stake_reward.validator_pkid) total_stake_rewards
 						   ON total_stake_rewards.validator_pkid::text = validator_entry.validator_pkid::text;
 		
-		comment on materialized view validator_stats is '@primaryKey validator_pkid
-		@unique validator_rank
-		@foreignKey (validator_pkid) references validator_entry (validator_pkid)|@foreignFieldName validatorStats|@fieldName validatorEntry';
-		
-		
+		comment on materialized view validator_stats is E'@primaryKey validator_pkid\n@unique validator_rank\n@foreignKey (validator_pkid) references validator_entry (validator_pkid)|@foreignFieldName validatorStats|@fieldName validatorEntry';
+
 		create unique index validator_stats_unique_index
 			on validator_stats (validator_pkid);
 `)
