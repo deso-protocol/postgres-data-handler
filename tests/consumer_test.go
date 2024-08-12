@@ -24,11 +24,19 @@ const (
 type TestHandler struct {
 	// Params is a struct containing the current blockchain parameters.
 	// It is used to determine which prefix to use for public keys.
-	Params *lib.DeSoParams
+	Params                *lib.DeSoParams
+	HandleEntryBatchEmit  func(batchedEntries []*lib.StateChangeEntry, emittedIdx int) error
+	handleEntryBatchCount int
 }
 
 // TODO: Figure out how to inject some tests into this (probably through the testHandler struct).
 func (th *TestHandler) HandleEntryBatch(batchedEntries []*lib.StateChangeEntry) error {
+	err := th.HandleEntryBatchEmit(batchedEntries, th.handleEntryBatchCount)
+	if err != nil {
+		return err
+	}
+	th.handleEntryBatchCount++
+
 	uniqueEntries := consumer.UniqueEntries(batchedEntries)
 	// Create a new array to hold the bun struct.
 
@@ -117,7 +125,7 @@ func TestConsumer(t *testing.T) {
 	stateChangeDir := fmt.Sprintf("./ss/state-changes-%s-%s", t.Name(), stateDirPostFix)
 	consumerProgressDir := fmt.Sprintf("./ss/consumer-progress-%s-%s", t.Name(), stateDirPostFix)
 
-	apiServer, nodeServer := newTestApiServer(t, publicKeyBase58, 17001, stateChangeDir)
+	apiServer, _ := newTestApiServer(t, publicKeyBase58, 17001, stateChangeDir)
 	require.NoError(t, err)
 
 	// Start the api server in a non-blocking way.
@@ -125,17 +133,7 @@ func TestConsumer(t *testing.T) {
 		apiServer.Start()
 	}()
 
-	stateChangeSyncer := nodeServer.StateChangeSyncer
-
-	//// Wait 2 seconds.
-	//time.Sleep(2 * time.Second)
-	//
-	//// Pause blocksync.
-	stateChangeSyncer.PauseBlocksync = false
-	//
-	//time.Sleep(2 * time.Second)
-
-	stateChangeSyncer.PauseMempoolSync = false
+	//stateChangeSyncer := nodeServer.StateChangeSyncer
 
 	testConfig, err := SetupTestEnvironment(3, fmt.Sprintf("%s%d", t.Name(), rand.Intn(math.MaxInt16)), false)
 	require.NoError(t, err)
@@ -177,8 +175,16 @@ func TestConsumer(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
+	testHandlerFunc := func(batchedEntries []*lib.StateChangeEntry, emittedIdx int) error {
+		fmt.Printf("Handling %d batched entries of type %d for idx: %d\n", len(batchedEntries), batchedEntries[0].EncoderType, emittedIdx)
+
+		return nil
+	}
+
 	testHandler := &TestHandler{
-		Params: desoParams,
+		Params:                desoParams,
+		handleEntryBatchCount: 0,
+		HandleEntryBatchEmit:  testHandlerFunc,
 	}
 
 	stateSyncerConsumer := &consumer.StateSyncerConsumer{}
@@ -189,6 +195,7 @@ func TestConsumer(t *testing.T) {
 		1,
 		testHandler,
 	)
+	require.NoError(t, err)
 
 	time.Sleep(2 * time.Hour)
 }
