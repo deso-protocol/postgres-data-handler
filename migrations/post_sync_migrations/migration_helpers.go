@@ -145,7 +145,7 @@ func StartAsyncJobs(db *bun.DB) error {
 		if _, err = AsyncJobScheduler.NewJob(
 			job.Schedule,
 			job.Task,
-			gocron.WithSingletonMode(gocron.LimitModeReschedule),
+			//gocron.WithSingletonMode(gocron.LimitModeReschedule),
 		); err != nil {
 			return fmt.Errorf("error scheduling async job %s: %v", job.Name, err)
 		}
