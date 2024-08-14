@@ -28,7 +28,7 @@ type PostgresDataHandler struct {
 }
 
 // HandleEntryBatch performs a bulk operation for a batch of entries, based on the encoder type.
-func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries []*lib.StateChangeEntry) error {
+func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries []*lib.StateChangeEntry, isMempool bool) error {
 	if len(batchedEntries) == 0 {
 		return fmt.Errorf("PostgresDataHandler.HandleEntryBatch: No entries currently batched.")
 	}

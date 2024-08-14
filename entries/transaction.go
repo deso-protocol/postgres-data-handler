@@ -134,7 +134,7 @@ func TransactionBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, para
 	return nil
 }
 
-func transformTransactionEntry(entries []*lib.StateChangeEntry, params *lib.DeSoParams) ([]*PGTransactionEntry, error) {
+func TransformTransactionEntry(entries []*lib.StateChangeEntry, params *lib.DeSoParams) ([]*PGTransactionEntry, error) {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueTransactions := consumer.UniqueEntries(entries)
 	// Create a new array to hold the bun struct.
@@ -192,7 +192,7 @@ func bulkInsertTransactionEntry(entries []*PGTransactionEntry, db bun.IDB, opera
 
 // transformAndBulkInsertTransactionEntry inserts a batch of user_association entries into the database.
 func transformAndBulkInsertTransactionEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
-	pgTransactionEntrySlice, err := transformTransactionEntry(entries, params)
+	pgTransactionEntrySlice, err := TransformTransactionEntry(entries, params)
 	if err != nil {
 		return errors.Wrapf(err, "entries.transformAndBulkInsertTransactionEntry: Problem transforming transaction entries")
 	}
