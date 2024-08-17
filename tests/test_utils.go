@@ -8,6 +8,7 @@ import (
 	"github.com/deso-protocol/backend/scripts/tools/toolslib"
 	"github.com/deso-protocol/core/lib"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/tyler-smith/go-bip39"
@@ -181,9 +182,13 @@ func CreateTestUser(starterSeed string, password string, index uint32, desoParam
 		JWT:                           jwtString,
 	}
 
-	txnBundle, err := CreateProfileForTestUser(nodeClient, testUser, userName)
-	if err != nil {
-		return nil, nil, err
+	var txnBundle *UnsubmittedTestTxnBundle
+
+	if nodeClient != nil {
+		txnBundle, err = CreateProfileForTestUser(nodeClient, testUser, userName)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	return testUser, txnBundle, nil
@@ -344,6 +349,17 @@ func ConvertToBaseUnitString(value uint64) string {
 	return strconv.FormatFloat(decimalValue, 'f', 9, 64)
 }
 
+func (nodeClient *NodeClient) WaitForNextBlock() error {
+	appState, _, err := nodeClient.GetAppState(&be_routes.GetAppStateRequest{PublicKeyBase58Check: ""}, nil, false)
+	if err != nil {
+		return errors.Wrapf(err, "Error fetching app state")
+	}
+	blockHeight := appState.BlockHeight
+
+	nodeClient.WaitForBlockHeight(blockHeight + 1)
+	return nil
+}
+
 func (nodeClient *NodeClient) WaitForBlockHeight(blockHeight uint32) {
 	for {
 		appState, _, err := nodeClient.GetAppState(&be_routes.GetAppStateRequest{PublicKeyBase58Check: ""}, nil, false)
@@ -353,4 +369,13 @@ func (nodeClient *NodeClient) WaitForBlockHeight(blockHeight uint32) {
 		// Sleep for a second before checking again.
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func RandString(n int) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
