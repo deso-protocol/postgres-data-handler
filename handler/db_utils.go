@@ -30,6 +30,14 @@ func RunMigrations(db *bun.DB, reset bool, migrationType MigrationType) error {
 	} else if migrationType == MigrationTypePostHypersync {
 		migrator = postSyncMigrator
 	}
+	if err := AcquireAdvisoryLock(db); err != nil {
+		return err
+	}
+	defer func() {
+		if err := ReleaseAdvisoryLock(db); err != nil {
+			glog.Errorf("Error releasing advisory lock: %v", err)
+		}
+	}()
 	if err := migrator.Init(ctx); err != nil {
 		glog.Fatal(err)
 	}
