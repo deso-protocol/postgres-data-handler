@@ -142,7 +142,9 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 		fmt.Println("Hypersync complete")
 	case consumer.SyncEventBlocksyncStart:
 		fmt.Println("Starting blocksync")
-		RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync)
+		if err := RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync); err != nil {
+			return fmt.Errorf("failed to run migrations: %w", err)
+		}
 		fmt.Printf("Starting to refresh explorer statistics\n")
 		go post_sync_migrations.RefreshExplorerStatistics(postgresDataHandler.DB)
 		// After hypersync, we don't need to maintain so many idle open connections.
@@ -173,6 +175,13 @@ func (postgresDataHandler *PostgresDataHandler) InitiateTransaction() error {
 		if err != nil {
 			return errors.Wrapf(err, "PostgresDataHandler.InitiateTransaction: Error rolling back current transaction")
 		}
+		if err = ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
+			// Just log the error, but this shouldn't be a problem.
+			glog.Errorf("Error releasing advisory lock: %v", err)
+		}
+	}
+	if err := AcquireAdvisoryLock(postgresDataHandler.DB); err != nil {
+		return errors.Wrapf(err, "PostgresDataHandler.InitiateTransaction: Error acquiring advisory lock")
 	}
 	tx, err := postgresDataHandler.DB.BeginTx(context.Background(), &sql.TxOptions{})
 	if err != nil {
@@ -190,6 +199,10 @@ func (postgresDataHandler *PostgresDataHandler) CommitTransaction() error {
 	if err != nil {
 		return errors.Wrapf(err, "PostgresDataHandler.CommitTransaction: Error committing transaction")
 	}
+	if err = ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
+		// Just log the error, but this shouldn't be a problem.
+		glog.Errorf("Error releasing advisory lock: %v", err)
+	}
 	postgresDataHandler.Txn = nil
 	return nil
 }
@@ -202,6 +215,10 @@ func (postgresDataHandler *PostgresDataHandler) RollbackTransaction() error {
 	err := postgresDataHandler.Txn.Rollback()
 	if err != nil {
 		return errors.Wrapf(err, "PostgresDataHandler.RollbackTransaction: Error rolling back transaction")
+	}
+	if err = ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
+		// Just log the error, but this shouldn't be a problem.
+		glog.Errorf("Error releasing advisory lock: %v", err)
 	}
 	postgresDataHandler.Txn = nil
 	return nil
@@ -218,6 +235,22 @@ func (postgresDataHandler *PostgresDataHandler) GetDbHandle() bun.IDB {
 		return postgresDataHandler.Txn
 	}
 	return postgresDataHandler.DB
+}
+
+func AcquireAdvisoryLock(db bun.IDB) error {
+	_, err := db.NewRaw("SELECT pg_advisory_lock(1);").Exec(context.Background())
+	if err != nil {
+		return errors.Wrapf(err, "AcquireAdvisoryLock: Error acquiring advisory lock")
+	}
+	return nil
+}
+
+func ReleaseAdvisoryLock(db bun.IDB) error {
+	_, err := db.NewRaw("SELECT pg_advisory_unlock(1);").Exec(context.Background())
+	if err != nil {
+		return errors.Wrapf(err, "ReleaseAdvisoryLock: Error releasing advisory lock")
+	}
+	return nil
 }
 
 // CreateSavepoint creates a savepoint in the current transaction. If no transaction is open, it returns an empty string.
