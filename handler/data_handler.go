@@ -195,13 +195,13 @@ func (postgresDataHandler *PostgresDataHandler) CommitTransaction() error {
 	if postgresDataHandler.Txn == nil {
 		return fmt.Errorf("PostgresDataHandler.CommitTransaction: No transaction to commit")
 	}
+	if err := ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
+		// Just log the error, but this shouldn't be a problem.
+		glog.Errorf("Error releasing advisory lock: %v", err)
+	}
 	err := postgresDataHandler.Txn.Commit()
 	if err != nil {
 		return errors.Wrapf(err, "PostgresDataHandler.CommitTransaction: Error committing transaction")
-	}
-	if err = ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
-		// Just log the error, but this shouldn't be a problem.
-		glog.Errorf("Error releasing advisory lock: %v", err)
 	}
 	postgresDataHandler.Txn = nil
 	return nil
