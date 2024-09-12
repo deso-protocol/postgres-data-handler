@@ -95,7 +95,7 @@ func TransactionEncoderToPGStruct(
 			TxnBytes:                  txnBytes,
 			TxnType:                   uint16(transaction.TxnMeta.GetTxnType()),
 			PublicKey:                 consumer.PublicKeyBytesToBase58Check(transaction.PublicKey[:], params),
-			ExtraData:                 consumer.ExtraDataBytesToString(transaction.ExtraData),
+			ExtraData:                 consumer.ExtraDataBytesToString(transaction.ExtraData, params),
 			IndexInBlock:              blockIndex,
 			BlockHeight:               blockHeight,
 			Timestamp:                 timestamp,

@@ -48,7 +48,7 @@ func MessageEncoderToPGStruct(messageEntry *lib.MessageEntry, keyBytes []byte, p
 		RecipientMessagingPublicKey:    consumer.PublicKeyBytesToBase58Check(messageEntry.RecipientMessagingPublicKey[:], params),
 		SenderMessagingGroupKeyName:    string(messageEntry.SenderMessagingGroupKeyName[:]),
 		RecipientMessagingGroupKeyName: string(messageEntry.RecipientMessagingGroupKeyName[:]),
-		ExtraData:                      consumer.ExtraDataBytesToString(messageEntry.ExtraData),
+		ExtraData:                      consumer.ExtraDataBytesToString(messageEntry.ExtraData, params),
 		BadgerKey:                      keyBytes,
 	}
 }

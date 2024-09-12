@@ -33,7 +33,7 @@ type PGAccessGroupEntryUtxoOps struct {
 // Convert the AccessGroup DeSo encoder to the PGAccessGroupEntry struct used by bun.
 func AccessGroupEncoderToPGStruct(accessGroupEntry *lib.AccessGroupEntry, keyBytes []byte, params *lib.DeSoParams) AccessGroupEntry {
 	pgAccessGroupEntry := AccessGroupEntry{
-		ExtraData: consumer.ExtraDataBytesToString(accessGroupEntry.ExtraData),
+		ExtraData: consumer.ExtraDataBytesToString(accessGroupEntry.ExtraData, params),
 		BadgerKey: keyBytes,
 	}
 
