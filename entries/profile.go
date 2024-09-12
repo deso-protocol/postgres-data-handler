@@ -52,7 +52,7 @@ func ProfileEntryEncoderToPGStruct(profileEntry *lib.ProfileEntry, keyBytes []by
 		DaoCoinsInCirculationNanosHex:    profileEntry.DAOCoinEntry.CoinsInCirculationNanos.Hex(),
 		DaoCoinMintingDisabled:           profileEntry.DAOCoinEntry.MintingDisabled,
 		DaoCoinTransferRestrictionStatus: profileEntry.DAOCoinEntry.TransferRestrictionStatus,
-		ExtraData:                        consumer.ExtraDataBytesToString(profileEntry.ExtraData),
+		ExtraData:                        consumer.ExtraDataBytesToString(profileEntry.ExtraData, params),
 		BadgerKey:                        keyBytes,
 	}
 

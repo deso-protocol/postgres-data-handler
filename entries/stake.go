@@ -36,7 +36,7 @@ type PGStakeEntryUtxoOps struct {
 // Convert the StakeEntry DeSo encoder to the PGStakeEntry struct used by bun.
 func StakeEncoderToPGStruct(stakeEntry *lib.StakeEntry, keyBytes []byte, params *lib.DeSoParams) StakeEntry {
 	pgStakeEntry := StakeEntry{
-		ExtraData: consumer.ExtraDataBytesToString(stakeEntry.ExtraData),
+		ExtraData: consumer.ExtraDataBytesToString(stakeEntry.ExtraData, params),
 		BadgerKey: keyBytes,
 	}
 

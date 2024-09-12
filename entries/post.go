@@ -66,7 +66,7 @@ func PostEntryEncoderToPGStruct(postEntry *lib.PostEntry, keyBytes []byte, param
 		NFTRoyaltyToCoinBasisPoints:              postEntry.NFTRoyaltyToCoinBasisPoints,
 		AdditionalNFTRoyaltiesToCoinsBasisPoints: consumer.ConvertRoyaltyMapToByteStrings(postEntry.AdditionalNFTRoyaltiesToCoinsBasisPoints),
 		AdditionalNFTRoyaltiesToCreatorsBasisPoints: consumer.ConvertRoyaltyMapToByteStrings(postEntry.AdditionalNFTRoyaltiesToCreatorsBasisPoints),
-		ExtraData: consumer.ExtraDataBytesToString(postEntry.PostExtraData),
+		ExtraData: consumer.ExtraDataBytesToString(postEntry.PostExtraData, params),
 		IsFrozen:  postEntry.IsFrozen,
 		BadgerKey: keyBytes,
 	}

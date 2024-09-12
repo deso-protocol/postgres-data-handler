@@ -42,7 +42,7 @@ func AccessGroupMemberEncoderToPGStruct(accessGroupMemberEntry *lib.AccessGroupM
 
 	pgAccessGroupMemberEntry := AccessGroupMemberEntry{
 		EncryptedKey:              accessGroupMemberEntry.EncryptedKey,
-		ExtraData:                 consumer.ExtraDataBytesToString(accessGroupMemberEntry.ExtraData),
+		ExtraData:                 consumer.ExtraDataBytesToString(accessGroupMemberEntry.ExtraData, params),
 		AccessGroupOwnerPublicKey: consumer.PublicKeyBytesToBase58Check(accessGroupOwnerPublicKey, params),
 		AccessGroupKeyName:        string(accessGroupKeyName),
 		BadgerKey:                 keyBytes,

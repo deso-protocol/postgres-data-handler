@@ -63,7 +63,7 @@ type PGSnapshotValidatorEntry struct {
 // Convert the ValidatorEntry DeSo encoder to the PGValidatorEntry struct used by bun.
 func ValidatorEncoderToPGStruct(validatorEntry *lib.ValidatorEntry, keyBytes []byte, params *lib.DeSoParams) ValidatorEntry {
 	pgValidatorEntry := ValidatorEntry{
-		ExtraData: consumer.ExtraDataBytesToString(validatorEntry.ExtraData),
+		ExtraData: consumer.ExtraDataBytesToString(validatorEntry.ExtraData, params),
 		BadgerKey: keyBytes,
 	}
 
@@ -201,7 +201,7 @@ func bulkDeleteValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, opera
 // Convert the SnapshotValidatorEntry DeSo encoder to the PGSnapshotValidatorEntry struct used by bun.
 func SnapshotValidatorEncoderToPGStruct(validatorEntry *lib.ValidatorEntry, keyBytes []byte, params *lib.DeSoParams) SnapshotValidatorEntry {
 	pgValidatorEntry := SnapshotValidatorEntry{
-		ExtraData: consumer.ExtraDataBytesToString(validatorEntry.ExtraData),
+		ExtraData: consumer.ExtraDataBytesToString(validatorEntry.ExtraData, params),
 		BadgerKey: keyBytes,
 	}
 
