@@ -23,7 +23,7 @@ func main() {
 	// Initialize flags and get config values.
 	setupFlags()
 	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword,
-		explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest := getConfigValues()
+		explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool := getConfigValues()
 
 	// Print all the config values in a single printf call broken up
 	// with newlines and make it look pretty both printed out and in code
@@ -77,6 +77,7 @@ func main() {
 		consumerProgressDir,
 		batchBytes,
 		threadLimit,
+		syncMempool,
 		&handler.PostgresDataHandler{
 			DB:     db,
 			Params: params,
@@ -100,7 +101,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool, isTestnet bool, isRegtest bool, isAcceleratedRegtest bool) {
+func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool, isTestnet bool, isRegtest bool, isAcceleratedRegtest bool, syncMempool bool) {
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
@@ -131,6 +132,8 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 		threadLimit = 25
 	}
 
+	syncMempool = viper.GetBool("SYNC_MEMPOOL")
+
 	logQueries = viper.GetBool("LOG_QUERIES")
 	readonlyUserPassword = viper.GetString("READONLY_USER_PASSWORD")
 	explorerStatistics = viper.GetBool("CALCULATE_EXPLORER_STATISTICS")
@@ -139,7 +142,7 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	isRegtest = viper.GetBool("REGTEST")
 	isAcceleratedRegtest = viper.GetBool("ACCELERATED_REGTEST")
 
-	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest
+	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool
 }
 
 func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {
