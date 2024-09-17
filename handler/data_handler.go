@@ -171,13 +171,13 @@ func (postgresDataHandler *PostgresDataHandler) ResetAndMigrateDatabase() error 
 func (postgresDataHandler *PostgresDataHandler) InitiateTransaction() error {
 	// If a transaction is already open, rollback the current transaction.
 	if postgresDataHandler.Txn != nil {
+		if err := ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
+			// Just log the error, but this shouldn't be a problem.
+			glog.Errorf("Error releasing advisory lock: %v", err)
+		}
 		err := postgresDataHandler.Txn.Rollback()
 		if err != nil {
 			return errors.Wrapf(err, "PostgresDataHandler.InitiateTransaction: Error rolling back current transaction")
-		}
-		if err = ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
-			// Just log the error, but this shouldn't be a problem.
-			glog.Errorf("Error releasing advisory lock: %v", err)
 		}
 	}
 	if err := AcquireAdvisoryLock(postgresDataHandler.DB); err != nil {
@@ -209,16 +209,16 @@ func (postgresDataHandler *PostgresDataHandler) CommitTransaction() error {
 
 func (postgresDataHandler *PostgresDataHandler) RollbackTransaction() error {
 	glog.V(2).Info("Rolling back Txn\n")
+	if err := ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
+		// Just log the error, but this shouldn't be a problem.
+		glog.Errorf("Error releasing advisory lock: %v", err)
+	}
 	if postgresDataHandler.Txn == nil {
 		return fmt.Errorf("PostgresDataHandler.RollbackTransaction: No transaction to rollback")
 	}
 	err := postgresDataHandler.Txn.Rollback()
 	if err != nil {
 		return errors.Wrapf(err, "PostgresDataHandler.RollbackTransaction: Error rolling back transaction")
-	}
-	if err = ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
-		// Just log the error, but this shouldn't be a problem.
-		glog.Errorf("Error releasing advisory lock: %v", err)
 	}
 	postgresDataHandler.Txn = nil
 	return nil
