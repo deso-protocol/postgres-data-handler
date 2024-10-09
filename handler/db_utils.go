@@ -2,34 +2,29 @@ package handler
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"github.com/deso-protocol/postgres-data-handler/migrations/initial_migrations"
 	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/golang/glog"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/driver/pgdriver"
+	"github.com/uptrace/bun/extra/bundebug"
 	"github.com/uptrace/bun/migrate"
 )
 
 type MigrationType uint8
 
 const (
-	// We intentionally skip zero as otherwise that would be the default value.
-	MigrationTypeInitial       MigrationType = 0
-	MigrationTypePostHypersync MigrationType = 1
+	MigrationContextKey = "migration_context"
 )
 
-// TODO: Make this a method on the PostgresDataHandler struct.
-func RunMigrations(db *bun.DB, reset bool, migrationType MigrationType) error {
-	ctx := context.Background()
+func RunMigrations(db *bun.DB, migrations *migrate.Migrations, ctx context.Context) error {
 	var migrator *migrate.Migrator
 
-	initialMigrator := migrate.NewMigrator(db, initial_migrations.Migrations)
-	postSyncMigrator := migrate.NewMigrator(db, post_sync_migrations.Migrations)
+	migrator = migrate.NewMigrator(db, migrations)
 
-	if migrationType == MigrationTypeInitial {
-		migrator = initialMigrator
-	} else if migrationType == MigrationTypePostHypersync {
-		migrator = postSyncMigrator
-	}
 	if err := AcquireAdvisoryLock(db); err != nil {
 		return err
 	}
@@ -40,17 +35,6 @@ func RunMigrations(db *bun.DB, reset bool, migrationType MigrationType) error {
 	}()
 	if err := migrator.Init(ctx); err != nil {
 		glog.Fatal(err)
-	}
-
-	// If resetting, revert all migrations, starting with the most recently applied.
-	if reset {
-		if err := RollbackAllMigrations(postSyncMigrator, ctx); err != nil {
-			return err
-		}
-
-		if err := RollbackAllMigrations(initialMigrator, ctx); err != nil {
-			return err
-		}
 	}
 
 	group, err := migrator.Migrate(ctx)
@@ -75,4 +59,57 @@ func RollbackAllMigrations(migrator *migrate.Migrator, ctx context.Context) erro
 		}
 	}
 	return nil
+}
+
+type DBConfig struct {
+	DBHost     string
+	DBPort     string
+	DBUsername string
+	DBPassword string
+	DBName     string
+}
+
+func SetupDb(dbConfig *DBConfig, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {
+	pgURI := PGUriFromDbConfig(dbConfig)
+	// Open a PostgreSQL database.
+	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
+	if pgdb == nil {
+		glog.Fatalf("Error connecting to postgres db at URI: %v", pgURI)
+	}
+
+	// Create a Bun db on top of postgres for querying.
+	db := bun.NewDB(pgdb, pgdialect.New())
+
+	db.SetConnMaxLifetime(0)
+
+	db.SetMaxIdleConns(threadLimit * 2)
+
+	//Print all queries to stdout for debugging.
+	if logQueries {
+		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+	}
+
+	// Set the readonly user password for the initial migrations.
+	initial_migrations.SetQueryUserPassword(readonlyUserPassword)
+
+	post_sync_migrations.SetCalculateExplorerStatistics(calculateExplorerStatistics)
+
+	ctx := CreateMigrationContext(context.Background(), dbConfig)
+	// Apply db migrations.
+	err := RunMigrations(db, initial_migrations.Migrations, ctx)
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+func CreateMigrationContext(ctx context.Context, config *DBConfig) context.Context {
+	if config != nil {
+		ctx = context.WithValue(ctx, MigrationContextKey, config)
+	}
+	return ctx
+}
+
+func PGUriFromDbConfig(config *DBConfig) string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&timeout=18000s", config.DBUsername, config.DBPassword, config.DBHost, config.DBPort, config.DBName)
 }

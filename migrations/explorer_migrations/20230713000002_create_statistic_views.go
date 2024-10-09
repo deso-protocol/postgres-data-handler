@@ -1,17 +1,12 @@
-package post_sync_migrations
+package explorer_migrations
 
 import (
 	"context"
 	"github.com/uptrace/bun"
 )
 
-// TODO: revisit access group relationships when we refactor the messaging app to use the graphql API.
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if !calculateExplorerStatistics {
-			return nil
-		}
-
 		err := RunMigrationWithRetries(db, `
 			CREATE TABLE public_key_first_transaction (
 				public_key VARCHAR PRIMARY KEY ,
@@ -1241,9 +1236,6 @@ func init() {
 
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
-		if !calculateExplorerStatistics {
-			return nil
-		}
 		_, err := db.Exec(`
 			DROP FUNCTION IF EXISTS refresh_statistic_views;
 			DROP VIEW IF EXISTS statistic_dashboard;
