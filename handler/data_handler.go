@@ -210,7 +210,14 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 			connectionString := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s", postgresDataHandler.Config.DbConfig.DBHost, postgresDataHandler.Config.DbConfig.DBPort, postgresDataHandler.Config.DbConfig.DBName, postgresDataHandler.Config.DbConfig.DBUsername, postgresDataHandler.Config.DbConfig.DBPassword)
 			// Create the subscription on the subscribed db.
 			if err := CreateSubscription(postgresDataHandler.SubscribedDB, SubscribedPublicationName, SubscribedSubscriptionName, connectionString); err != nil {
-				return fmt.Errorf("failed to create subscription: %w", err)
+				if strings.Contains(err.Error(), "already exists") {
+					err = RefreshSubscription(postgresDataHandler.SubscribedDB, SubscribedSubscriptionName)
+					if err != nil {
+						return fmt.Errorf("failed to refresh subscription: %v", err)
+					}
+				} else {
+					return fmt.Errorf("failed to create subscription: %v", err)
+				}
 			}
 
 			// If we are running the explorer stats, but don't have a subscribed db, run the explorer migrations on the main db.
