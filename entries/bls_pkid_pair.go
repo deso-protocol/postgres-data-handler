@@ -3,6 +3,7 @@ package entries
 import (
 	"context"
 	"github.com/deso-protocol/core/lib"
+	"github.com/deso-protocol/postgres-data-handler/handler"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
@@ -99,6 +100,10 @@ func bulkInsertBLSPkidPairEntry(
 ) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
+
+	// Filter out any entries that are already tracked in the cache.
+	uniqueEntries = consumer.FilterCachedEntries(uniqueEntries, handler.CachedEntries)
+
 	uniqueBLSPkidPairEntries := consumer.FilterEntriesByPrefix(
 		uniqueEntries, lib.Prefixes.PrefixValidatorBLSPublicKeyPKIDPairEntry)
 	uniqueBLSPkidPairSnapshotEntries := consumer.FilterEntriesByPrefix(
@@ -145,6 +150,11 @@ func bulkInsertBLSPkidPairEntry(
 		}
 	}
 
+	// Update the cache with the new entries.
+	for _, entry := range uniqueEntries {
+		handler.CachedEntries[string(entry.KeyBytes)] = string(entry.EncoderBytes)
+	}
+
 	return nil
 }
 
@@ -180,6 +190,11 @@ func bulkDeleteBLSPkidPairEntry(entries []*lib.StateChangeEntry, db bun.IDB, ope
 			Exec(context.Background()); err != nil {
 			return errors.Wrapf(err, "entries.bulkDeleteBLSPkidPairEntry: Error deleting snapshot entries")
 		}
+	}
+
+	// Remove the deleted entries from the cache.
+	for _, key := range keysToDelete {
+		delete(handler.CachedEntries, string(key))
 	}
 
 	return nil

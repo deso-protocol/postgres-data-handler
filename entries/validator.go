@@ -3,6 +3,7 @@ package entries
 import (
 	"context"
 	"github.com/deso-protocol/core/lib"
+	"github.com/deso-protocol/postgres-data-handler/handler"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
@@ -118,6 +119,10 @@ func ValidatorBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params
 func bulkInsertValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
+
+	// Filter out any entries that are already tracked in the cache.
+	uniqueEntries = consumer.FilterCachedEntries(uniqueEntries, handler.CachedEntries)
+
 	uniqueValidatorEntries := consumer.FilterEntriesByPrefix(uniqueEntries, lib.Prefixes.PrefixValidatorByPKID)
 	uniqueSnapshotValidatorEntries := consumer.FilterEntriesByPrefix(uniqueEntries, lib.Prefixes.PrefixSnapshotValidatorSetByPKID)
 	// Create a new array to hold the bun struct.
@@ -156,6 +161,12 @@ func bulkInsertValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, opera
 			return errors.Wrapf(err, "entries.bulkInsertValidatorEntry: Error inserting snapshot validator entries")
 		}
 	}
+
+	// Add any new entries to the cache.
+	for _, entry := range uniqueEntries {
+		handler.CachedEntries[string(entry.KeyBytes)] = string(entry.EncoderBytes)
+	}
+
 	return nil
 }
 
@@ -181,6 +192,12 @@ func bulkDeleteValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, opera
 			Returning("").
 			Exec(context.Background()); err != nil {
 			return errors.Wrapf(err, "entries.bulkDeleteValidatorEntry: Error deleting entries")
+		}
+
+		// Delete cached validator entries.
+		for _, key := range validatorKeysToDelete {
+			keyStr := string(key)
+			delete(handler.CachedEntries, keyStr)
 		}
 	}
 
