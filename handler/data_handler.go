@@ -25,9 +25,9 @@ type PostgresDataHandler struct {
 	// Params is a struct containing the current blockchain parameters.
 	// It is used to determine which prefix to use for public keys.
 	Params *lib.DeSoParams
-}
 
-var CachedEntries = make(map[string]string)
+	CachedEntries map[string]string
+}
 
 // HandleEntryBatch performs a bulk operation for a batch of entries, based on the encoder type.
 func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries []*lib.StateChangeEntry) error {
@@ -94,7 +94,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypeStakeEntry:
 		err = entries.StakeBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeValidatorEntry:
-		err = entries.ValidatorBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.ValidatorBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeLockedStakeEntry:
 		err = entries.LockedStakeBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeLockedBalanceEntry:
@@ -108,7 +108,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypeGlobalParamsEntry:
 		err = entries.GlobalParamsBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeBLSPublicKeyPKIDPairEntry:
-		err = entries.BLSPublicKeyPKIDPairBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.BLSPublicKeyPKIDPairBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeBlockNode:
 		err = entries.BlockNodeOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	}

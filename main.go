@@ -70,6 +70,8 @@ func main() {
 	}
 	lib.GlobalDeSoParams = *params
 
+	cachedEntries := make(map[string]string)
+
 	// Initialize and run a state syncer consumer.
 	stateSyncerConsumer := &consumer.StateSyncerConsumer{}
 	err = stateSyncerConsumer.InitializeAndRun(
@@ -79,8 +81,9 @@ func main() {
 		threadLimit,
 		syncMempool,
 		&handler.PostgresDataHandler{
-			DB:     db,
-			Params: params,
+			DB:            db,
+			Params:        params,
+			CachedEntries: cachedEntries,
 		},
 	)
 	if err != nil {

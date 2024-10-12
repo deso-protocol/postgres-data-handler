@@ -3,7 +3,6 @@ package entries
 import (
 	"context"
 	"github.com/deso-protocol/core/lib"
-	"github.com/deso-protocol/postgres-data-handler/handler"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
@@ -78,15 +77,15 @@ func BLSPublicKeyPKIDPairSnapshotEncoderToPGStruct(
 
 // BLSPublicKeyPKIDPairBatchOperation is the entry point for processing a batch of BLSPublicKeyPKIDPair entries.
 // It determines the appropriate handler based on the operation type and executes it.
-func BLSPublicKeyPKIDPairBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
+func BLSPublicKeyPKIDPairBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams, cachedEntries map[string]string) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
 	var err error
 	if operationType == lib.DbOperationTypeDelete {
-		err = bulkDeleteBLSPkidPairEntry(entries, db, operationType)
+		err = bulkDeleteBLSPkidPairEntry(entries, db, operationType, cachedEntries)
 	} else {
-		err = bulkInsertBLSPkidPairEntry(entries, db, operationType, params)
+		err = bulkInsertBLSPkidPairEntry(entries, db, operationType, params, cachedEntries)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.StakeBatchOperation: Problem with operation type %v", operationType)
@@ -96,13 +95,13 @@ func BLSPublicKeyPKIDPairBatchOperation(entries []*lib.StateChangeEntry, db bun.
 
 // bulkInsertBLSPkidPairEntry inserts a batch of stake entries into the database.
 func bulkInsertBLSPkidPairEntry(
-	entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams,
+	entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams, cachedEntries map[string]string,
 ) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
 	// Filter out any entries that are already tracked in the cache.
-	uniqueEntries = consumer.FilterCachedEntries(uniqueEntries, handler.CachedEntries)
+	uniqueEntries = consumer.FilterCachedEntries(uniqueEntries, cachedEntries)
 
 	uniqueBLSPkidPairEntries := consumer.FilterEntriesByPrefix(
 		uniqueEntries, lib.Prefixes.PrefixValidatorBLSPublicKeyPKIDPairEntry)
@@ -152,14 +151,14 @@ func bulkInsertBLSPkidPairEntry(
 
 	// Update the cache with the new entries.
 	for _, entry := range uniqueEntries {
-		handler.CachedEntries[string(entry.KeyBytes)] = string(entry.EncoderBytes)
+		cachedEntries[string(entry.KeyBytes)] = string(entry.EncoderBytes)
 	}
 
 	return nil
 }
 
 // bulkDeleteBLSPkidPairEntry deletes a batch of stake entries from the database.
-func bulkDeleteBLSPkidPairEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
+func bulkDeleteBLSPkidPairEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, cachedEntries map[string]string) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
@@ -194,7 +193,7 @@ func bulkDeleteBLSPkidPairEntry(entries []*lib.StateChangeEntry, db bun.IDB, ope
 
 	// Remove the deleted entries from the cache.
 	for _, key := range keysToDelete {
-		delete(handler.CachedEntries, string(key))
+		delete(cachedEntries, string(key))
 	}
 
 	return nil
