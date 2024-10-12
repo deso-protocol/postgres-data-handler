@@ -88,7 +88,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypeUtxoOperationBundle:
 		err = entries.UtxoOperationBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeBlock:
-		err = entries.BlockBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.BlockBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeTxn:
 		err = entries.TransactionBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeStakeEntry:
@@ -104,7 +104,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypeEpochEntry:
 		err = entries.EpochEntryBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypePKID:
-		err = entries.PkidBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.PkidBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeGlobalParamsEntry:
 		err = entries.GlobalParamsBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeBLSPublicKeyPKIDPairEntry:

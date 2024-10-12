@@ -90,7 +90,7 @@ func BlockEncoderToPGStruct(block *lib.MsgDeSoBlock, keyBytes []byte, params *li
 
 // PostBatchOperation is the entry point for processing a batch of post entries. It determines the appropriate handler
 // based on the operation type and executes it.
-func BlockBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
+func BlockBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams, cachedEntries map[string]string) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -98,7 +98,7 @@ func BlockBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *li
 	if operationType == lib.DbOperationTypeDelete {
 		err = bulkDeleteBlockEntry(entries, db, operationType)
 	} else {
-		err = bulkInsertBlockEntry(entries, db, operationType, params)
+		err = bulkInsertBlockEntry(entries, db, operationType, params, cachedEntries)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -107,7 +107,7 @@ func BlockBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *li
 }
 
 // bulkInsertUtxoOperationsEntry inserts a batch of user_association entries into the database.
-func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams, cachedEntries map[string]string) error {
 	// If this block is a part of the initial sync, skip it - it will be handled by the utxo operations.
 	if operationType == lib.DbOperationTypeInsert {
 		return nil
@@ -124,6 +124,12 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db bun.IDB, operation
 	for _, entry := range uniqueBlocks {
 		block := entry.Encoder.(*lib.MsgDeSoBlock)
 		blockEntry, blockSigners := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
+
+		// If the block is a factor of 10,000, reset the cached entries.
+		if blockEntry.Height%10000 == 0 {
+			cachedEntries = make(map[string]string)
+		}
+
 		pgBlockEntrySlice = append(pgBlockEntrySlice, blockEntry)
 		pgBlockSignersEntrySlice = append(pgBlockSignersEntrySlice, blockSigners...)
 		for jj, transaction := range block.Txns {
