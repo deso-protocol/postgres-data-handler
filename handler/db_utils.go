@@ -16,8 +16,10 @@ const (
 	MigrationTypeInitial       MigrationType = 0
 	MigrationTypePostHypersync MigrationType = 1
 )
+const (
+	EntryCacheSize uint = 1000000 // 1M entries
+)
 
-// TODO: Make this a method on the PostgresDataHandler struct.
 func RunMigrations(db *bun.DB, reset bool, migrationType MigrationType) error {
 	ctx := context.Background()
 	var migrator *migrate.Migrator

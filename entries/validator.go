@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/extra/bunbig"
@@ -98,7 +99,7 @@ func ValidatorEncoderToPGStruct(validatorEntry *lib.ValidatorEntry, keyBytes []b
 
 // ValidatorBatchOperation is the entry point for processing a batch of Validator entries.
 // It determines the appropriate handler based on the operation type and executes it.
-func ValidatorBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams, cachedEntries map[string]string) error {
+func ValidatorBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams, cachedEntries *lru.Cache[string, []byte]) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
@@ -115,7 +116,7 @@ func ValidatorBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params
 }
 
 // bulkInsertValidatorEntry inserts a batch of validator entries into the database.
-func bulkInsertValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams, cachedEntries map[string]string) error {
+func bulkInsertValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams, cachedEntries *lru.Cache[string, []byte]) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
@@ -163,14 +164,14 @@ func bulkInsertValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, opera
 
 	// Add any new entries to the cache.
 	for _, entry := range uniqueEntries {
-		cachedEntries[string(entry.KeyBytes)] = string(entry.EncoderBytes)
+		cachedEntries.Add(string(entry.KeyBytes), entry.EncoderBytes)
 	}
 
 	return nil
 }
 
 // bulkDeleteValidatorEntry deletes a batch of validator entries from the database.
-func bulkDeleteValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, cachedEntries map[string]string) error {
+func bulkDeleteValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, cachedEntries *lru.Cache[string, []byte]) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 	uniqueKeys := consumer.KeysToDelete(uniqueEntries)
@@ -196,7 +197,7 @@ func bulkDeleteValidatorEntry(entries []*lib.StateChangeEntry, db bun.IDB, opera
 		// Delete cached validator entries.
 		for _, key := range validatorKeysToDelete {
 			keyStr := string(key)
-			delete(cachedEntries, keyStr)
+			cachedEntries.Remove(keyStr)
 		}
 	}
 
