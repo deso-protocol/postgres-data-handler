@@ -23,7 +23,9 @@ const (
 func RunMigrations(db *bun.DB, migrations *migrate.Migrations, ctx context.Context) error {
 	var migrator *migrate.Migrator
 
-	migrator = migrate.NewMigrator(db, migrations)
+	// Make sure we don't mark a migration as successful if it fails.
+	migrationOpt := migrate.WithMarkAppliedOnSuccess(true)
+	migrator = migrate.NewMigrator(db, migrations, migrationOpt)
 
 	if err := AcquireAdvisoryLock(db); err != nil {
 		return err

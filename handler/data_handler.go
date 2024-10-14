@@ -196,6 +196,8 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 				if err := RunMigrations(postgresDataHandler.SubscribedDB, explorer_migrations.Migrations, ctx); err != nil {
 					return fmt.Errorf("failed to run migrations: %w", err)
 				}
+
+				explorer_view_migrations.SetDBConfig(postgresDataHandler.Config.SubDbConfig.DBHost, postgresDataHandler.Config.SubDbConfig.DBPort, postgresDataHandler.Config.SubDbConfig.DBUsername, postgresDataHandler.Config.SubDbConfig.DBPassword, postgresDataHandler.Config.SubDbConfig.DBName)
 				if err := RunMigrations(postgresDataHandler.DB, explorer_view_migrations.Migrations, ctx); err != nil {
 					return fmt.Errorf("failed to run migrations: %w", err)
 				}
@@ -229,7 +231,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 
 		if postgresDataHandler.Config.CalculateExplorerStats {
 			fmt.Printf("Starting to refresh explorer statistics\n")
-			go post_sync_migrations.RefreshExplorerStatistics(explorerDb)
+			go post_sync_migrations.RefreshExplorerStatistics(explorerDb, postgresDataHandler.SubscribedDB)
 		}
 
 		// Begin a new transaction, if one was being tracked previously.

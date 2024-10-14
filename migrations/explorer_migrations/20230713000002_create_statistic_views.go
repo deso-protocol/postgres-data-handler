@@ -63,7 +63,7 @@ func init() {
 				count_value bigint;
 				padded_transaction_type varchar;
 			BEGIN
-				IF transaction_type < 1 OR transaction_type > 33 THEN
+				IF transaction_type < 1 OR transaction_type > 44 THEN
 					RAISE EXCEPTION '% is not a valid transaction type', transaction_type;
 				END IF;
 			
