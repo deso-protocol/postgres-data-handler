@@ -21,9 +21,9 @@ type TransactionEntry struct {
 	FeeNanos                     uint64
 	NonceExpirationBlockHeight   uint64
 	NoncePartialId               uint64
-	TxnMeta                      lib.DeSoTxnMetadata `bun:"type:jsonb"`
-	TxIndexMetadata              lib.DeSoEncoder     `bun:"type:jsonb"`
-	TxIndexBasicTransferMetadata lib.DeSoEncoder     `bun:"type:jsonb"`
+	TxnMeta                      lib.DeSoTxnMetadata              `bun:"type:jsonb"`
+	TxIndexMetadata              consumer.ConsumerTxIndexMetadata `bun:"type:jsonb"`
+	TxIndexBasicTransferMetadata lib.DeSoEncoder                  `bun:"type:jsonb"`
 	TxnMetaBytes                 []byte
 	TxnBytes                     []byte
 	TxnType                      uint16
