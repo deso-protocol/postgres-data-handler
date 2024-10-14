@@ -142,11 +142,30 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 		fmt.Println("Hypersync complete")
 	case consumer.SyncEventBlocksyncStart:
 		fmt.Println("Starting blocksync")
+
+		// Commit the transaction if it exists.
+		commitTxn := postgresDataHandler.Txn != nil
+		if commitTxn {
+			err := postgresDataHandler.CommitTransaction()
+			if err != nil {
+				return errors.Wrapf(err, "PostgresDataHandler.HandleSyncEvent: Error committing transaction")
+			}
+		}
+
 		if err := RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync); err != nil {
 			return fmt.Errorf("failed to run migrations: %w", err)
 		}
 		fmt.Printf("Starting to refresh explorer statistics\n")
 		go post_sync_migrations.RefreshExplorerStatistics(postgresDataHandler.DB)
+
+		// Begin a new transaction, if one was being tracked previously.
+		if commitTxn {
+			err := postgresDataHandler.InitiateTransaction()
+			if err != nil {
+				return errors.Wrapf(err, "PostgresDataHandler.HandleSyncEvent: Error initiating transaction")
+			}
+		}
+
 		// After hypersync, we don't need to maintain so many idle open connections.
 		postgresDataHandler.DB.SetMaxIdleConns(4)
 	}
