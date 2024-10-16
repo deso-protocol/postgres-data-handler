@@ -5,6 +5,7 @@ import (
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
 )
@@ -127,15 +128,15 @@ func bulkDeletePkidEntry(entries []*lib.StateChangeEntry, db bun.IDB, operationT
 	return nil
 }
 
-func PkidBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams) error {
+func PkidBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams, cachedEntries *lru.Cache[string, []byte]) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
 	var err error
 	if operationType == lib.DbOperationTypeDelete {
-		err = bulkDeletePkid(entries, db, operationType)
+		err = bulkDeletePkid(entries, db, operationType, cachedEntries)
 	} else {
-		err = bulkInsertPkid(entries, db, operationType, params)
+		err = bulkInsertPkid(entries, db, operationType, params, cachedEntries)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "entries.PostBatchOperation: Problem with operation type %v", operationType)
@@ -144,12 +145,16 @@ func PkidBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib
 }
 
 // bulkInsertPkid inserts a batch of PKIDs into the database.
-func bulkInsertPkid(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams) error {
+func bulkInsertPkid(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, params *lib.DeSoParams, cachedEntries *lru.Cache[string, []byte]) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
 	uniqueLeaderScheduleEntries := consumer.FilterEntriesByPrefix(
 		uniqueEntries, lib.Prefixes.PrefixSnapshotLeaderSchedule)
+
+	// Filter out any entries that are already in the cache.
+	uniqueLeaderScheduleEntries = consumer.FilterCachedEntries(uniqueLeaderScheduleEntries, cachedEntries)
+
 	// NOTE: if we need to support parsing other indexes for PKIDs beyond LeaderSchedule,
 	// we will need to filter the uniqueEntries by the appropriate prefix and then convert
 	// the entries to the appropriate PG struct.
@@ -178,11 +183,16 @@ func bulkInsertPkid(entries []*lib.StateChangeEntry, db bun.IDB, operationType l
 		}
 	}
 
+	// Update the cached entries with the new entries.
+	for _, entry := range uniqueLeaderScheduleEntries {
+		cachedEntries.Add(string(entry.KeyBytes), entry.EncoderBytes)
+	}
+
 	return nil
 }
 
 // bulkDeletePKID deletes a batch of PKIDs from the database.
-func bulkDeletePkid(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType) error {
+func bulkDeletePkid(entries []*lib.StateChangeEntry, db bun.IDB, operationType lib.StateSyncerOperationType, cachedEntries *lru.Cache[string, []byte]) error {
 	// Track the unique entries we've inserted so we don't insert the same entry twice.
 	uniqueEntries := consumer.UniqueEntries(entries)
 
@@ -199,6 +209,11 @@ func bulkDeletePkid(entries []*lib.StateChangeEntry, db bun.IDB, operationType l
 			Exec(context.Background()); err != nil {
 			return errors.Wrapf(err, "entries.bulkDeletePkid: Error deleting entries")
 		}
+	}
+
+	// Remove the entries from the cache.
+	for _, entry := range uniqueEntries {
+		cachedEntries.Remove(string(entry.KeyBytes))
 	}
 
 	return nil

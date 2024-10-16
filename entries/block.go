@@ -124,6 +124,7 @@ func bulkInsertBlockEntry(entries []*lib.StateChangeEntry, db bun.IDB, operation
 	for _, entry := range uniqueBlocks {
 		block := entry.Encoder.(*lib.MsgDeSoBlock)
 		blockEntry, blockSigners := BlockEncoderToPGStruct(block, entry.KeyBytes, params)
+
 		pgBlockEntrySlice = append(pgBlockEntrySlice, blockEntry)
 		pgBlockSignersEntrySlice = append(pgBlockSignersEntrySlice, blockSigners...)
 		for jj, transaction := range block.Txns {

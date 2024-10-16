@@ -14,6 +14,7 @@ import (
 	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
+	"github.com/hashicorp/golang-lru/v2"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
 	"strings"
@@ -49,6 +50,8 @@ type PostgresDataHandler struct {
 	SubscribedDB *bun.DB
 	// The config for the data handler.
 	Config *PostgresDataHandlerConfig
+
+	CachedEntries *lru.Cache[string, []byte]
 }
 
 // HandleEntryBatch performs a bulk operation for a batch of entries, based on the encoder type.
@@ -116,7 +119,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypeStakeEntry:
 		err = entries.StakeBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeValidatorEntry:
-		err = entries.ValidatorBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.ValidatorBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeLockedStakeEntry:
 		err = entries.LockedStakeBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeLockedBalanceEntry:
@@ -126,11 +129,11 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypeEpochEntry:
 		err = entries.EpochEntryBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypePKID:
-		err = entries.PkidBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.PkidBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeGlobalParamsEntry:
 		err = entries.GlobalParamsBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeBLSPublicKeyPKIDPairEntry:
-		err = entries.BLSPublicKeyPKIDPairBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.BLSPublicKeyPKIDPairBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeBlockNode:
 		err = entries.BlockNodeOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	}
