@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/state-consumer/consumer"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
 )
@@ -39,7 +40,7 @@ func UnjailValidatorStateChangeMetadataEncoderToPGStruct(
 
 // ValidatorBatchOperation is the entry point for processing a batch of Validator entries.
 // It determines the appropriate handler based on the operation type and executes it.
-func JailedHistoryEventBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams, cachedEntries map[string]string) error {
+func JailedHistoryEventBatchOperation(entries []*lib.StateChangeEntry, db bun.IDB, params *lib.DeSoParams, cachedEntries *lru.Cache[string, []byte]) error {
 	// We check before we call this function that there is at least one operation type.
 	// We also ensure before this that all entries have the same operation type.
 	operationType := entries[0].OperationType
