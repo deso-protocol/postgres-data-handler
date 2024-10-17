@@ -1,4 +1,4 @@
-package post_sync_migrations
+package explorer_migrations
 
 import (
 	"context"
@@ -8,9 +8,6 @@ import (
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if !calculateExplorerStatistics {
-			return nil
-		}
 		_, err := db.Exec(`
 		DROP MATERIALIZED VIEW IF EXISTS validator_stats;
 create materialized view validator_stats as
@@ -52,9 +49,6 @@ CREATE UNIQUE INDEX validator_stats_unique_index ON validator_stats (validator_p
 
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
-		if !calculateExplorerStatistics {
-			return nil
-		}
 		_, err := db.Exec(`
 			DROP MATERIALIZED VIEW IF EXISTS validator_stats CASCADE;
 CREATE MATERIALIZED VIEW validator_stats as

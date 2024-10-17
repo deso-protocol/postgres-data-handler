@@ -1,4 +1,4 @@
-package post_sync_migrations
+package explorer_migrations
 
 import (
 	"context"
@@ -8,9 +8,6 @@ import (
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if !calculateExplorerStatistics {
-			return nil
-		}
 		_, err := db.Exec(`
 		drop materialized view validator_stats;
 		drop materialized view staking_summary;
@@ -86,9 +83,6 @@ func init() {
 
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
-		if !calculateExplorerStatistics {
-			return nil
-		}
 		_, err := db.Exec(`
 			drop materialized view validator_stats;
 			drop materialized view staking_summary;
