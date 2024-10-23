@@ -481,7 +481,7 @@ func RefreshSubscription(db *bun.DB, subscriptionName string) error {
 }
 
 func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publicationName string, subscriptionName string, connectionString string) error {
-	// Step 1: Check if the publication exists on the publisher database
+	// Check if the publication exists on the publisher database
 	var publicationExists bool
 	query := "SELECT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = ?);"
 	err := publisherDB.NewRaw(query, publicationName).Scan(context.Background(), &publicationExists)
@@ -490,10 +490,10 @@ func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publ
 	}
 
 	if !publicationExists {
-		return fmt.Errorf("Publication %s does not exist on the publisher", publicationName)
+		return nil
 	}
 
-	// Step 2: Check if the subscription exists on the subscriber database
+	// Check if the subscription exists on the subscriber database
 	var subscriptionExists bool
 	query = "SELECT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = ?);"
 	err = subscriberDB.NewRaw(query, subscriptionName).Scan(context.Background(), &subscriptionExists)
@@ -501,7 +501,7 @@ func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publ
 		return errors.Wrapf(err, "Error checking subscription %s", subscriptionName)
 	}
 
-	// Step 3: If the subscription exists, refresh it
+	// If the subscription exists, refresh it
 	if subscriptionExists {
 		err = RefreshSubscription(subscriberDB, subscriptionName)
 		if err != nil {
@@ -509,7 +509,7 @@ func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publ
 		}
 		fmt.Printf("Subscription %s refreshed successfully\n", subscriptionName)
 	} else {
-		// Step 4: Check if the replication slot already exists on the publisher database
+		// Check if the replication slot already exists on the publisher database
 		var replicationSlotExists bool
 		query = "SELECT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = ?);"
 		err = publisherDB.NewRaw(query, subscriptionName).Scan(context.Background(), &replicationSlotExists)
@@ -521,7 +521,7 @@ func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publ
 			fmt.Printf("Replication slot %s already exists on the publisher, reusing it\n", subscriptionName)
 		}
 
-		// Step 5: Create the subscription, even if the replication slot exists, it should reuse it
+		// Create the subscription, even if the replication slot exists, it should reuse it
 		err = CreateSubscription(subscriberDB, publicationName, subscriptionName, connectionString, replicationSlotExists)
 		if err != nil {
 			return errors.Wrapf(err, "Error creating subscription %s", subscriptionName)
