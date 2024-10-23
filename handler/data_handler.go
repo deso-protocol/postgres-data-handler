@@ -253,6 +253,18 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 }
 
 func (postgresDataHandler *PostgresDataHandler) ResetAndMigrateDatabase() error {
+	if postgresDataHandler.Config.SubDbConfig.DBHost != "" {
+		if _, err := postgresDataHandler.SubscribedDB.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
+			return fmt.Errorf("failed to reset schema: %w", err)
+		}
+
+		ctx := CreateMigrationContext(context.Background(), postgresDataHandler.Config.SubDbConfig)
+		// Run migrations.
+		if err := RunMigrations(postgresDataHandler.SubscribedDB, initial_migrations.Migrations, ctx); err != nil {
+			return fmt.Errorf("failed to run migrations: %w", err)
+		}
+	}
+
 	// Drop and recreate the schema - essentially nuke the entire db.
 	if _, err := postgresDataHandler.DB.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
 		return fmt.Errorf("failed to reset schema: %w", err)
@@ -263,19 +275,6 @@ func (postgresDataHandler *PostgresDataHandler) ResetAndMigrateDatabase() error 
 	if err := RunMigrations(postgresDataHandler.DB, initial_migrations.Migrations, ctx); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
-
-	if postgresDataHandler.Config.SubDbConfig.DBHost != "" {
-		if _, err := postgresDataHandler.SubscribedDB.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
-			return fmt.Errorf("failed to reset schema: %w", err)
-		}
-
-		ctx = CreateMigrationContext(context.Background(), postgresDataHandler.Config.SubDbConfig)
-		// Run migrations.
-		if err := RunMigrations(postgresDataHandler.SubscribedDB, initial_migrations.Migrations, ctx); err != nil {
-			return fmt.Errorf("failed to run migrations: %w", err)
-		}
-	}
-
 	return nil
 }
 
