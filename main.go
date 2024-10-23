@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/postgres-data-handler/handler"
 	"github.com/deso-protocol/state-consumer/consumer"
@@ -77,11 +78,20 @@ func main() {
 		DbConfig:               dbConfig,
 		SubDbConfig:            subDbConfig,
 		CalculateExplorerStats: explorerStatistics,
-  }
-  
+	}
+
 	cachedEntries, err := lru.New[string, []byte](int(handler.EntryCacheSize))
 	if err != nil {
 		glog.Fatalf("Error creating LRU cache: %v", err)
+	}
+
+	if subDbConfig != nil {
+		connectionString := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s", pdhConfig.DbConfig.DBHost, pdhConfig.DbConfig.DBPort, pdhConfig.DbConfig.DBName, pdhConfig.DbConfig.DBUsername, pdhConfig.DbConfig.DBPassword)
+
+		err = handler.SyncPublicationSubscription(db, subDb, handler.SubscribedPublicationName, handler.SubscribedSubscriptionName, connectionString)
+		if err != nil {
+			glog.Fatalf("Error syncing publication and subscription: %v", err)
+		}
 	}
 
 	// Initialize and run a state syncer consumer.
@@ -93,10 +103,10 @@ func main() {
 		threadLimit,
 		syncMempool,
 		&handler.PostgresDataHandler{
-			DB:           db,
-			SubscribedDB: subDb,
-			Params:       params,
-			Config:       pdhConfig,
+			DB:            db,
+			SubscribedDB:  subDb,
+			Params:        params,
+			Config:        pdhConfig,
 			CachedEntries: cachedEntries,
 		},
 	)

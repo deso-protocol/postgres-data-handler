@@ -456,12 +456,6 @@ func CreatePublication(db *bun.DB, publicationName string, excludeTables []strin
 }
 
 func CreateSubscription(db *bun.DB, publicationName string, subscriptionName string, connectionString string) error {
-
-	//_, err = db.Exec(fmt.Sprintf("DROP SUBSCRIPTION IF EXISTS %s;", subscriptionName))
-	//if err != nil {
-	//	return errors.Wrapf(err, "CreateSubscription: Error dropping subscription")
-	//}
-
 	_, err := db.Exec(fmt.Sprintf("CREATE SUBSCRIPTION %s CONNECTION '%s' PUBLICATION %s;", subscriptionName, connectionString, publicationName))
 	if err != nil {
 		return errors.Wrapf(err, "CreateSubscription: Error creating subscription")
@@ -474,5 +468,48 @@ func RefreshSubscription(db *bun.DB, subscriptionName string) error {
 	if err != nil {
 		return errors.Wrapf(err, "RefreshSubscription: Error refreshing subscription")
 	}
+	return nil
+}
+
+func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publicationName string, subscriptionName string, connectionString string) error {
+	// Step 1: Check if the publication exists on the publisher database
+	var publicationExists bool
+	err := publisherDB.QueryRow(
+		"SELECT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = $1);",
+		publicationName,
+	).Scan(&publicationExists)
+	if err != nil {
+		return errors.Wrapf(err, "Error checking publication %s", publicationName)
+	}
+
+	if !publicationExists {
+		return fmt.Errorf("Publication %s does not exist on the publisher", publicationName)
+	}
+
+	// Step 2: Check if the subscription exists on the subscriber database
+	var subscriptionExists bool
+	err = subscriberDB.QueryRow(
+		"SELECT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = $1);",
+		subscriptionName,
+	).Scan(&subscriptionExists)
+	if err != nil {
+		return errors.Wrapf(err, "Error checking subscription %s", subscriptionName)
+	}
+
+	// Step 3: If the subscription exists, refresh it. Otherwise, create it.
+	if subscriptionExists {
+		err = RefreshSubscription(subscriberDB, subscriptionName)
+		if err != nil {
+			return errors.Wrapf(err, "Error refreshing subscription %s", subscriptionName)
+		}
+		fmt.Printf("Subscription %s refreshed successfully\n", subscriptionName)
+	} else {
+		err = CreateSubscription(subscriberDB, publicationName, subscriptionName, connectionString)
+		if err != nil {
+			return errors.Wrapf(err, "Error creating subscription %s", subscriptionName)
+		}
+		fmt.Printf("Subscription %s created successfully\n", subscriptionName)
+	}
+
 	return nil
 }
