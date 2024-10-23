@@ -475,7 +475,7 @@ func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publ
 	// Step 1: Check if the publication exists on the publisher database
 	var publicationExists bool
 	err := publisherDB.QueryRow(
-		"SELECT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = $1);",
+		"SELECT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = ?);",
 		publicationName,
 	).Scan(&publicationExists)
 	if err != nil {
@@ -489,7 +489,7 @@ func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publ
 	// Step 2: Check if the subscription exists on the subscriber database
 	var subscriptionExists bool
 	err = subscriberDB.QueryRow(
-		"SELECT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = $1);",
+		"SELECT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = ?);",
 		subscriptionName,
 	).Scan(&subscriptionExists)
 	if err != nil {
