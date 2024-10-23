@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/postgres-data-handler/handler"
+	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
 	"github.com/hashicorp/golang-lru/v2"
@@ -54,6 +56,9 @@ func main() {
 		if err != nil {
 			glog.Fatalf("Error setting up DB: %v", err)
 		}
+		ctx := handler.CreateMigrationContext(context.Background(), dbConfig)
+		// Run post sync migrations immediately after setting up the sub db.
+		err = handler.RunMigrations(subDb, post_sync_migrations.Migrations, ctx)
 	}
 
 	// Setup profiler if enabled.
