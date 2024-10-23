@@ -458,7 +458,7 @@ func CreatePublication(db *bun.DB, publicationName string, excludeTables []strin
 func CreateSubscription(db *bun.DB, publicationName string, subscriptionName string, connectionString string, reuseSlot bool) error {
 	var query string
 	if reuseSlot {
-		query = fmt.Sprintf("CREATE SUBSCRIPTION %s CONNECTION '%s' PUBLICATION %s WITH (slot_name = '%s');",
+		query = fmt.Sprintf("CREATE SUBSCRIPTION %s CONNECTION '%s' PUBLICATION %s WITH (slot_name = '%s', create_slot = false);",
 			subscriptionName, connectionString, publicationName, subscriptionName)
 	} else {
 		query = fmt.Sprintf("CREATE SUBSCRIPTION %s CONNECTION '%s' PUBLICATION %s;",
