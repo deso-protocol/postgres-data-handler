@@ -214,7 +214,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 
 			connectionString := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s", postgresDataHandler.Config.DbConfig.DBHost, postgresDataHandler.Config.DbConfig.DBPort, postgresDataHandler.Config.DbConfig.DBName, postgresDataHandler.Config.DbConfig.DBUsername, postgresDataHandler.Config.DbConfig.DBPassword)
 			// Create the subscription on the subscribed db.
-			if err := CreateSubscription(postgresDataHandler.SubscribedDB, SubscribedPublicationName, SubscribedSubscriptionName, connectionString); err != nil {
+			if err := CreateSubscription(postgresDataHandler.SubscribedDB, SubscribedPublicationName, SubscribedSubscriptionName, connectionString, false); err != nil {
 				if strings.Contains(err.Error(), "already exists") {
 					err = RefreshSubscription(postgresDataHandler.SubscribedDB, SubscribedSubscriptionName)
 					if err != nil {
@@ -455,11 +455,21 @@ func CreatePublication(db *bun.DB, publicationName string, excludeTables []strin
 	return nil
 }
 
-func CreateSubscription(db *bun.DB, publicationName string, subscriptionName string, connectionString string) error {
-	_, err := db.Exec(fmt.Sprintf("CREATE SUBSCRIPTION %s CONNECTION '%s' PUBLICATION %s;", subscriptionName, connectionString, publicationName))
+func CreateSubscription(db *bun.DB, publicationName string, subscriptionName string, connectionString string, reuseSlot bool) error {
+	var query string
+	if reuseSlot {
+		query = fmt.Sprintf("CREATE SUBSCRIPTION %s CONNECTION '%s' PUBLICATION %s WITH (slot_name = '%s');",
+			subscriptionName, connectionString, publicationName, subscriptionName)
+	} else {
+		query = fmt.Sprintf("CREATE SUBSCRIPTION %s CONNECTION '%s' PUBLICATION %s;",
+			subscriptionName, connectionString, publicationName)
+	}
+
+	_, err := db.Exec(query)
 	if err != nil {
 		return errors.Wrapf(err, "CreateSubscription: Error creating subscription")
 	}
+
 	return nil
 }
 
@@ -513,7 +523,7 @@ func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publ
 		}
 
 		// Step 5: Create the subscription, even if the replication slot exists, it should reuse it
-		err = CreateSubscription(subscriberDB, publicationName, subscriptionName, connectionString)
+		err = CreateSubscription(subscriberDB, publicationName, subscriptionName, connectionString, replicationSlotExists)
 		if err != nil {
 			return errors.Wrapf(err, "Error creating subscription %s", subscriptionName)
 		}
