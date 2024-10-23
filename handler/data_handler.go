@@ -237,12 +237,10 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 			go post_sync_migrations.RefreshExplorerStatistics(explorerDb, postgresDataHandler.SubscribedDB)
 		}
 
-		// Begin a new transaction, if one was being tracked previously.
-		if commitTxn {
-			err := postgresDataHandler.InitiateTransaction()
-			if err != nil {
-				return errors.Wrapf(err, "PostgresDataHandler.HandleSyncEvent: Error initiating transaction")
-			}
+		// Begin a new transaction.
+		err := postgresDataHandler.InitiateTransaction()
+		if err != nil {
+			return errors.Wrapf(err, "PostgresDataHandler.HandleSyncEvent: Error initiating transaction")
 		}
 
 		// After hypersync, we don't need to maintain so many idle open connections.
