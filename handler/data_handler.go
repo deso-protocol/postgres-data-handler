@@ -478,7 +478,7 @@ func RefreshSubscription(db *bun.DB, subscriptionName string) error {
 	return nil
 }
 
-func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publicationName string, subscriptionName string, connectionString string) error {
+func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publicationName string, subscriptionName string, connectionString string, subDbConfig *DBConfig) error {
 	// Check if the publication exists on the publisher database
 	var publicationExists bool
 	query := "SELECT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = ?);"
@@ -489,6 +489,18 @@ func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publ
 
 	if !publicationExists {
 		return nil
+	}
+
+	// Run migrations on the subscriber db.
+	ctx := CreateMigrationContext(context.Background(), subDbConfig)
+	// Run post sync migrations immediately after setting up the sub db.
+	err = RunMigrations(subscriberDB, initial_migrations.Migrations, ctx)
+	if err != nil {
+		return errors.Wrapf(err, "Error running migrations on subscriber database")
+	}
+	err = RunMigrations(subscriberDB, post_sync_migrations.Migrations, ctx)
+	if err != nil {
+		return errors.Wrapf(err, "Error running post sync migrations on subscriber database")
 	}
 
 	// Check if the subscription exists on the subscriber database
