@@ -30,9 +30,9 @@ func createProfileEntryTable(db *bun.DB, tableName string) error {
 						CASE
 						WHEN cc_coins_in_circulation_nanos = 0 THEN 0
 						ELSE
-								(
+								(ROUND((
 						deso_locked_nanos::NUMERIC / (cc_coins_in_circulation_nanos::NUMERIC * 0.33333) * 1e9
-				)::NUMERIC
+				)::NUMERIC, 0))::NUMERIC
 						END
 				) STORED
 			);

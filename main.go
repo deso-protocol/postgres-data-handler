@@ -1,20 +1,15 @@
 package main
 
 import (
-	"database/sql"
 	"flag"
 	"fmt"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/postgres-data-handler/handler"
-	"github.com/deso-protocol/postgres-data-handler/migrations/initial_migrations"
-	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
+	"github.com/hashicorp/golang-lru/v2"
 	"github.com/spf13/viper"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
-	"github.com/uptrace/bun/driver/pgdriver"
-	"github.com/uptrace/bun/extra/bundebug"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 )
@@ -22,8 +17,8 @@ import (
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
-	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword,
-		explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool := getConfigValues()
+	stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword,
+		explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool, dbConfig, subDbConfig := getConfigValues()
 
 	// Print all the config values in a single printf call broken up
 	// with newlines and make it look pretty both printed out and in code
@@ -47,9 +42,18 @@ func main() {
 		logQueries, explorerStatistics, datadogProfiler, isTestnet)
 
 	// Initialize the DB.
-	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
+	db, err := handler.SetupDb(dbConfig, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
 	if err != nil {
 		glog.Fatalf("Error setting up DB: %v", err)
+	}
+
+	var subDb *bun.DB
+
+	if subDbConfig != nil {
+		subDb, err = handler.SetupDb(subDbConfig, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
+		if err != nil {
+			glog.Fatalf("Error setting up DB: %v", err)
+		}
 	}
 
 	// Setup profiler if enabled.
@@ -70,6 +74,26 @@ func main() {
 	}
 	lib.GlobalDeSoParams = *params
 
+	pdhConfig := &handler.PostgresDataHandlerConfig{
+		DbConfig:               dbConfig,
+		SubDbConfig:            subDbConfig,
+		CalculateExplorerStats: explorerStatistics,
+	}
+
+	cachedEntries, err := lru.New[string, []byte](int(handler.EntryCacheSize))
+	if err != nil {
+		glog.Fatalf("Error creating LRU cache: %v", err)
+	}
+
+	if subDbConfig != nil {
+		connectionString := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s", pdhConfig.DbConfig.DBHost, pdhConfig.DbConfig.DBPort, pdhConfig.DbConfig.DBName, pdhConfig.DbConfig.DBUsername, pdhConfig.DbConfig.DBPassword)
+
+		err = handler.SyncPublicationSubscription(db, subDb, handler.SubscribedPublicationName, handler.SubscribedSubscriptionName, connectionString, subDbConfig)
+		if err != nil {
+			glog.Fatalf("Error syncing publication and subscription: %v", err)
+		}
+	}
+
 	// Initialize and run a state syncer consumer.
 	stateSyncerConsumer := &consumer.StateSyncerConsumer{}
 	err = stateSyncerConsumer.InitializeAndRun(
@@ -79,8 +103,11 @@ func main() {
 		threadLimit,
 		syncMempool,
 		&handler.PostgresDataHandler{
-			DB:     db,
-			Params: params,
+			DB:            db,
+			SubscribedDB:  subDb,
+			Params:        params,
+			Config:        pdhConfig,
+			CachedEntries: cachedEntries,
 		},
 	)
 	if err != nil {
@@ -101,14 +128,35 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool, isTestnet bool, isRegtest bool, isAcceleratedRegtest bool, syncMempool bool) {
+func getConfigValues() (stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool, isTestnet bool, isRegtest bool, isAcceleratedRegtest bool, syncMempool bool, dbConfig *handler.DBConfig, subDbConfig *handler.DBConfig) {
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
 	dbUsername := viper.GetString("DB_USERNAME")
 	dbPassword := viper.GetString("DB_PASSWORD")
 
-	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable&timeout=18000s", dbUsername, dbPassword, dbHost, dbPort)
+	dbConfig = &handler.DBConfig{
+		DBHost:     dbHost,
+		DBPort:     dbPort,
+		DBUsername: dbUsername,
+		DBPassword: dbPassword,
+		DBName:     "postgres",
+	}
+
+	subDbHost := viper.GetString("SUB_DB_HOST")
+	subDbPort := viper.GetString("SUB_DB_PORT")
+	subDbUsername := viper.GetString("SUB_DB_USERNAME")
+	subDbPassword := viper.GetString("SUB_DB_PASSWORD")
+
+	if subDbHost != "" {
+		subDbConfig = &handler.DBConfig{
+			DBHost:     subDbHost,
+			DBPort:     subDbPort,
+			DBUsername: subDbUsername,
+			DBPassword: subDbPassword,
+			DBName:     "postgres",
+		}
+	}
 
 	stateChangeDir = viper.GetString("STATE_CHANGE_DIR")
 	if stateChangeDir == "" {
@@ -142,37 +190,5 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	isRegtest = viper.GetBool("REGTEST")
 	isAcceleratedRegtest = viper.GetBool("ACCELERATED_REGTEST")
 
-	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool
-}
-
-func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {
-	// Open a PostgreSQL database.
-	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
-	if pgdb == nil {
-		glog.Fatalf("Error connecting to postgres db at URI: %v", pgURI)
-	}
-
-	// Create a Bun db on top of postgres for querying.
-	db := bun.NewDB(pgdb, pgdialect.New())
-
-	db.SetConnMaxLifetime(0)
-
-	db.SetMaxIdleConns(threadLimit * 2)
-
-	//Print all queries to stdout for debugging.
-	if logQueries {
-		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
-	}
-
-	// Set the readonly user password for the initial migrations.
-	initial_migrations.SetQueryUserPassword(readonlyUserPassword)
-
-	post_sync_migrations.SetCalculateExplorerStatistics(calculateExplorerStatistics)
-
-	// Apply db migrations.
-	err := handler.RunMigrations(db, false, handler.MigrationTypeInitial)
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
+	return stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool, dbConfig, subDbConfig
 }

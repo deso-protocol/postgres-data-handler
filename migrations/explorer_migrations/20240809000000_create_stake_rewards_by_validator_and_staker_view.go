@@ -1,4 +1,4 @@
-package post_sync_migrations
+package explorer_migrations
 
 import (
 	"context"
@@ -8,9 +8,6 @@ import (
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if !calculateExplorerStatistics {
-			return nil
-		}
 		_, err := db.Exec(`
 		CREATE OR REPLACE VIEW stake_rewards_by_validator_and_staker AS
 		SELECT
@@ -27,9 +24,6 @@ func init() {
 
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
-		if !calculateExplorerStatistics {
-			return nil
-		}
 		_, err := db.Exec(`
 			DROP VIEW IF EXISTS stake_rewards_by_validator_and_staker CASCADE;
 		`)
