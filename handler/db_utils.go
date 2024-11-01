@@ -55,7 +55,7 @@ func RollbackAllMigrations(migrator *migrate.Migrator, ctx context.Context) erro
 	}
 
 	// Loop through every applied migration, rolling back each one.
-	for _, _ = range appliedMigrations {
+	for range appliedMigrations {
 		if _, err = migrator.Rollback(ctx); err != nil {
 			return err
 		}
