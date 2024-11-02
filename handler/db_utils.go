@@ -19,6 +19,10 @@ type MigrationType uint8
 const (
 	MigrationContextKey = "migration_context"
 )
+const (
+	EntryCacheSize uint = 1000000 // 1M entries
+)
+
 
 func RunMigrations(db *bun.DB, migrations *migrate.Migrations, ctx context.Context) error {
 	var migrator *migrate.Migrator

@@ -6,6 +6,7 @@ import (
 	"github.com/deso-protocol/postgres-data-handler/handler"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
+	"github.com/hashicorp/golang-lru/v2"
 	"github.com/spf13/viper"
 	"github.com/uptrace/bun"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -76,6 +77,11 @@ func main() {
 		DbConfig:               dbConfig,
 		SubDbConfig:            subDbConfig,
 		CalculateExplorerStats: explorerStatistics,
+  }
+  
+	cachedEntries, err := lru.New[string, []byte](int(handler.EntryCacheSize))
+	if err != nil {
+		glog.Fatalf("Error creating LRU cache: %v", err)
 	}
 
 	// Initialize and run a state syncer consumer.
@@ -91,6 +97,7 @@ func main() {
 			SubscribedDB: subDb,
 			Params:       params,
 			Config:       pdhConfig,
+			CachedEntries: cachedEntries,
 		},
 	)
 	if err != nil {

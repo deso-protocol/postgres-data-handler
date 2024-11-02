@@ -16,6 +16,7 @@ require (
 	github.com/deso-protocol/state-consumer v1.0.3
 	github.com/golang/glog v1.2.2
 	github.com/google/uuid v1.6.0
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.19.0
 	github.com/uptrace/bun v1.2.3
@@ -108,7 +109,6 @@ require (
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.8 // indirect
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.7 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-5 // indirect
 	github.com/holiman/uint256 v1.3.1 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
