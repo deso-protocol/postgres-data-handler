@@ -8,12 +8,33 @@ import (
 	"fmt"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/postgres-data-handler/entries"
+	"github.com/deso-protocol/postgres-data-handler/migrations/explorer_migrations"
+	"github.com/deso-protocol/postgres-data-handler/migrations/explorer_view_migrations"
+	"github.com/deso-protocol/postgres-data-handler/migrations/initial_migrations"
 	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
+	"github.com/hashicorp/golang-lru/v2"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
+	"strings"
 )
+
+const (
+	// The name of the publication to use for the subscribed database.
+	SubscribedPublicationName = "pdh_publication"
+	// The name of the subscription to use for the subscribed database.
+	SubscribedSubscriptionName = "pdh_subscription"
+)
+
+type PostgresDataHandlerConfig struct {
+	// Config for the main database.
+	DbConfig *DBConfig
+	// Config for the secondary database.
+	SubDbConfig *DBConfig
+	// Whether to calculate explorer stats.
+	CalculateExplorerStats bool
+}
 
 // PostgresDataHandler is a struct that implements the StateSyncerDataHandler interface. It is used by the
 // consumer to insert/delete entries into the postgres database.
@@ -25,6 +46,12 @@ type PostgresDataHandler struct {
 	// Params is a struct containing the current blockchain parameters.
 	// It is used to determine which prefix to use for public keys.
 	Params *lib.DeSoParams
+	// A secondary database used for high-throughput operations.
+	SubscribedDB *bun.DB
+	// The config for the data handler.
+	Config *PostgresDataHandlerConfig
+
+	CachedEntries *lru.Cache[string, []byte]
 }
 
 // HandleEntryBatch performs a bulk operation for a batch of entries, based on the encoder type.
@@ -92,7 +119,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypeStakeEntry:
 		err = entries.StakeBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeValidatorEntry:
-		err = entries.ValidatorBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.ValidatorBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeLockedStakeEntry:
 		err = entries.LockedStakeBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeLockedBalanceEntry:
@@ -102,11 +129,11 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypeEpochEntry:
 		err = entries.EpochEntryBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypePKID:
-		err = entries.PkidBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.PkidBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeGlobalParamsEntry:
 		err = entries.GlobalParamsBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeBLSPublicKeyPKIDPairEntry:
-		err = entries.BLSPublicKeyPKIDPairBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.BLSPublicKeyPKIDPairBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeBlockNode:
 		err = entries.BlockNodeOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	}
@@ -152,18 +179,68 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 			}
 		}
 
-		if err := RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync); err != nil {
+		ctx := CreateMigrationContext(context.Background(), postgresDataHandler.Config.DbConfig)
+
+		if err := RunMigrations(postgresDataHandler.DB, post_sync_migrations.Migrations, ctx); err != nil {
 			return fmt.Errorf("failed to run migrations: %w", err)
 		}
-		fmt.Printf("Starting to refresh explorer statistics\n")
-		go post_sync_migrations.RefreshExplorerStatistics(postgresDataHandler.DB)
 
-		// Begin a new transaction, if one was being tracked previously.
-		if commitTxn {
-			err := postgresDataHandler.InitiateTransaction()
-			if err != nil {
-				return errors.Wrapf(err, "PostgresDataHandler.HandleSyncEvent: Error initiating transaction")
+		explorerDb := postgresDataHandler.DB
+
+		// Setup the explorer views as well if those are enabled.
+		// If we have a subscribed database, run migrations on that as well.
+		if postgresDataHandler.SubscribedDB != nil {
+			if err := RunMigrations(postgresDataHandler.SubscribedDB, post_sync_migrations.Migrations, ctx); err != nil {
+				return fmt.Errorf("failed to run migrations: %w", err)
 			}
+
+			// If we are calculating explorer stats, run the explorer migrations.
+			if postgresDataHandler.Config.CalculateExplorerStats {
+				if err := RunMigrations(postgresDataHandler.SubscribedDB, explorer_migrations.Migrations, ctx); err != nil {
+					return fmt.Errorf("failed to run migrations: %w", err)
+				}
+
+				explorer_view_migrations.SetDBConfig(postgresDataHandler.Config.SubDbConfig.DBHost, postgresDataHandler.Config.SubDbConfig.DBPort, postgresDataHandler.Config.SubDbConfig.DBUsername, postgresDataHandler.Config.SubDbConfig.DBPassword, postgresDataHandler.Config.SubDbConfig.DBName)
+				if err := RunMigrations(postgresDataHandler.DB, explorer_view_migrations.Migrations, ctx); err != nil {
+					return fmt.Errorf("failed to run migrations: %w", err)
+				}
+				explorerDb = postgresDataHandler.SubscribedDB
+			}
+
+			// Create the publication on the main db.
+			if err := CreatePublication(postgresDataHandler.DB, SubscribedPublicationName, []string{"transaction_type"}); err != nil {
+				return fmt.Errorf("failed to create publication: %w", err)
+			}
+
+			connectionString := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s", postgresDataHandler.Config.DbConfig.DBHost, postgresDataHandler.Config.DbConfig.DBPort, postgresDataHandler.Config.DbConfig.DBName, postgresDataHandler.Config.DbConfig.DBUsername, postgresDataHandler.Config.DbConfig.DBPassword)
+			// Create the subscription on the subscribed db.
+			if err := CreateSubscription(postgresDataHandler.SubscribedDB, SubscribedPublicationName, SubscribedSubscriptionName, connectionString, false); err != nil {
+				if strings.Contains(err.Error(), "already exists") {
+					err = RefreshSubscription(postgresDataHandler.SubscribedDB, SubscribedSubscriptionName)
+					if err != nil {
+						return fmt.Errorf("failed to refresh subscription: %v", err)
+					}
+				} else {
+					return fmt.Errorf("failed to create subscription: %v", err)
+				}
+			}
+
+			// If we are running the explorer stats, but don't have a subscribed db, run the explorer migrations on the main db.
+		} else if postgresDataHandler.Config.CalculateExplorerStats {
+			if err := RunMigrations(postgresDataHandler.DB, explorer_migrations.Migrations, ctx); err != nil {
+				return fmt.Errorf("failed to run migrations: %w", err)
+			}
+		}
+
+		if postgresDataHandler.Config.CalculateExplorerStats {
+			fmt.Printf("Starting to refresh explorer statistics\n")
+			go post_sync_migrations.RefreshExplorerStatistics(explorerDb, postgresDataHandler.SubscribedDB)
+		}
+
+		// Begin a new transaction.
+		err := postgresDataHandler.InitiateTransaction()
+		if err != nil {
+			return errors.Wrapf(err, "PostgresDataHandler.HandleSyncEvent: Error initiating transaction")
 		}
 
 		// After hypersync, we don't need to maintain so many idle open connections.
@@ -174,16 +251,33 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 }
 
 func (postgresDataHandler *PostgresDataHandler) ResetAndMigrateDatabase() error {
+	if postgresDataHandler.Config.SubDbConfig.DBHost != "" {
+		// Drop the subscription to allow schema reset
+		if _, err := postgresDataHandler.SubscribedDB.Exec(fmt.Sprintf("DROP SUBSCRIPTION IF EXISTS %s;", SubscribedSubscriptionName)); err != nil {
+			return fmt.Errorf("failed to drop subscription: %w", err)
+		}
+
+		if _, err := postgresDataHandler.SubscribedDB.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
+			return fmt.Errorf("failed to reset schema: %w", err)
+		}
+
+		ctx := CreateMigrationContext(context.Background(), postgresDataHandler.Config.SubDbConfig)
+		// Run migrations.
+		if err := RunMigrations(postgresDataHandler.SubscribedDB, initial_migrations.Migrations, ctx); err != nil {
+			return fmt.Errorf("failed to run migrations: %w", err)
+		}
+	}
+
 	// Drop and recreate the schema - essentially nuke the entire db.
 	if _, err := postgresDataHandler.DB.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
 		return fmt.Errorf("failed to reset schema: %w", err)
 	}
 
+	ctx := CreateMigrationContext(context.Background(), postgresDataHandler.Config.DbConfig)
 	// Run migrations.
-	if err := RunMigrations(postgresDataHandler.DB, false, MigrationTypeInitial); err != nil {
+	if err := RunMigrations(postgresDataHandler.DB, initial_migrations.Migrations, ctx); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
-
 	return nil
 }
 
@@ -324,4 +418,131 @@ func generateSavepointName() (string, error) {
 	}
 	// Convert the byte slice to a hexadecimal string
 	return "savepoint_" + hex.EncodeToString(randomBytes), nil
+}
+
+// CreatePublication creates a publication with the given name.
+func CreatePublication(db *bun.DB, publicationName string, excludeTables []string) error {
+	// Define tables to exclude by default
+	defaultExclusions := []string{"bun_migrations", "bun_migration_locks"}
+	excludeTables = append(excludeTables, defaultExclusions...)
+
+	// Convert excludeTables to a format suitable for SQL query
+	exclusionList := "'" + strings.Join(excludeTables, "', '") + "'"
+
+	// Query to get tables that are not in the exclusion list
+	var tables []string
+	query := fmt.Sprintf(`
+		SELECT table_name
+		FROM information_schema.tables
+		WHERE table_schema = 'public'
+		AND table_type = 'BASE TABLE'
+		AND table_name NOT IN (%s);`, exclusionList)
+
+	if err := db.NewRaw(query).Scan(context.Background(), &tables); err != nil {
+		return errors.Wrap(err, "CreatePublication: Error retrieving tables")
+	}
+
+	_, err := db.Exec(fmt.Sprintf("DROP PUBLICATION IF EXISTS %s;", publicationName))
+	if err != nil {
+		return errors.Wrapf(err, "CreatePublication: Error dropping publication")
+	}
+
+	// Construct the CREATE PUBLICATION command with the filtered table list
+	createPubQuery := fmt.Sprintf("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, strings.Join(tables, ", "))
+	_, err = db.Exec(createPubQuery)
+	if err != nil {
+		return errors.Wrapf(err, "CreatePublication: Error creating publication")
+	}
+
+	return nil
+}
+
+func CreateSubscription(db *bun.DB, publicationName string, subscriptionName string, connectionString string, reuseSlot bool) error {
+	var query string
+	if reuseSlot {
+		query = fmt.Sprintf("CREATE SUBSCRIPTION %s CONNECTION '%s' PUBLICATION %s WITH (slot_name = '%s', create_slot = false);",
+			subscriptionName, connectionString, publicationName, subscriptionName)
+	} else {
+		query = fmt.Sprintf("CREATE SUBSCRIPTION %s CONNECTION '%s' PUBLICATION %s;",
+			subscriptionName, connectionString, publicationName)
+	}
+
+	_, err := db.Exec(query)
+	if err != nil {
+		return errors.Wrapf(err, "CreateSubscription: Error creating subscription")
+	}
+
+	return nil
+}
+
+func RefreshSubscription(db *bun.DB, subscriptionName string) error {
+	_, err := db.Exec(fmt.Sprintf("ALTER SUBSCRIPTION %s REFRESH PUBLICATION;", subscriptionName))
+	if err != nil {
+		return errors.Wrapf(err, "RefreshSubscription: Error refreshing subscription")
+	}
+	return nil
+}
+
+func SyncPublicationSubscription(publisherDB *bun.DB, subscriberDB *bun.DB, publicationName string, subscriptionName string, connectionString string, subDbConfig *DBConfig) error {
+	// Check if the publication exists on the publisher database
+	var publicationExists bool
+	query := "SELECT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = ?);"
+	err := publisherDB.NewRaw(query, publicationName).Scan(context.Background(), &publicationExists)
+	if err != nil {
+		return errors.Wrapf(err, "Error checking publication %s", publicationName)
+	}
+
+	if !publicationExists {
+		return nil
+	}
+
+	// Run migrations on the subscriber db.
+	ctx := CreateMigrationContext(context.Background(), subDbConfig)
+	// Run post sync migrations immediately after setting up the sub db.
+	err = RunMigrations(subscriberDB, initial_migrations.Migrations, ctx)
+	if err != nil {
+		return errors.Wrapf(err, "Error running migrations on subscriber database")
+	}
+	err = RunMigrations(subscriberDB, post_sync_migrations.Migrations, ctx)
+	if err != nil {
+		return errors.Wrapf(err, "Error running post sync migrations on subscriber database")
+	}
+
+	// Check if the subscription exists on the subscriber database
+	var subscriptionExists bool
+	query = "SELECT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = ?);"
+	err = subscriberDB.NewRaw(query, subscriptionName).Scan(context.Background(), &subscriptionExists)
+	if err != nil {
+		return errors.Wrapf(err, "Error checking subscription %s", subscriptionName)
+	}
+
+	// If the subscription exists, refresh it
+	if subscriptionExists {
+		err = RefreshSubscription(subscriberDB, subscriptionName)
+		if err != nil {
+			return errors.Wrapf(err, "Error refreshing subscription %s", subscriptionName)
+		}
+		fmt.Printf("Subscription %s refreshed successfully\n", subscriptionName)
+	} else {
+		// Check if the replication slot already exists on the publisher database
+		var replicationSlotExists bool
+		query = "SELECT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = ?);"
+		err = publisherDB.NewRaw(query, subscriptionName).Scan(context.Background(), &replicationSlotExists)
+		if err != nil {
+			return errors.Wrapf(err, "Error checking replication slot %s", subscriptionName)
+		}
+
+		if replicationSlotExists {
+			fmt.Printf("Replication slot %s already exists on the publisher, reusing it\n", subscriptionName)
+		}
+
+		// Create the subscription, even if the replication slot exists, it should reuse it
+		err = CreateSubscription(subscriberDB, publicationName, subscriptionName, connectionString, replicationSlotExists)
+		if err != nil {
+			return errors.Wrapf(err, "Error creating subscription %s", subscriptionName)
+		}
+		fmt.Printf("Subscription %s created successfully\n", subscriptionName)
+	}
+
+	return nil
 }
