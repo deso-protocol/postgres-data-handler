@@ -252,6 +252,11 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 
 func (postgresDataHandler *PostgresDataHandler) ResetAndMigrateDatabase() error {
 	if postgresDataHandler.Config.SubDbConfig.DBHost != "" {
+		// Drop the subscription to allow schema reset
+		if _, err := postgresDataHandler.SubscribedDB.Exec("DROP SUBSCRIPTION IF EXISTS ?;", SubscribedSubscriptionName); err != nil {
+			return fmt.Errorf("failed to drop subscription: %w", err)
+		}
+
 		if _, err := postgresDataHandler.SubscribedDB.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
 			return fmt.Errorf("failed to reset schema: %w", err)
 		}
