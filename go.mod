@@ -38,8 +38,8 @@ require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
 	github.com/DataDog/appsec-internal-go v1.8.0 // indirect
-	github.com/DataDog/datadog-agent/pkg/obfuscate v0.57.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.57.1 // indirect
+	github.com/DataDog/datadog-agent/pkg/obfuscate v0.58.1 // indirect
+	github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.58.1 // indirect
 	github.com/DataDog/datadog-go/v5 v5.5.0 // indirect
 	github.com/DataDog/go-libddwaf/v3 v3.4.0 // indirect
 	github.com/DataDog/go-sqllexer v0.0.16 // indirect
@@ -58,9 +58,10 @@ require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.6 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
-	github.com/btcsuite/btclog v0.0.0-20241003133417-09c4e92e319c // indirect
+	github.com/btcsuite/btclog v0.0.0-20241017175713-3428138b75c7 // indirect
 	github.com/bwesterb/go-ristretto v1.2.3 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudflare/circl v1.5.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20240905190251-b4127c9b8d78 // indirect
@@ -73,16 +74,16 @@ require (
 	github.com/deso-protocol/go-deadlock v1.0.1 // indirect
 	github.com/deso-protocol/go-merkle-tree v1.0.0 // indirect
 	github.com/deso-protocol/uint256 v1.3.2 // indirect
-	github.com/dgraph-io/badger/v4 v4.3.1 // indirect
-	github.com/dgraph-io/ristretto v1.0.0 // indirect
+	github.com/dgraph-io/badger/v3 v3.2103.5 // indirect
+	github.com/dgraph-io/ristretto v0.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/eapache/queue/v2 v2.0.0-20230407133247-75960ed334e4 // indirect
-	github.com/ebitengine/purego v0.8.0 // indirect
+	github.com/ebitengine/purego v0.8.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/envoyproxy/go-control-plane v0.13.0 // indirect
+	github.com/envoyproxy/go-control-plane v0.13.1 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.1.0 // indirect
 	github.com/ethereum/go-ethereum v1.14.11 // indirect
-	github.com/fatih/color v1.17.0 // indirect
+	github.com/fatih/color v1.18.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
@@ -97,9 +98,10 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/flatbuffers v24.3.25+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/pprof v0.0.0-20241009165004-a3522334989c // indirect
+	github.com/google/pprof v0.0.0-20241023014458-598669927662 // indirect
 	github.com/google/s2a-go v0.1.8 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.13.0 // indirect
@@ -108,6 +110,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.8 // indirect
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.7 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-5 // indirect
 	github.com/holiman/uint256 v1.3.1 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
@@ -131,7 +134,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
-	github.com/nyaruka/phonenumbers v1.4.0 // indirect
+	github.com/nyaruka/phonenumbers v1.4.1 // indirect
 	github.com/oleiade/lane v1.0.1 // indirect
 	github.com/onflow/crypto v0.25.2 // indirect
 	github.com/outcaste-io/ristretto v0.2.3 // indirect
@@ -142,7 +145,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.4.0 // indirect
 	github.com/richardartoul/molecule v1.0.1-0.20240531184615-7ca0df43c0b3 // indirect
-	github.com/robinjoseph08/go-pg-migrations/v3 v3.0.0 // indirect
+	github.com/robinjoseph08/go-pg-migrations/v3 v3.1.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sagikazarmark/locafero v0.6.0 // indirect
@@ -167,7 +170,7 @@ require (
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/ttacon/libphonenumber v1.2.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
-	github.com/unrolled/secure v1.16.0 // indirect
+	github.com/unrolled/secure v1.17.0 // indirect
 	github.com/urfave/cli/v2 v2.27.5 // indirect
 	github.com/vmihailenco/bufpool v0.1.11 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
@@ -204,7 +207,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20241015192408-796eee8c2d53 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	google.golang.org/grpc v1.67.1 // indirect
-	google.golang.org/grpc/stats/opentelemetry v0.0.0-20241016173057-569c8eb0af32 // indirect
+	google.golang.org/grpc/stats/opentelemetry v0.0.0-20241017163036-56df169480cd // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
