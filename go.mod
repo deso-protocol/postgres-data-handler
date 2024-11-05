@@ -75,7 +75,7 @@ require (
 	github.com/deso-protocol/go-merkle-tree v1.0.0 // indirect
 	github.com/deso-protocol/uint256 v1.3.2 // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.5 // indirect
-	github.com/dgraph-io/ristretto v1.0.0 // indirect
+	github.com/dgraph-io/ristretto v0.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/eapache/queue/v2 v2.0.0-20230407133247-75960ed334e4 // indirect
 	github.com/ebitengine/purego v0.8.1 // indirect
