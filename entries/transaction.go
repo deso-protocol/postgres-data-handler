@@ -21,9 +21,9 @@ type TransactionEntry struct {
 	FeeNanos                     uint64
 	NonceExpirationBlockHeight   uint64
 	NoncePartialId               uint64
-	TxnMeta                      lib.DeSoTxnMetadata `bun:"type:jsonb"`
-	TxIndexMetadata              lib.DeSoEncoder     `bun:"type:jsonb"`
-	TxIndexBasicTransferMetadata lib.DeSoEncoder     `bun:"type:jsonb"`
+	TxnMeta                      lib.DeSoTxnMetadata              `bun:"type:jsonb"`
+	TxIndexMetadata              consumer.ConsumerTxIndexMetadata `bun:"type:jsonb"`
+	TxIndexBasicTransferMetadata lib.DeSoEncoder                  `bun:"type:jsonb"`
 	TxnMetaBytes                 []byte
 	TxnBytes                     []byte
 	TxnType                      uint16
@@ -95,7 +95,7 @@ func TransactionEncoderToPGStruct(
 			TxnBytes:                  txnBytes,
 			TxnType:                   uint16(transaction.TxnMeta.GetTxnType()),
 			PublicKey:                 consumer.PublicKeyBytesToBase58Check(transaction.PublicKey[:], params),
-			ExtraData:                 consumer.ExtraDataBytesToString(transaction.ExtraData),
+			ExtraData:                 consumer.ExtraDataBytesToString(transaction.ExtraData, params),
 			IndexInBlock:              blockIndex,
 			BlockHeight:               blockHeight,
 			Timestamp:                 timestamp,

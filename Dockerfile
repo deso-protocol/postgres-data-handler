@@ -4,6 +4,9 @@ RUN apk update
 RUN apk upgrade
 RUN apk add --update bash go cmake g++ gcc git make vips-dev
 
+COPY --from=golang:1.23-alpine /usr/local/go/ /usr/local/go/
+ENV PATH="/usr/local/go/bin:${PATH}"
+
 WORKDIR /postgres-data-handler/src
 
 COPY postgres-data-handler/go.mod postgres-data-handler/

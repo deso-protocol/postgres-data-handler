@@ -3,11 +3,11 @@ package tests
 import (
 	"context"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/deso-protocol/backend/routes"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/postgres-data-handler/entries"
-	"github.com/holiman/uint256"
+	"github.com/deso-protocol/uint256"
 	"github.com/stretchr/testify/require"
 	"math"
 	"math/rand"
@@ -37,7 +37,7 @@ func TestDaoCoinLimitOrderFullOrderFillAtomic(t *testing.T) {
 		limitOrder := limitOrders[0]
 		require.Equal(t, users[0].PublicKeyBase58, limitOrder.SellingDaoCoinCreatorPkid)
 		require.Equal(t, users[2].PublicKeyBase58, limitOrder.TransactorPkid)
-		require.Equal(t, uint256.NewInt().SetUint64(1e9).String(), limitOrder.QuantityToFillInBaseUnitsHex)
+		require.Equal(t, uint256.NewInt(0).SetUint64(1e9).String(), limitOrder.QuantityToFillInBaseUnitsHex)
 	}
 
 	secondTxValidatorFunc := func(t *testing.T, users []*TestUser, limitOrders []*entries.PGDaoCoinLimitOrderEntry) {
@@ -86,7 +86,7 @@ func TestDaoCoinLimitOrderFullOrderFillSequentialBlocks(t *testing.T) {
 		limitOrder := limitOrders[0]
 		require.Equal(t, users[0].PublicKeyBase58, limitOrder.SellingDaoCoinCreatorPkid)
 		require.Equal(t, users[2].PublicKeyBase58, limitOrder.TransactorPkid)
-		require.Equal(t, uint256.NewInt().SetUint64(1e9).String(), limitOrder.QuantityToFillInBaseUnitsHex)
+		require.Equal(t, uint256.NewInt(0).SetUint64(1e9).String(), limitOrder.QuantityToFillInBaseUnitsHex)
 	}
 
 	secondTxValidatorFunc := func(t *testing.T, users []*TestUser, limitOrders []*entries.PGDaoCoinLimitOrderEntry) {
@@ -131,7 +131,7 @@ func SetupDaoCoinTest(t *testing.T, nodeClient *NodeClient, coinUser *TestUser, 
 		UpdaterPublicKeyBase58Check:           coinUser.PublicKeyBase58,
 		ProfilePublicKeyBase58CheckOrUsername: coinUser.PublicKeyBase58,
 		OperationType:                         routes.DAOCoinOperationStringMint,
-		CoinsToMintNanos:                      *uint256.NewInt().SetUint64(1e12),
+		CoinsToMintNanos:                      *uint256.NewInt(1e12),
 		TransferRestrictionStatus:             routes.TransferRestrictionStatusStringUnrestricted,
 		MinFeeRateNanosPerKB:                  FeeRateNanosPerKB,
 		TransactionFees:                       nil,
@@ -152,7 +152,7 @@ func SetupDaoCoinTest(t *testing.T, nodeClient *NodeClient, coinUser *TestUser, 
 		SenderPublicKeyBase58Check:             coinUser.PublicKeyBase58,
 		ProfilePublicKeyBase58CheckOrUsername:  coinUser.PublicKeyBase58,
 		ReceiverPublicKeyBase58CheckOrUsername: recipientUser.PublicKeyBase58,
-		DAOCoinToTransferNanos:                 *uint256.NewInt().SetUint64(1e10),
+		DAOCoinToTransferNanos:                 *uint256.NewInt(0).SetUint64(1e10),
 		MinFeeRateNanosPerKB:                   FeeRateNanosPerKB,
 		OptionalPrecedingTransactions:          txns,
 	}

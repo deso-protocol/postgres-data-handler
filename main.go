@@ -11,6 +11,7 @@ import (
 	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/spf13/viper"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -25,7 +26,7 @@ func main() {
 	// Initialize flags and get config values.
 	setupFlags()
 	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword,
-		explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest := getConfigValues()
+		explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool := getConfigValues()
 
 	// Print all the config values in a single printf call broken up
 	// with newlines and make it look pretty both printed out and in code
@@ -59,7 +60,7 @@ func main() {
 	// Setup profiler if enabled.
 	if datadogProfiler {
 		tracer.Start()
-		err := profiler.Start(profiler.WithProfileTypes(profiler.CPUProfile, profiler.BlockProfile, profiler.MutexProfile, profiler.GoroutineProfile, profiler.HeapProfile))
+		err = profiler.Start(profiler.WithProfileTypes(profiler.CPUProfile, profiler.BlockProfile, profiler.MutexProfile, profiler.GoroutineProfile, profiler.HeapProfile))
 		if err != nil {
 			glog.Fatal(err)
 		}
@@ -74,6 +75,11 @@ func main() {
 	}
 	lib.GlobalDeSoParams = *params
 
+	cachedEntries, err := lru.New[string, []byte](int(handler.EntryCacheSize))
+	if err != nil {
+		glog.Fatalf("Error creating LRU cache: %v", err)
+	}
+
 	// Initialize and run a state syncer consumer.
 	stateSyncerConsumer := &consumer.StateSyncerConsumer{}
 	err = stateSyncerConsumer.InitializeAndRun(
@@ -81,9 +87,11 @@ func main() {
 		consumerProgressDir,
 		batchBytes,
 		threadLimit,
+		syncMempool,
 		&handler.PostgresDataHandler{
-			DB:     db,
-			Params: params,
+			DB:            db,
+			Params:        params,
+			CachedEntries: cachedEntries,
 		},
 	)
 	if err != nil {
@@ -104,7 +112,7 @@ func setupFlags() {
 	viper.AutomaticEnv()
 }
 
-func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool, isTestnet bool, isRegtest bool, isAcceleratedRegtest bool) {
+func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool, isTestnet bool, isRegtest bool, isAcceleratedRegtest bool, syncMempool bool) {
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
@@ -135,6 +143,8 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 		threadLimit = 25
 	}
 
+	syncMempool = viper.GetBool("SYNC_MEMPOOL")
+
 	logQueries = viper.GetBool("LOG_QUERIES")
 	readonlyUserPassword = viper.GetString("READONLY_USER_PASSWORD")
 	explorerStatistics = viper.GetBool("CALCULATE_EXPLORER_STATISTICS")
@@ -143,7 +153,7 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	isRegtest = viper.GetBool("REGTEST")
 	isAcceleratedRegtest = viper.GetBool("ACCELERATED_REGTEST")
 
-	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest
+	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool
 }
 
 type CustomQueryHook struct {

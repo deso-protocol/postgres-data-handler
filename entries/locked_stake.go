@@ -35,7 +35,7 @@ type PGLockedStakeEntryUtxoOps struct {
 // Convert the LockedStakeEntry DeSo encoder to the PGLockedStakeEntry struct used by bun.
 func LockedStakeEncoderToPGStruct(lockedStakeEntry *lib.LockedStakeEntry, keyBytes []byte, params *lib.DeSoParams) LockedStakeEntry {
 	pgLockedStakeEntry := LockedStakeEntry{
-		ExtraData: consumer.ExtraDataBytesToString(lockedStakeEntry.ExtraData),
+		ExtraData: consumer.ExtraDataBytesToString(lockedStakeEntry.ExtraData, params),
 		BadgerKey: keyBytes,
 	}
 

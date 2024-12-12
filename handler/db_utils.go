@@ -17,6 +17,10 @@ const (
 	MigrationTypePostHypersync MigrationType = 1
 )
 
+const (
+	EntryCacheSize uint = 1000000 // 1M entries
+)
+
 // TODO: Make this a method on the PostgresDataHandler struct.
 func RunMigrations(db *bun.DB, reset bool, migrationType MigrationType) error {
 	ctx := context.Background()
@@ -30,6 +34,14 @@ func RunMigrations(db *bun.DB, reset bool, migrationType MigrationType) error {
 	} else if migrationType == MigrationTypePostHypersync {
 		migrator = postSyncMigrator
 	}
+	if err := AcquireAdvisoryLock(db); err != nil {
+		return err
+	}
+	defer func() {
+		if err := ReleaseAdvisoryLock(db); err != nil {
+			glog.Errorf("Error releasing advisory lock: %v", err)
+		}
+	}()
 	if err := migrator.Init(ctx); err != nil {
 		glog.Fatal(err)
 	}
@@ -61,7 +73,7 @@ func RollbackAllMigrations(migrator *migrate.Migrator, ctx context.Context) erro
 	}
 
 	// Loop through every applied migration, rolling back each one.
-	for _, _ = range appliedMigrations {
+	for range appliedMigrations {
 		if _, err = migrator.Rollback(ctx); err != nil {
 			return err
 		}

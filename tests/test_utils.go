@@ -3,7 +3,7 @@ package tests
 import (
 	"flag"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	be_routes "github.com/deso-protocol/backend/routes"
 	"github.com/deso-protocol/backend/scripts/tools/toolslib"
 	"github.com/deso-protocol/core/lib"

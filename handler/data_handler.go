@@ -11,6 +11,7 @@ import (
 	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/deso-protocol/state-consumer/consumer"
 	"github.com/golang/glog"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
 )
@@ -25,6 +26,9 @@ type PostgresDataHandler struct {
 	// Params is a struct containing the current blockchain parameters.
 	// It is used to determine which prefix to use for public keys.
 	Params *lib.DeSoParams
+
+	// LRU containing cached entries, to reduce duplicative database operations
+	CachedEntries *lru.Cache[string, []byte]
 }
 
 // HandleEntryBatch performs a bulk operation for a batch of entries, based on the encoder type.
@@ -92,7 +96,7 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypeStakeEntry:
 		err = entries.StakeBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeValidatorEntry:
-		err = entries.ValidatorBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.ValidatorBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeLockedStakeEntry:
 		err = entries.LockedStakeBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeLockedBalanceEntry:
@@ -102,11 +106,11 @@ func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries 
 	case lib.EncoderTypeEpochEntry:
 		err = entries.EpochEntryBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypePKID:
-		err = entries.PkidBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.PkidBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeGlobalParamsEntry:
 		err = entries.GlobalParamsBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	case lib.EncoderTypeBLSPublicKeyPKIDPairEntry:
-		err = entries.BLSPublicKeyPKIDPairBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
+		err = entries.BLSPublicKeyPKIDPairBatchOperation(batchedEntries, dbHandle, postgresDataHandler.Params, postgresDataHandler.CachedEntries)
 	case lib.EncoderTypeBlockNode:
 		err = entries.BlockNodeOperation(batchedEntries, dbHandle, postgresDataHandler.Params)
 	}
@@ -142,9 +146,30 @@ func (postgresDataHandler *PostgresDataHandler) HandleSyncEvent(syncEvent consum
 		fmt.Println("Hypersync complete")
 	case consumer.SyncEventBlocksyncStart:
 		fmt.Println("Starting blocksync")
-		RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync)
+
+		// Commit the transaction if it exists.
+		commitTxn := postgresDataHandler.Txn != nil
+		if commitTxn {
+			err := postgresDataHandler.CommitTransaction()
+			if err != nil {
+				return errors.Wrapf(err, "PostgresDataHandler.HandleSyncEvent: Error committing transaction")
+			}
+		}
+
+		if err := RunMigrations(postgresDataHandler.DB, false, MigrationTypePostHypersync); err != nil {
+			return fmt.Errorf("failed to run migrations: %w", err)
+		}
 		fmt.Printf("Starting to refresh explorer statistics\n")
 		go post_sync_migrations.RefreshExplorerStatistics(postgresDataHandler.DB)
+
+		// Begin a new transaction, if one was being tracked previously.
+		if commitTxn {
+			err := postgresDataHandler.InitiateTransaction()
+			if err != nil {
+				return errors.Wrapf(err, "PostgresDataHandler.HandleSyncEvent: Error initiating transaction")
+			}
+		}
+
 		// After hypersync, we don't need to maintain so many idle open connections.
 		postgresDataHandler.DB.SetMaxIdleConns(4)
 	}
@@ -169,10 +194,17 @@ func (postgresDataHandler *PostgresDataHandler) ResetAndMigrateDatabase() error 
 func (postgresDataHandler *PostgresDataHandler) InitiateTransaction() error {
 	// If a transaction is already open, rollback the current transaction.
 	if postgresDataHandler.Txn != nil {
+		if err := ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
+			// Just log the error, but this shouldn't be a problem.
+			glog.Errorf("Error releasing advisory lock: %v", err)
+		}
 		err := postgresDataHandler.Txn.Rollback()
 		if err != nil {
 			return errors.Wrapf(err, "PostgresDataHandler.InitiateTransaction: Error rolling back current transaction")
 		}
+	}
+	if err := AcquireAdvisoryLock(postgresDataHandler.DB); err != nil {
+		return errors.Wrapf(err, "PostgresDataHandler.InitiateTransaction: Error acquiring advisory lock")
 	}
 	tx, err := postgresDataHandler.DB.BeginTx(context.Background(), &sql.TxOptions{})
 	if err != nil {
@@ -186,6 +218,10 @@ func (postgresDataHandler *PostgresDataHandler) CommitTransaction() error {
 	if postgresDataHandler.Txn == nil {
 		return fmt.Errorf("PostgresDataHandler.CommitTransaction: No transaction to commit")
 	}
+	if err := ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
+		// Just log the error, but this shouldn't be a problem.
+		glog.Errorf("Error releasing advisory lock: %v", err)
+	}
 	err := postgresDataHandler.Txn.Commit()
 	if err != nil {
 		return errors.Wrapf(err, "PostgresDataHandler.CommitTransaction: Error committing transaction")
@@ -196,6 +232,10 @@ func (postgresDataHandler *PostgresDataHandler) CommitTransaction() error {
 
 func (postgresDataHandler *PostgresDataHandler) RollbackTransaction() error {
 	glog.V(2).Info("Rolling back Txn\n")
+	if err := ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
+		// Just log the error, but this shouldn't be a problem.
+		glog.Errorf("Error releasing advisory lock: %v", err)
+	}
 	if postgresDataHandler.Txn == nil {
 		return fmt.Errorf("PostgresDataHandler.RollbackTransaction: No transaction to rollback")
 	}
@@ -218,6 +258,22 @@ func (postgresDataHandler *PostgresDataHandler) GetDbHandle() bun.IDB {
 		return postgresDataHandler.Txn
 	}
 	return postgresDataHandler.DB
+}
+
+func AcquireAdvisoryLock(db bun.IDB) error {
+	_, err := db.NewRaw("SELECT pg_advisory_lock(1);").Exec(context.Background())
+	if err != nil {
+		return errors.Wrapf(err, "AcquireAdvisoryLock: Error acquiring advisory lock")
+	}
+	return nil
+}
+
+func ReleaseAdvisoryLock(db bun.IDB) error {
+	_, err := db.NewRaw("SELECT pg_advisory_unlock(1);").Exec(context.Background())
+	if err != nil {
+		return errors.Wrapf(err, "ReleaseAdvisoryLock: Error releasing advisory lock")
+	}
+	return nil
 }
 
 // CreateSavepoint creates a savepoint in the current transaction. If no transaction is open, it returns an empty string.

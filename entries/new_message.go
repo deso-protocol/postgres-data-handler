@@ -48,7 +48,7 @@ func NewMessageEncoderToPGStruct(newMessageEntry *lib.NewMessageEntry, keyBytes 
 	pgNewMessageEntry := NewMessageEntry{
 		EncryptedText:      hex.EncodeToString(newMessageEntry.EncryptedText[:]),
 		Timestamp:          consumer.UnixNanoToTime(newMessageEntry.TimestampNanos),
-		ExtraData:          consumer.ExtraDataBytesToString(newMessageEntry.ExtraData),
+		ExtraData:          consumer.ExtraDataBytesToString(newMessageEntry.ExtraData, params),
 		IsGroupChatMessage: isGroupChatMessage,
 		BadgerKey:          keyBytes,
 	}

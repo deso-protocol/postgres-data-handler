@@ -41,7 +41,7 @@ func DerivedKeyEncoderToPGStruct(derivedKeyEntry *lib.DerivedKeyEntry, keyBytes 
 		ExpirationBlock:  derivedKeyEntry.ExpirationBlock,
 		OperationType:    uint8(derivedKeyEntry.OperationType),
 
-		ExtraData: consumer.ExtraDataBytesToString(derivedKeyEntry.ExtraData),
+		ExtraData: consumer.ExtraDataBytesToString(derivedKeyEntry.ExtraData, params),
 		BadgerKey: keyBytes,
 	}
 

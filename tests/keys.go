@@ -8,8 +8,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/deso-protocol/core/lib"
 	"github.com/tyler-smith/go-bip39"
 	"math/big"
@@ -20,7 +21,7 @@ import (
 func Encrypt(pubKey *btcec.PublicKey, msg []byte) ([]byte, error) {
 	var pt bytes.Buffer
 
-	ephemeral, err := btcec.NewPrivateKey(btcec.S256())
+	ephemeral, err := btcec.NewPrivateKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate private key: %v", err)
 	}
@@ -66,7 +67,7 @@ func Decrypt(privkey *btcec.PrivateKey, msg []byte) ([]byte, error) {
 	}
 
 	pb := new(big.Int).SetBytes(msg[:65]).Bytes()
-	pubKey, err := btcec.ParsePubKey(pb, btcec.S256())
+	pubKey, err := btcec.ParsePubKey(pb)
 	if err != nil {
 		return nil, err
 	}
@@ -121,23 +122,23 @@ func ComputeKeysFromSeedWithNet(seedBytes []byte, index uint32, desoParams *lib.
 	// m/44'/0'/0'/0/0 also maps to the first
 	// address you'd get if you put the user's seed into most standard
 	// Bitcoin wallets (Mycelium, Electrum, Ledger, iancoleman, etc...).
-	purpose, err := masterKey.Child(hdkeychain.HardenedKeyStart + 44)
+	purpose, err := masterKey.Derive(hdkeychain.HardenedKeyStart + 44)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("ComputeKeyFromSeed: Error encountered generating 'purpose' from seed (%v)", err)
 	}
-	coinTypeKey, err := purpose.Child(hdkeychain.HardenedKeyStart + 0)
+	coinTypeKey, err := purpose.Derive(hdkeychain.HardenedKeyStart + 0)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("ComputeKeyFromSeed: Error encountered generating 'coinType' from seed (%v)", err)
 	}
-	accountKey, err := coinTypeKey.Child(hdkeychain.HardenedKeyStart + index)
+	accountKey, err := coinTypeKey.Derive(hdkeychain.HardenedKeyStart + index)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("ComputeKeyFromSeed: Error encountered generating 'accountKey' from seed (%v)", err)
 	}
-	changeKey, err := accountKey.Child(0)
+	changeKey, err := accountKey.Derive(0)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("ComputeKeyFromSeed: Error encountered generating 'changeKey' from seed (%v)", err)
 	}
-	addressKey, err := changeKey.Child(0)
+	addressKey, err := changeKey.Derive(0)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("ComputeKeyFromSeed: Error encountered generating 'addressKey' from seed (%v)", err)
 	}
@@ -172,7 +173,7 @@ func Base58ToPubKey(publicKeyBase58 string, desoParams *lib.DeSoParams) (*btcec.
 	if err != nil {
 		return nil, err
 	}
-	publicKey, err := btcec.ParsePubKey(publicKeyBytes, btcec.S256())
+	publicKey, err := btcec.ParsePubKey(publicKeyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +193,7 @@ func StandardDerivation(seed string, groupName string, account uint32, desoParam
 }
 
 func CreateRandomKeyPair(params *lib.DeSoParams) (*btcec.PublicKey, *btcec.PrivateKey, error) {
-	randomPrivateKey, err := btcec.NewPrivateKey(btcec.S256())
+	randomPrivateKey, err := btcec.NewPrivateKey()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -224,7 +225,7 @@ func DecryptEncryptedPrivKeyHex(encryptedPrivKeyHex string, privKey *btcec.Priva
 	}
 
 	// Convert the decrypted bytes back to btcec.PrivateKey
-	decryptedPrivateKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), privateKeyBytes)
+	decryptedPrivateKey, _ := btcec.PrivKeyFromBytes(privateKeyBytes)
 	return decryptedPrivateKey, nil
 }
 
@@ -261,12 +262,7 @@ func GetAuthorizeDerivedKeyMetadataWithTransactionSpendingLimit(
 		return nil, err
 	}
 
-	signature, err := ownerPrivateKey.Sign(lib.Sha256DoubleHash(accessBytes)[:])
-	if err != nil {
-		return nil, err
-	}
-
-	accessSignature := signature.Serialize()
+	accessSignature := ecdsa.Sign(ownerPrivateKey, lib.Sha256DoubleHash(accessBytes)[:]).Serialize()
 
 	return &lib.AuthorizeDerivedKeyMetadata{
 		derivedPublicKey,
@@ -279,7 +275,7 @@ func GetAuthorizeDerivedKeyMetadataWithTransactionSpendingLimit(
 func DeriveDefaultMessagingKey(privKey *btcec.PrivateKey, messagingKeyName string) (*btcec.PrivateKey, *btcec.PublicKey) {
 	seedHexBytes := privKey.Serialize()
 	messagingPrivateKey := lib.Sha256DoubleHash(append(lib.Sha256DoubleHash(seedHexBytes)[:], lib.Sha256DoubleHash([]byte(messagingKeyName))[:]...))[:]
-	return btcec.PrivKeyFromBytes(btcec.S256(), messagingPrivateKey)
+	return btcec.PrivKeyFromBytes(messagingPrivateKey)
 }
 
 // Convert a seed hex to a btcec.PrivateKey
@@ -288,7 +284,7 @@ func SeedHexToKeyPair(seedHex string) (*btcec.PrivateKey, *btcec.PublicKey, erro
 	if err != nil {
 		return nil, nil, err
 	}
-	privKey, pubKey := btcec.PrivKeyFromBytes(btcec.S256(), seedBytes)
+	privKey, pubKey := btcec.PrivKeyFromBytes(seedBytes)
 
 	return privKey, pubKey, nil
 }

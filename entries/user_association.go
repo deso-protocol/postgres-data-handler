@@ -18,8 +18,12 @@ type UserAssociationEntry struct {
 	AssociationValue string `pg:",use_zero"`
 	BlockHeight      uint32 `bun:",nullzero"`
 
+	TransactorUser PGAccount `bun:"rel:belongs-to,join:transactor_pkid=pkid"`
+	TargetUser     PGAccount `bun:"rel:belongs-to,join:target_user_pkid=pkid"`
+	AppUser        PGAccount `bun:"rel:belongs-to,join:app_pkid=pkid"`
+
 	ExtraData map[string]string `bun:"type:jsonb"`
-	BadgerKey []byte            `pg:",pk,use_zero"`
+	BadgerKey []byte            `bun:",pk" pg:",pk,use_zero"`
 }
 
 type PGUserAssociationEntry struct {
@@ -39,7 +43,7 @@ func UserAssociationEncoderToPGStruct(userAssociationEntry *lib.UserAssociationE
 		AssociationType:  string(userAssociationEntry.AssociationType[:]),
 		AssociationValue: string(userAssociationEntry.AssociationValue[:]),
 		BlockHeight:      userAssociationEntry.BlockHeight,
-		ExtraData:        consumer.ExtraDataBytesToString(userAssociationEntry.ExtraData),
+		ExtraData:        consumer.ExtraDataBytesToString(userAssociationEntry.ExtraData, params),
 		BadgerKey:        keyBytes,
 	}
 	if userAssociationEntry.AssociationID != nil {

@@ -48,7 +48,7 @@ func NftEncoderToPGStruct(nftEntry *lib.NFTEntry, keyBytes []byte, params *lib.D
 		IsPending:                  nftEntry.IsPending,
 		IsBuyNow:                   nftEntry.IsBuyNow,
 		BuyNowPriceNanos:           nftEntry.BuyNowPriceNanos,
-		ExtraData:                  consumer.ExtraDataBytesToString(nftEntry.ExtraData),
+		ExtraData:                  consumer.ExtraDataBytesToString(nftEntry.ExtraData, params),
 		BadgerKey:                  keyBytes,
 	}
 	if nftEntry.LastOwnerPKID != nil {

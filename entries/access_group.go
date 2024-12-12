@@ -13,8 +13,10 @@ type AccessGroupEntry struct {
 	AccessGroupKeyName        string `pg:",use_zero"`
 	AccessGroupPublicKey      string `bun:",nullzero"`
 
+	AccessGroupMembers []*PGAccessGroupMemberEntry `bun:"rel:has-many,join:access_group_owner_public_key=access_group_owner_public_key,join:access_group_key_name=access_group_key_name"`
+
 	ExtraData map[string]string `bun:"type:jsonb"`
-	BadgerKey []byte            `pg:",pk,use_zero"`
+	BadgerKey []byte            `bun:",pk" pg:",pk,use_zero"`
 }
 
 type PGAccessGroupEntry struct {
@@ -31,7 +33,7 @@ type PGAccessGroupEntryUtxoOps struct {
 // Convert the AccessGroup DeSo encoder to the PGAccessGroupEntry struct used by bun.
 func AccessGroupEncoderToPGStruct(accessGroupEntry *lib.AccessGroupEntry, keyBytes []byte, params *lib.DeSoParams) AccessGroupEntry {
 	pgAccessGroupEntry := AccessGroupEntry{
-		ExtraData: consumer.ExtraDataBytesToString(accessGroupEntry.ExtraData),
+		ExtraData: consumer.ExtraDataBytesToString(accessGroupEntry.ExtraData, params),
 		BadgerKey: keyBytes,
 	}
 

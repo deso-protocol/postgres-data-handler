@@ -430,7 +430,7 @@ func parseUtxoOperationBundle(
 						entry.BlockHeight,
 					)
 			}
-			txIndexMetadata, err := consumer.ComputeTransactionMetadata(transaction, blockHashHex, params, transaction.TxnFeeNanos, uint64(jj), utxoOps)
+			txIndexMetadata, txnExtraMetadata, err := consumer.ComputeTransactionMetadata(transaction, blockHashHex, params, transaction.TxnFeeNanos, uint64(jj), utxoOps)
 			if err != nil {
 				// If we fail to compute txindex metadata, log the error and continue to the next transaction.
 				// We still append this txn to the transactionUpdates slice so that we can have it in the db.
@@ -453,7 +453,10 @@ func parseUtxoOperationBundle(
 					innerTxnMetadata.BasicTransferTxindexMetadata.UtxoOps = nil
 				}
 			}
-			transactions[jj].TxIndexMetadata = metadata
+			transactions[jj].TxIndexMetadata = consumer.ConsumerTxIndexMetadata{
+				DeSoEncoder:              metadata,
+				TransactionExtraMetadata: txnExtraMetadata,
+			}
 
 			transactions[jj].TxIndexBasicTransferMetadata = txIndexMetadata.GetEncoderForTxType(lib.TxnTypeBasicTransfer)
 

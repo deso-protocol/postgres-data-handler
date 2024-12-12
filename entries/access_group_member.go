@@ -16,8 +16,12 @@ type AccessGroupMemberEntry struct {
 
 	EncryptedKey []byte `pg:",use_zero"`
 
+	AccessGroupMemberAccount *PGAccount          `bun:"rel:belongs-to,join:access_group_member_public_key=public_key"`
+	AccessGroupOwnerAccount  *PGAccount          `bun:"rel:belongs-to,join:access_group_owner_public_key=public_key"`
+	AccessGroup              *PGAccessGroupEntry `bun:"rel:belongs-to,join:access_group_owner_public_key=access_group_owner_public_key,join:access_group_key_name=access_group_key_name"`
+
 	ExtraData map[string]string `bun:"type:jsonb"`
-	BadgerKey []byte            `pg:",pk,use_zero"`
+	BadgerKey []byte            `bun:",pk" pg:",pk,use_zero"`
 }
 
 type PGAccessGroupMemberEntry struct {
@@ -38,7 +42,7 @@ func AccessGroupMemberEncoderToPGStruct(accessGroupMemberEntry *lib.AccessGroupM
 
 	pgAccessGroupMemberEntry := AccessGroupMemberEntry{
 		EncryptedKey:              accessGroupMemberEntry.EncryptedKey,
-		ExtraData:                 consumer.ExtraDataBytesToString(accessGroupMemberEntry.ExtraData),
+		ExtraData:                 consumer.ExtraDataBytesToString(accessGroupMemberEntry.ExtraData, params),
 		AccessGroupOwnerPublicKey: consumer.PublicKeyBytesToBase58Check(accessGroupOwnerPublicKey, params),
 		AccessGroupKeyName:        string(accessGroupKeyName),
 		BadgerKey:                 keyBytes,

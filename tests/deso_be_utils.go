@@ -7,7 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/deso-protocol/backend/routes"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/postgres-data-handler/entries"
@@ -131,7 +132,7 @@ func (nodeClient *NodeClient) SignTransaction(
 	// we also get new transaction bytes, along with the signature.
 	newTransactionBytes, txnSignatureBytes, err := lib.SignTransactionBytes(txnBytes, privKey, isDerived)
 
-	parsedSignature, err := btcec.ParseDERSignature(txnSignatureBytes, btcec.S256())
+	parsedSignature, err := ecdsa.ParseDERSignature(txnSignatureBytes)
 	if err != nil {
 		return nil, fmt.Errorf("SignTransaction: Problem parsing signature: %v", err)
 	}
