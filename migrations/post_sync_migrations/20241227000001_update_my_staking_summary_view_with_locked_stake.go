@@ -8,9 +8,6 @@ import (
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
-		if !calculateExplorerStatistics {
-			return nil
-		}
 		_, err := db.Exec(`
 DROP MATERIALIZED VIEW if exists my_stake_summary;
 
@@ -51,9 +48,6 @@ comment on materialized view my_stake_summary is E'@unique staker_pkid\n@foreign
 
 		return nil
 	}, func(ctx context.Context, db *bun.DB) error {
-		if !calculateExplorerStatistics {
-			return nil
-		}
 		_, err := db.Exec(`
 DROP MATERIALIZED VIEW if exists my_stake_summary;
 
