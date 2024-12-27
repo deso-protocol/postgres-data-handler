@@ -12,6 +12,8 @@ func init() {
 			return nil
 		}
 		_, err := db.Exec(`
+DROP MATERIALIZED VIEW if exists my_stake_summary;
+
 CREATE MATERIALIZED VIEW my_stake_summary as
 with staker_pkids as (select staker_pkid
                       from stake_reward
@@ -53,7 +55,7 @@ comment on materialized view my_stake_summary is E'@unique staker_pkid\n@foreign
 			return nil
 		}
 		_, err := db.Exec(`
-DROP MATERIALIZED VIEW my_stake_summary;
+DROP MATERIALIZED VIEW if exists my_stake_summary;
 
 CREATE MATERIALIZED VIEW my_stake_summary as
 select coalesce(total_stake_rewards.staker_pkid, total_stake_amount.staker_pkid) as staker_pkid,
