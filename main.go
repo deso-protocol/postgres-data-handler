@@ -33,6 +33,7 @@ func main() {
 		---------------------------------
 		DB_HOST: %s
 		DB_PORT: %s
+		DB_NAME: %s
 		DB_USERNAME: %s
 		STATE_CHANGE_DIR: %s
 		CONSUMER_PROGRESS_DIR: %s
@@ -43,7 +44,7 @@ func main() {
 		DATA_DOG_PROFILER: %t
 		TESTNET: %t
 		`, viper.GetString("DB_HOST"), viper.GetString("DB_PORT"),
-		viper.GetString("DB_USERNAME"),
+		viper.GetString("DB_NAME"), viper.GetString("DB_USERNAME"),
 		stateChangeDir, consumerProgressDir, batchBytes, threadLimit,
 		logQueries, explorerStatistics, datadogProfiler, isTestnet)
 
@@ -112,10 +113,11 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
+	dbName := viper.GetString("DB_NAME")
 	dbUsername := viper.GetString("DB_USERNAME")
 	dbPassword := viper.GetString("DB_PASSWORD")
 
-	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable&timeout=18000s", dbUsername, dbPassword, dbHost, dbPort)
+	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&timeout=18000s", dbUsername, dbPassword, dbHost, dbPort, dbName)
 
 	stateChangeDir = viper.GetString("STATE_CHANGE_DIR")
 	if stateChangeDir == "" {
