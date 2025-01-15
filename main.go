@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"strings"
+
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/postgres-data-handler/handler"
 	"github.com/deso-protocol/postgres-data-handler/migrations/initial_migrations"
@@ -19,7 +21,6 @@ import (
 	"github.com/uptrace/bun/extra/bundebug"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
-	"strings"
 )
 
 func main() {
@@ -165,6 +166,7 @@ func (h *CustomQueryHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent
 
 	if strings.HasPrefix(strings.ToUpper(queryStr), "BEGIN") ||
 		strings.HasPrefix(strings.ToUpper(queryStr), "COMMIT") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "SELECT PG_ADVISORY") ||
 		strings.HasPrefix(strings.ToUpper(queryStr), "SAVEPOINT") ||
 		strings.HasPrefix(strings.ToUpper(queryStr), "RELEASE SAVEPOINT") {
 		return ctx
@@ -176,6 +178,7 @@ func (h *CustomQueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent)
 	queryStr := event.Query
 	if strings.HasPrefix(strings.ToUpper(queryStr), "BEGIN") ||
 		strings.HasPrefix(strings.ToUpper(queryStr), "COMMIT") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "SELECT PG_ADVISORY") ||
 		strings.HasPrefix(strings.ToUpper(queryStr), "SAVEPOINT") ||
 		strings.HasPrefix(strings.ToUpper(queryStr), "RELEASE SAVEPOINT") {
 		return
@@ -199,11 +202,11 @@ func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPasswor
 
 	//Print all queries to stdout for debugging.
 	if logQueries {
-		//db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
-		customHook := &CustomQueryHook{
-			QueryHook: *bundebug.NewQueryHook(bundebug.WithVerbose(true)),
-		}
-		db.AddQueryHook(customHook)
+		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+		// customHook := &CustomQueryHook{
+		// 	QueryHook: *bundebug.NewQueryHook(bundebug.WithVerbose(true)),
+		// }
+		// db.AddQueryHook(customHook)
 	}
 
 	// Set the readonly user password for the initial migrations.

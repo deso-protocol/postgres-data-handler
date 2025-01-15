@@ -7,6 +7,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/deso-protocol/backend/routes"
@@ -21,11 +27,6 @@ import (
 	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
 	"github.com/uptrace/bun/migrate"
-	"io/ioutil"
-	"net/http"
-	"reflect"
-	"strings"
-	"time"
 )
 
 const (
@@ -517,8 +518,8 @@ func (nodeClient *NodeClient) AuthorizeDerivedKey(
 	return NodePostRequest[routes.AuthorizeDerivedKeyRequest, routes.AuthorizeDerivedKeyResponse](nodeClient, routes.RoutePathAuthorizeDerivedKey, *request, signAndSubmitTxn, privateKey, "TransactionHex", isDerived)
 }
 
-func (nodeClient *NodeClient) SubmitPost(request *routes.SubmitPostRequest, privateKey *btcec.PrivateKey, isDerived bool) (*routes.SubmitPostResponse, *routes.SubmitTransactionResponse, error) {
-	return NodePostRequest[routes.SubmitPostRequest, routes.SubmitPostResponse](nodeClient, routes.RoutePathSubmitPost, *request, true, privateKey, "TransactionHex", isDerived)
+func (nodeClient *NodeClient) SubmitPost(request *routes.SubmitPostRequest, privateKey *btcec.PrivateKey, isDerived bool, signAndSubmitTxn bool) (*routes.SubmitPostResponse, *routes.SubmitTransactionResponse, error) {
+	return NodePostRequest[routes.SubmitPostRequest, routes.SubmitPostResponse](nodeClient, routes.RoutePathSubmitPost, *request, signAndSubmitTxn, privateKey, "TransactionHex", isDerived)
 }
 
 func (nodeClient *NodeClient) GetSinglePost(request *routes.GetSinglePostRequest) (*routes.GetSinglePostResponse, *routes.SubmitTransactionResponse, error) {
