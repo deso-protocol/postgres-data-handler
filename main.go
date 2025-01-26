@@ -29,6 +29,10 @@ func main() {
 	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword,
 		explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool := getConfigValues()
 
+	dbName := "postgres"
+	if viper.GetString("DB_NAME") != "" {
+		dbName = viper.GetString("DB_NAME")
+	}
 	// Print all the config values in a single printf call broken up
 	// with newlines and make it look pretty both printed out and in code
 	glog.Infof(`
@@ -37,6 +41,7 @@ func main() {
 		DB_HOST: %s
 		DB_PORT: %s
 		DB_USERNAME: %s
+		DB_NAME: %s
 		STATE_CHANGE_DIR: %s
 		CONSUMER_PROGRESS_DIR: %s
 		BATCH_BYTES: %d
@@ -48,7 +53,7 @@ func main() {
 		REGTEST: %t
 		ACCELERATED_REGTEST: %t
 		`, viper.GetString("DB_HOST"), viper.GetString("DB_PORT"),
-		viper.GetString("DB_USERNAME"),
+		viper.GetString("DB_USERNAME"), dbName,
 		stateChangeDir, consumerProgressDir, batchBytes, threadLimit,
 		logQueries, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest)
 
@@ -119,8 +124,12 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	dbPort := viper.GetString("DB_PORT")
 	dbUsername := viper.GetString("DB_USERNAME")
 	dbPassword := viper.GetString("DB_PASSWORD")
+	dbName := "postgres"
+	if viper.GetString("DB_NAME") != "" {
+		dbName = viper.GetString("DB_NAME")
+	}
 
-	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable&timeout=18000s", dbUsername, dbPassword, dbHost, dbPort)
+	pgURI = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&timeout=18000s", dbUsername, dbPassword, dbHost, dbPort, dbName)
 
 	stateChangeDir = viper.GetString("STATE_CHANGE_DIR")
 	if stateChangeDir == "" {
