@@ -21,7 +21,7 @@ services:
       - EXPOSE_GLOBAL_STATE=false
       - SHOW_PROCESSING_SPINNERS=true
       - COMP_PROFILE_CREATION=false
-
+      - MAX_OPTIONAL_PRECEDING_TRANSACTIONS=10000
       #      Hypersync Settings:
       #      - SYNC_TYPE=hypersync
       #      - HYPERSYNC=true
@@ -43,16 +43,18 @@ services:
       #      - TRUSTED_BLOCK_PRODUCER_PUBLIC_KEYS=
       #      - TRUSTED_BLOCK_PRODUCER_START_HEIGHT=10000000
 
-    #      Regtest Settings:
+      #      Regtest Settings:
       - REGTEST=true
+      - REGTEST_ACCELERATED=true
       - TESTNET=true
       - STATE_CHANGE_DIR=/ss/state-changes
       - ADMIN_PUBLIC_KEYS=*
       - SUPER_ADMIN_PUBLIC_KEYS=*
       - NUM_MINING_THREADS=1
-      - MINER_PUBLIC_KEYS=BC1YLg7Bk5sq9iNY17bAwoAYiChLYpmWEi6nY6q5gnA1UQV6xixHjfV
-      - BLOCK_PRODUCER_SEED=essence camp ghost remove document vault ladder swim pupil index apart ring
+      - MINER_PUBLIC_KEYS=tBCKVERmG9nZpHTk2AVPqknWc1Mw9HHAnqrTpW1RnXpXMQ4PsQgnmV
+      - BLOCK_PRODUCER_SEED=verb find card ship another until version devote guilt strong lemon six
       - STARTER_DESO_SEED=road congress client market couple bid risk escape artwork rookie artwork food
+      - POS_VALIDATOR_SEED=verb find card ship another until version devote guilt strong lemon six
     ports:
       - '18000:18000'
       - '18001:18001'
@@ -67,7 +69,8 @@ services:
       timeout: 10s
       retries: 20
       start_period: 10s
-    command: ["run"]
+#    command: ["/deso/bin/backend", "run"]
+    entrypoint: ["/deso/bin/backend", "run"]
   pdh:
     #    image: docker.io/desoprotocol/postgres-data-handler:c2ff0e2921911d2581685e1794a1324724997c64
     build:
@@ -85,41 +88,19 @@ services:
       - BATCH_BYTES=500000
       - THREAD_LIMIT=10
       - CALCULATE_EXPLORER_STATISTICS=false
-      - LOG_QUERIES=false
+      - LOG_QUERIES=true
       #     Mainnet Settings:
       #      - IS_TESTNET=false
       #     Testnet Settings:
       - IS_TESTNET=true
+      - REGTEST=true
+      - ACCELERATED_REGTEST=true
     command: ["run"]
     volumes:
       - ss_volume:/ss
     depends_on:
       db-ss:
         condition: service_healthy
-  #  gql:
-  #    image: docker.io/desoprotocol/graphql-api:4255d8c3c5be7911ed7817ef7b1baf979a6d3818
-  #    environment:
-  #      - DB_HOST=db-ss
-  #      - DB_NAME=postgres
-  #      - DB_PASSWORD=postgres
-  #      - DB_PORT=5432
-  #      - DB_USERNAME=postgres
-  #      - DB_OWNER_USERNAME=postgres
-  #      - DB_OWNER_PASSWORD=postgres
-  #      - READONLY_USER_PASSWORD=postgres
-  #      - LOG_SQL=true
-  #      - DESO_NODE_URI=http://deso:18001
-  #    ports:
-  #      - '4000:4000'
-  #    depends_on:
-  #      db-ss:
-  #        condition: service_healthy
-  #    healthcheck:
-  #      test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider --header='Content-Type: application/json' --post-data='{\"query\":\"query {__typename}\"}' http://gql:4000/graphql || exit 1" ]
-  #      interval: 10s
-  #      timeout: 15s
-  #      retries: 30
-  #      start_period: 10s
   db-ss:
     image: postgres:14
     #    restart: always
