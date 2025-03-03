@@ -3,21 +3,19 @@ package tests
 import (
 	"context"
 	"fmt"
+	"math"
+	"math/rand"
+	"strconv"
+	"sync"
+	"testing"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/deso-protocol/backend/routes"
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/postgres-data-handler/entries"
 	"github.com/deso-protocol/uint256"
 	"github.com/stretchr/testify/require"
-	"math"
-	"math/rand"
-	"strconv"
-	"sync"
-	"testing"
 )
-
-// TODO: Make it so that the test only wipes out one of the limit orders.
-// TODO: Test with a market order.
 
 func TestDaoCoinLimitOrderFullOrderFillAtomic(t *testing.T) {
 	t.Parallel()

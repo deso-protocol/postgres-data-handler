@@ -211,11 +211,10 @@ func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPasswor
 
 	//Print all queries to stdout for debugging.
 	if logQueries {
-		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
-		// customHook := &CustomQueryHook{
-		// 	QueryHook: *bundebug.NewQueryHook(bundebug.WithVerbose(true)),
-		// }
-		// db.AddQueryHook(customHook)
+		customHook := &CustomQueryHook{
+			QueryHook: *bundebug.NewQueryHook(bundebug.WithVerbose(true)),
+		}
+		db.AddQueryHook(customHook)
 	}
 
 	// Set the readonly user password for the initial migrations.
