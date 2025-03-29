@@ -749,6 +749,15 @@ func (nodeClient *NodeClient) LockCoins(
 	return NodePostRequest[routes.CoinLockupRequest, routes.CoinLockResponse](nodeClient, routes.RoutePathCoinLockup, *request, signAndSubmitTxn, privateKey, "TransactionHex", isDerived)
 }
 
+func (nodeClient *NodeClient) UnlockCoins(
+	request *routes.CoinUnlockRequest,
+	privateKey *btcec.PrivateKey,
+	isDerived bool,
+	signAndSubmitTxn bool,
+) (*routes.CoinLockResponse, *routes.SubmitTransactionResponse, error) {
+	return NodePostRequest[routes.CoinUnlockRequest, routes.CoinLockResponse](nodeClient, routes.RoutePathCoinUnlock, *request, signAndSubmitTxn, privateKey, "TransactionHex", isDerived)
+}
+
 func (nodeClient *NodeClient) UpdateGlobalParams(
 	request *routes.UpdateGlobalParamsRequest,
 	privateKey *btcec.PrivateKey,
