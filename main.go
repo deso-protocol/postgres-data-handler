@@ -26,6 +26,8 @@ import (
 func main() {
 	// Initialize flags and get config values.
 	setupFlags()
+	flag.Set("v", viper.GetString("GLOG_V"))
+	fmt.Println("YAY!: ", viper.GetString("GLOG_V"))
 	pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readOnlyUserPassword,
 		explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool := getConfigValues()
 
@@ -33,6 +35,7 @@ func main() {
 	if viper.GetString("DB_NAME") != "" {
 		dbName = viper.GetString("DB_NAME")
 	}
+	glog.V(2).Infof("TESTING V2!")
 	// Print all the config values in a single printf call broken up
 	// with newlines and make it look pretty both printed out and in code
 	glog.Infof(`
@@ -52,10 +55,11 @@ func main() {
 		TESTNET: %t
 		REGTEST: %t
 		ACCELERATED_REGTEST: %t
+		SYNC_MEMPOOL: %t
 		`, viper.GetString("DB_HOST"), viper.GetString("DB_PORT"),
 		viper.GetString("DB_USERNAME"), dbName,
 		stateChangeDir, consumerProgressDir, batchBytes, threadLimit,
-		logQueries, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest)
+		logQueries, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool)
 
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
@@ -108,7 +112,8 @@ func main() {
 func setupFlags() {
 	// Set glog flags
 	flag.Set("log_dir", viper.GetString("log_dir"))
-	flag.Set("v", viper.GetString("glog_v"))
+	flag.Set("v", viper.GetString("GLOG_V"))
+	fmt.Println("YAY!: ", viper.GetString("GLOG_V"))
 	flag.Set("vmodule", viper.GetString("glog_vmodule"))
 	flag.Set("alsologtostderr", "true")
 	flag.Parse()
@@ -120,6 +125,7 @@ func setupFlags() {
 
 func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir string, batchBytes uint64, threadLimit int, logQueries bool, readonlyUserPassword string, explorerStatistics bool, datadogProfiler bool, isTestnet bool, isRegtest bool, isAcceleratedRegtest bool, syncMempool bool) {
 
+	fmt.Println("GLOG_V: ", viper.GetString("GLOG_V"))
 	dbHost := viper.GetString("DB_HOST")
 	dbPort := viper.GetString("DB_PORT")
 	dbUsername := viper.GetString("DB_USERNAME")
