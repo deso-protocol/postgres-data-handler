@@ -170,14 +170,19 @@ type CustomQueryHook struct {
 	bundebug.QueryHook
 }
 
+func skipLogQuery(queryStr string) bool {
+	return strings.HasPrefix(strings.ToUpper(queryStr), "BEGIN") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "COMMIT") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "SELECT ON_PDH_PG_TXN_COMMITTED") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "SELECT PG_ADVISORY") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "SAVEPOINT") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "RELEASE SAVEPOINT")
+}
+
 func (h *CustomQueryHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent) context.Context {
 	queryStr := event.Query
 
-	if strings.HasPrefix(strings.ToUpper(queryStr), "BEGIN") ||
-		strings.HasPrefix(strings.ToUpper(queryStr), "COMMIT") ||
-		strings.HasPrefix(strings.ToUpper(queryStr), "SELECT PG_ADVISORY") ||
-		strings.HasPrefix(strings.ToUpper(queryStr), "SAVEPOINT") ||
-		strings.HasPrefix(strings.ToUpper(queryStr), "RELEASE SAVEPOINT") {
+	if skipLogQuery(queryStr) {
 		return ctx
 	}
 	return h.QueryHook.BeforeQuery(ctx, event)
@@ -185,11 +190,7 @@ func (h *CustomQueryHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent
 
 func (h *CustomQueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	queryStr := event.Query
-	if strings.HasPrefix(strings.ToUpper(queryStr), "BEGIN") ||
-		strings.HasPrefix(strings.ToUpper(queryStr), "COMMIT") ||
-		strings.HasPrefix(strings.ToUpper(queryStr), "SELECT PG_ADVISORY") ||
-		strings.HasPrefix(strings.ToUpper(queryStr), "SAVEPOINT") ||
-		strings.HasPrefix(strings.ToUpper(queryStr), "RELEASE SAVEPOINT") {
+	if skipLogQuery(queryStr) {
 		return
 	}
 	h.QueryHook.AfterQuery(ctx, event)
