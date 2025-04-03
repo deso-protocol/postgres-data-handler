@@ -180,19 +180,19 @@ func skipLogQuery(queryStr string) bool {
 }
 
 func (h *CustomQueryHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent) context.Context {
-	queryStr := event.Query
+	// queryStr := event.Query
 
-	if skipLogQuery(queryStr) {
-		return ctx
-	}
+	// if skipLogQuery(queryStr) {
+	// 	return ctx
+	// }
 	return h.QueryHook.BeforeQuery(ctx, event)
 }
 
 func (h *CustomQueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
-	queryStr := event.Query
-	if skipLogQuery(queryStr) {
-		return
-	}
+	// queryStr := event.Query
+	// if skipLogQuery(queryStr) {
+	// 	return
+	// }
 	h.QueryHook.AfterQuery(ctx, event)
 }
 
