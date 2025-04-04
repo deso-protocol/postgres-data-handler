@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/postgres-data-handler/entries"
 	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
@@ -32,7 +33,7 @@ type PostgresDataHandler struct {
 }
 
 // HandleEntryBatch performs a bulk operation for a batch of entries, based on the encoder type.
-func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries []*lib.StateChangeEntry) error {
+func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries []*lib.StateChangeEntry, isMempool bool) error {
 	if len(batchedEntries) == 0 {
 		return fmt.Errorf("PostgresDataHandler.HandleEntryBatch: No entries currently batched.")
 	}
@@ -227,6 +228,19 @@ func (postgresDataHandler *PostgresDataHandler) CommitTransaction() error {
 		return errors.Wrapf(err, "PostgresDataHandler.CommitTransaction: Error committing transaction")
 	}
 	postgresDataHandler.Txn = nil
+
+	// Call the post-transaction commit hook
+	if err := postgresDataHandler.CallPostTransactionCommitHook(); err != nil {
+		return errors.Wrapf(err, "PostgresDataHandler.CommitTransaction: Error calling post-transaction commit hook")
+	}
+
+	return nil
+}
+
+func (postgresDataHandler *PostgresDataHandler) CallPostTransactionCommitHook() error {
+	if err := CallPostgresFunction(postgresDataHandler.DB, "on_pdh_pg_txn_committed"); err != nil {
+		return errors.Wrapf(err, "PostgresDataHandler.CallPostTransactionCommitHook: Error calling post-transaction commit hook")
+	}
 	return nil
 }
 

@@ -2,9 +2,13 @@ package handler
 
 import (
 	"context"
+	"fmt"
+	"strings"
+
 	"github.com/deso-protocol/postgres-data-handler/migrations/initial_migrations"
 	"github.com/deso-protocol/postgres-data-handler/migrations/post_sync_migrations"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/migrate"
 )
@@ -77,6 +81,30 @@ func RollbackAllMigrations(migrator *migrate.Migrator, ctx context.Context) erro
 		if _, err = migrator.Rollback(ctx); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// CallPostgresFunction executes a PostgreSQL function with the given name and parameters.
+// It returns any error encountered during execution.
+func CallPostgresFunction(db *bun.DB, functionName string, params ...interface{}) error {
+	// Build the function call SQL
+	var sqlFunction string
+	if len(params) == 0 {
+		sqlFunction = fmt.Sprintf("SELECT %s();", functionName)
+	} else {
+		// Create placeholders for parameters ($1, $2, etc.)
+		placeholders := make([]string, len(params))
+		for i := range placeholders {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+		}
+		sqlFunction = fmt.Sprintf("SELECT %s(%s);", functionName, strings.Join(placeholders, ", "))
+	}
+
+	// Execute the function
+	_, err := db.ExecContext(context.Background(), sqlFunction, params...)
+	if err != nil {
+		return errors.Wrapf(err, "CallPostgresFunction: Error calling function %s", functionName)
 	}
 	return nil
 }

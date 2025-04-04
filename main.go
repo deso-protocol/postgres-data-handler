@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"fmt"
+	"strings"
+
 	"github.com/deso-protocol/core/lib"
 	"github.com/deso-protocol/postgres-data-handler/handler"
 	"github.com/deso-protocol/postgres-data-handler/migrations/initial_migrations"
@@ -47,10 +50,12 @@ func main() {
 		CALCULATE_EXPLORER_STATISTICS: %t
 		DATA_DOG_PROFILER: %t
 		TESTNET: %t
+		REGTEST: %t
+		ACCELERATED_REGTEST: %t
 		`, viper.GetString("DB_HOST"), viper.GetString("DB_PORT"),
 		viper.GetString("DB_USERNAME"), dbName,
 		stateChangeDir, consumerProgressDir, batchBytes, threadLimit,
-		logQueries, explorerStatistics, datadogProfiler, isTestnet)
+		logQueries, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest)
 
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
@@ -161,6 +166,36 @@ func getConfigValues() (pgURI string, stateChangeDir string, consumerProgressDir
 	return pgURI, stateChangeDir, consumerProgressDir, batchBytes, threadLimit, logQueries, readonlyUserPassword, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool
 }
 
+type CustomQueryHook struct {
+	bundebug.QueryHook
+}
+
+func skipLogQuery(queryStr string) bool {
+	return strings.HasPrefix(strings.ToUpper(queryStr), "BEGIN") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "COMMIT") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "SELECT ON_PDH_PG_TXN_COMMITTED") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "SELECT PG_ADVISORY") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "SAVEPOINT") ||
+		strings.HasPrefix(strings.ToUpper(queryStr), "RELEASE SAVEPOINT")
+}
+
+func (h *CustomQueryHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent) context.Context {
+	// queryStr := event.Query
+
+	// if skipLogQuery(queryStr) {
+	// 	return ctx
+	// }
+	return h.QueryHook.BeforeQuery(ctx, event)
+}
+
+func (h *CustomQueryHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
+	// queryStr := event.Query
+	// if skipLogQuery(queryStr) {
+	// 	return
+	// }
+	h.QueryHook.AfterQuery(ctx, event)
+}
+
 func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPassword string, calculateExplorerStatistics bool) (*bun.DB, error) {
 	// Open a PostgreSQL database.
 	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(pgURI)))
@@ -177,7 +212,10 @@ func setupDb(pgURI string, threadLimit int, logQueries bool, readonlyUserPasswor
 
 	//Print all queries to stdout for debugging.
 	if logQueries {
-		db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+		customHook := &CustomQueryHook{
+			QueryHook: *bundebug.NewQueryHook(bundebug.WithVerbose(true)),
+		}
+		db.AddQueryHook(customHook)
 	}
 
 	// Set the readonly user password for the initial migrations.
