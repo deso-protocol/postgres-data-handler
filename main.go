@@ -52,10 +52,11 @@ func main() {
 		TESTNET: %t
 		REGTEST: %t
 		ACCELERATED_REGTEST: %t
+		SYNC_MEMPOOL: %t
 		`, viper.GetString("DB_HOST"), viper.GetString("DB_PORT"),
 		viper.GetString("DB_USERNAME"), dbName,
 		stateChangeDir, consumerProgressDir, batchBytes, threadLimit,
-		logQueries, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest)
+		logQueries, explorerStatistics, datadogProfiler, isTestnet, isRegtest, isAcceleratedRegtest, syncMempool)
 
 	// Initialize the DB.
 	db, err := setupDb(pgURI, threadLimit, logQueries, readOnlyUserPassword, explorerStatistics)
