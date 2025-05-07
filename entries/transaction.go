@@ -233,14 +233,14 @@ func parseInnerTxnsFromAtomicTxn(
 	error,
 ) {
 	if pgAtomicTxn == nil {
-		return nil, fmt.Errorf("parseInnerTxnsFromAtomicTxn: atomicTxn is nil")
+		return nil, errors.New("parseInnerTxnsFromAtomicTxn: atomicTxn is nil")
 	}
 	if pgAtomicTxn.TxnMeta.GetTxnType() != lib.TxnTypeAtomicTxnsWrapper {
-		return nil, fmt.Errorf("parseInnerTxnsFromAtomicTxn: txn is not an atomic txn")
+		return nil, errors.New("parseInnerTxnsFromAtomicTxn: txn is not an atomic txn")
 	}
 	realTxMeta, ok := pgAtomicTxn.TxnMeta.(*lib.AtomicTxnsWrapperMetadata)
 	if !ok {
-		return nil, fmt.Errorf("parseInnerTxnsFromAtomicTxn: txn meta is not an atomic txn wrapper")
+		return nil, errors.New("parseInnerTxnsFromAtomicTxn: txn meta is not an atomic txn wrapper")
 	}
 	innerTxns := make([]*PGTransactionEntry, 0)
 	for ii, txn := range realTxMeta.Txns {

@@ -235,7 +235,7 @@ func (nodeClient *NodeClient) SignAndSubmitTxnsAtomically(
 		len(txns) != len(correspondingOptionalPrivKeys) ||
 		len(txns) != len(correspondingIsDerived) {
 		return nil,
-			fmt.Errorf("SignAndSubmitTxnsAtomically: Number of transactions must match number of keys")
+			errors.New("SignAndSubmitTxnsAtomically: Number of transactions must match number of keys")
 	}
 
 	// First we must sign each transaction provided.
@@ -325,12 +325,12 @@ func (nodeClient *NodeClient) SignAtomicTxns(
 ) {
 	// Validate the atomicTxnsWrapper is the correct type.
 	if atomicTxnsWrapper.TxnMeta.GetTxnType() != lib.TxnTypeAtomicTxnsWrapper {
-		return fmt.Errorf("SignAtomicTxns: Transaction must be of type AtomicTxnsWrapper")
+		return errors.New("SignAtomicTxns: Transaction must be of type AtomicTxnsWrapper")
 	}
 
 	// Validate that we have the correct number of private keys to sign the entire atomicTxnsWrapper.
 	if len(atomicTxnsWrapper.TxnMeta.(*lib.AtomicTxnsWrapperMetadata).Txns) != len(correspondingOptionalPrivKeys) {
-		return fmt.Errorf("SignAtomicTxns: Number of private keys must " +
+		return errors.New("SignAtomicTxns: Number of private keys must " +
 			"match number of transactions in atomicTxnsWrapper")
 	}
 
@@ -368,7 +368,7 @@ func (nodeClient *NodeClient) SubmitAtomicTransaction(
 ) {
 	// Ensure the atomicTxnsWrapper is the right transaction type.
 	if atomicTxnsWrapper.TxnMeta.GetTxnType() != lib.TxnTypeAtomicTxnsWrapper {
-		return nil, fmt.Errorf("SubmitAtomicTransaction: Transaction must be of type AtomicTxnsWrapper")
+		return nil, errors.New("SubmitAtomicTransaction: Transaction must be of type AtomicTxnsWrapper")
 	}
 
 	// Encode the atomicTxnsWrapper to hex.
@@ -443,7 +443,7 @@ func NodePostRequest[Req any, Resp any](
 		respValue := reflect.ValueOf(response)
 		txHexField := respValue.FieldByName(transactionHexFieldName)
 		if !txHexField.IsValid() {
-			return nil, nil, fmt.Errorf("Response type does not have a TransactionHex field")
+			return nil, nil, errors.New("Response type does not have a TransactionHex field")
 		}
 		transactionHex := txHexField.String()
 

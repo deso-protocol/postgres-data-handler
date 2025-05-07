@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/deso-protocol/core/lib"
+	"github.com/pkg/errors"
 	"github.com/tyler-smith/go-bip39"
 	"math/big"
 	"regexp"
@@ -63,7 +64,7 @@ func Encrypt(pubKey *btcec.PublicKey, msg []byte) ([]byte, error) {
 func Decrypt(privkey *btcec.PrivateKey, msg []byte) ([]byte, error) {
 	// Message cannot be less than length of public key (65) + nonce (16) + tag (16)
 	if len(msg) <= (1 + 32 + 32 + 16 + 16) {
-		return nil, fmt.Errorf("invalid length of message")
+		return nil, errors.New("invalid length of message")
 	}
 
 	pb := new(big.Int).SetBytes(msg[:65]).Bytes()
