@@ -35,7 +35,7 @@ type PostgresDataHandler struct {
 // HandleEntryBatch performs a bulk operation for a batch of entries, based on the encoder type.
 func (postgresDataHandler *PostgresDataHandler) HandleEntryBatch(batchedEntries []*lib.StateChangeEntry, isMempool bool) error {
 	if len(batchedEntries) == 0 {
-		return fmt.Errorf("PostgresDataHandler.HandleEntryBatch: No entries currently batched.")
+		return errors.New("PostgresDataHandler.HandleEntryBatch: No entries currently batched.")
 	}
 
 	// All entries in a batch should have the same encoder type.
@@ -217,7 +217,7 @@ func (postgresDataHandler *PostgresDataHandler) InitiateTransaction() error {
 
 func (postgresDataHandler *PostgresDataHandler) CommitTransaction() error {
 	if postgresDataHandler.Txn == nil {
-		return fmt.Errorf("PostgresDataHandler.CommitTransaction: No transaction to commit")
+		return errors.New("PostgresDataHandler.CommitTransaction: No transaction to commit")
 	}
 	if err := ReleaseAdvisoryLock(postgresDataHandler.Txn); err != nil {
 		// Just log the error, but this shouldn't be a problem.
@@ -251,7 +251,7 @@ func (postgresDataHandler *PostgresDataHandler) RollbackTransaction() error {
 		glog.Errorf("Error releasing advisory lock: %v", err)
 	}
 	if postgresDataHandler.Txn == nil {
-		return fmt.Errorf("PostgresDataHandler.RollbackTransaction: No transaction to rollback")
+		return errors.New("PostgresDataHandler.RollbackTransaction: No transaction to rollback")
 	}
 	err := postgresDataHandler.Txn.Rollback()
 	if err != nil {

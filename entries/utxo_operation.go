@@ -152,7 +152,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db bun.IDB, 
 				}
 				// If we have an atomic transaction, we need to parse the inner transactions.
 				if ii >= len(utxoOperations.UtxoOpBundle) {
-					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: not enough utxo operations")
+					return errors.New("entries.bulkInsertUtxoOperationsEntry: not enough utxo operations")
 				}
 				innerTxns, innerUtxoOps, err := getInnerTxnsFromAtomicTxn(
 					pgTxn,
@@ -224,7 +224,7 @@ func bulkInsertUtxoOperationsEntry(entries []*lib.StateChangeEntry, db bun.IDB, 
 
 				// If we have an atomic transaction, we need to parse the inner transactions.
 				if ii >= len(utxoOperations.UtxoOpBundle) {
-					return fmt.Errorf("entries.bulkInsertUtxoOperationsEntry: not enough utxo operations")
+					return errors.New("entries.bulkInsertUtxoOperationsEntry: not enough utxo operations")
 				}
 				innerTxns, innerUtxoOps, err := getInnerTxnsFromAtomicTxn(
 					pgAtomicTxn,
@@ -561,11 +561,11 @@ func getInnerTxnsFromAtomicTxn(
 	}
 	atomicUtxoOp := consumer.GetUtxoOpByOperationType(utxoOperations, lib.OperationTypeAtomicTxnsWrapper)
 	if atomicUtxoOp == nil {
-		return nil, nil, fmt.Errorf("getInnerTxnsFromAtomicTxn: atomic txn has no utxo operation")
+		return nil, nil, errors.New("getInnerTxnsFromAtomicTxn: atomic txn has no utxo operation")
 	}
 	if atomicUtxoOp.AtomicTxnsInnerUtxoOps == nil ||
 		len(atomicUtxoOp.AtomicTxnsInnerUtxoOps) != len(innerTxns) {
-		return nil, nil, fmt.Errorf("getInnerTxnsFromAtomicTxn: atomic txn has no inner utxo operations")
+		return nil, nil, errors.New("getInnerTxnsFromAtomicTxn: atomic txn has no inner utxo operations")
 	}
 	glog.V(2).Infof("getInnerTxnsFromAtomicTxn: Found %v inner txns", atomicUtxoOp.AtomicTxnsInnerUtxoOps)
 	return innerTxns, atomicUtxoOp.AtomicTxnsInnerUtxoOps, nil
