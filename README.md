@@ -83,6 +83,8 @@ For a complete setup, you will need to deploy three containers. Here is a high-l
   - Credentials and database names provided must match those specified in the Postgres data handler configuration.
   - Storage and resource configurations should be set as needed for your anticipated workload.
 
+For a working example of container orchestration using Docker Compose, please refer to the [local.docker-compose.yml](https://github.com/deso-protocol/postgres-data-handler/blob/main/local.docker-compose.yml) file in our GitHub repository.
+
 ---
 
 ## Deployment Recommendations
