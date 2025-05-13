@@ -76,6 +76,8 @@ var (
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY staking_summary", Ticker: time.NewTicker(1 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY my_stake_summary", Ticker: time.NewTicker(1 * time.Minute)},
 		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY validator_stats", Ticker: time.NewTicker(1 * time.Minute)},
+		{Query: "REFRESH MATERIALIZED VIEW CONCURRENTLY token_balance_agg_v0", Ticker: time.NewTicker(10 * time.Minute)},
+		{Query: "select refresh_deso_sinks_burn_amounts()", Ticker: time.NewTicker(5 * time.Minute)},
 	}
 )
 
