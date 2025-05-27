@@ -109,6 +109,12 @@ Rather than focusing on a specific orchestration tool, here are some best practi
 
 Contributions, feature enhancements, and bug fixes are welcome. If you have any suggestions or encounter issues, please open an issue or submit a pull request.
 
+## Have more questions?
+
+DeepWiki (powered by Devin AI) provides up-to-date documentation you can talk to for this repo, click the button below to try it out.
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/deso-protocol/postgres-data-handler)
+
 ---
 
 
