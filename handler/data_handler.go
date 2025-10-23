@@ -265,6 +265,10 @@ func (postgresDataHandler *PostgresDataHandler) GetParams() *lib.DeSoParams {
 	return postgresDataHandler.Params
 }
 
+func (postgresDataHandler *PostgresDataHandler) HasActiveTransaction() bool {
+	return postgresDataHandler.Txn != nil
+}
+
 // GetDbHandle returns the correct interface to use for database operations.
 // If a transaction is open, it returns the transaction handle, otherwise it returns the db handle.
 func (postgresDataHandler *PostgresDataHandler) GetDbHandle() bun.IDB {
